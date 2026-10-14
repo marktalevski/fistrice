@@ -458,7 +458,8 @@ class Component extends DCLogic {
     // strokes draw the surface, buoy and flag first, then carry on up into their menu dots
     const LX = W < 720 ? 26 : 56, BS = clamp(W / 900, .75, 1), NX = k => W - 316 + { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }[k], NY = 28;
     const bz = (A, C1, C2, B, n) => { const o = []; for (let i = 1; i <= n; i++) { const u = i / n, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, dd = u ** 3; o.push([a * A[0] + b * C1[0] + c * C2[0] + dd * B[0], a * A[1] + b * C1[1] + c * C2[1] + dd * B[1]]); } return o; };
-    const surf = k => { const o = []; for (let x = 6; x <= W - 6; x += 9) o.push([x, SY + this.waveY(x - LX, k, 0)]); return o; };
+    // start off-screen like the Freediving page's surface, so the line reaches the left edge
+    const surf = k => { const o = []; for (let x = -20; x <= W - 6; x += 9) o.push([x, SY + this.waveY(x - LX, k, 0)]); return o; };
     const mkX = (o) => { const F = o.feat, f0p = F[0], lead = bz(o.start, o.c1, o.c2 || [f0p[0] - 50, f0p[1] - 110], f0p, 44), fl = F[F.length - 1], fp = F[F.length - 2], tl = Math.hypot(fl[0] - fp[0], fl[1] - fp[1]) || 1, E = o.end;
       const rise = bz(fl, o.r1 || [fl[0] + (fl[0] - fp[0]) / tl * 70, fl[1] + (fl[1] - fp[1]) / tl * 70 - 50], o.rx != null && o.rx < -100 ? [E[0] + o.rx, E[1] + 20] : [E[0] + (o.rx ?? -40), E[1] + 130], E, 40);
       const pre = o.circ || [o.start], pts = pre.concat(lead, F.slice(1), rise), f0 = pre.length + lead.length - 1; return { ...o, pts, f0, f1: f0 + F.length - 1 }; };
@@ -470,7 +471,7 @@ class Component extends DCLogic {
     const flag = []; for (let q = 0; q <= 8; q++) { const u = q / 8; flag.push([B[0] + (1 + 20 * u) * BS, B[1] + (-39 + Math.sin(u * Math.PI) * 1.2) * BS]); }
     this.exits = [
       mkX({ col: INK, k: 0, d: 0, dur: 3.1, ink: 1, circ, circW: P.wt.slice(P.arc0), h0: cl, start: e, c1: [e[0] + tg[0] * R * 1.2, e[1] + tg[1] * R * 1.2], c2: [-30, s0[0][1] - 90], feat: s0, end: [NX('home'), NY], rx: 40, w: 8, tw: 3.2, ta: .9 }),
-      mkX({ col: [0, 158, 224], k: 1, d: .35, dur: 2.8, start: hd('freediving'), c1: [hd('freediving')[0] - 60, hd('freediving')[1] + 90], c2: [-20, s1[0][1] - 70], feat: s1, end: [NX('freediving'), NY], w: 6, tw: 1.8, ta: .55 }),
+      mkX({ col: [0, 158, 224], k: 1, d: .35, dur: 2.95, start: hd('freediving'), c1: [hd('freediving')[0] - 60, hd('freediving')[1] + 90], c2: [-20, s1[0][1] - 70], feat: s1, end: [NX('freediving'), NY], w: 6, tw: 1.8, ta: .55 }),
       mkX({ col: [34, 86, 186], k: 2, d: .6, dur: 2.7, start: [cx + Math.cos(2.3) * R, cy + Math.sin(2.3) * R], c1: [cx + Math.cos(2.3) * R * 2.2, cy + Math.sin(2.3) * R * 2], c2: [-20, s2[0][1] - 60], feat: s2, end: [NX('freediving'), NY], w: 6.5, tw: 1.1, ta: .3 }),
       mkX({ col: [255, 118, 18], k: 3, d: .25, dur: 2.7, start: hd('c4'), c1: [hd('c4')[0], hd('c4')[1] + 120], c2: [B[0] + 120, B[1] - 90], feat: coil, end: [NX('c4'), NY], r1: [B[0] + 30, Math.max(40, B[1] - 170)], rx: -260, w: 7, tw: 6.5 * BS, ta: 1 }),
       mkX({ col: [232, 34, 44], k: 4, d: .5, dur: 2.6, start: hd('sound'), c1: [hd('sound')[0], hd('sound')[1] - 100], c2: [B[0] - 30, B[1] - 120], feat: flag, end: [NX('sound'), NY], r1: [B[0] + 20, Math.max(30, B[1] - 160)], rx: -260, w: 6.5, tw: 4.6 * BS, ta: 1 })
@@ -698,7 +699,9 @@ class Component extends DCLogic {
         const n0 = [-t0y / l0, t0x / l0], n1 = [-t1y / l1, t1x / l1], h0b = W2[i] / 2, h1b = W2[i + 1] / 2;
         quads.push({ z: (Z2[i] + Z2[i + 1]) / 2 + (X.ink ? .02 : 0), a: (A2[i] + A2[i + 1]) / 2, col, rgb: X.col, pid, sub: 0, mul: !X.ink, q: [[q0[0] - n0[0] * h0b, q0[1] - n0[1] * h0b], [q1[0] - n1[0] * h1b, q1[1] - n1[1] * h1b], [q1[0] + n1[0] * h1b, q1[1] + n1[1] * h1b], [q0[0] + n0[0] * h0b, q0[1] + n0[1] * h0b]] });
       }
-      if (P2.length) { const hp = P2[P2.length - 1], dk = smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1)); this.exitHeads = this.exitHeads || []; this.exitHeads.push({ p: hp, col, r: (X.ink ? 8 : 7) + ((X.k === 3 ? 5.5 : 8) - (X.ink ? 8 : 7)) * dk }); }
+      // both blues share the Freediving dot: as they arrive they take on its own blue, so they merge into one dot instead of flickering between two
+      const hc = X.k === 1 || X.k === 2 ? `rgb(${X.col.map((v, j) => Math.round(v + ([24, 88, 224][j] - v) * smooth(clamp((kx - .8) / .2, 0, 1)))).join(',')})` : col;
+      if (P2.length) { const hp = P2[P2.length - 1], dk = smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1)); this.exitHeads = this.exitHeads || []; this.exitHeads.push({ p: hp, col: hc, r: (X.ink ? 8 : 7) + ((X.k === 3 ? 5.5 : 8) - (X.ink ? 8 : 7)) * dk }); }
     }
 
     // each line is filled as one shape per opacity level (nested, stacked), so it never overlaps itself or seams; lines then blend translucently with each other

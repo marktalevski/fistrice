@@ -43,7 +43,8 @@ class Component extends DCLogic {
     addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchmove', this.onTM, { passive: false });
     const r = rng(11);
     const gc = document.createElement('canvas'); gc.width = gc.height = 220;
-    { const x = gc.getContext('2d'), im = x.createImageData(220, 220); for (let i = 0; i < im.data.length; i += 4) { const v = 255 - Math.pow(r(), 3) * 40; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); }
+    // the same paper grain as Home (seed 5), so the texture doesn't jump when arriving from there; r still steps past it so everything else stays put
+    { const g5 = rng(5), x = gc.getContext('2d'), im = x.createImageData(220, 220); for (let i = 0; i < im.data.length; i += 4) { r(); const v = 255 - Math.pow(g5(), 3) * 40; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); }
     this.grainC = gc;
     this.bubbles = Array.from({ length: 10 }, () => ({ x: -22 + r() * 14, y: r(), r: 1.5 + r() * 3, v: .02 + r() * .03, ph: r() * 6.28 }));
     const C = { verm: '#d4452a', gold: '#e2a93b', white: '#f2efe6' };
@@ -640,7 +641,9 @@ class Component extends DCLogic {
       ctx.restore();
     }
     if (!this.grainP) this.grainP = ctx.createPattern(this.grainC, 'repeat');
-    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .4; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H);
+    // arriving from Home, start at Home's grain strength and deepen to this page's as the water rises
+    const grainA = this.fromHome && intro ? .35 + .05 * smooth(clamp((T - this.tide0) / 1.8, 0, 1)) : .4;
+    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = grainA; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
 

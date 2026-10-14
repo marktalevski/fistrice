@@ -21,9 +21,9 @@ const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
-// hover fade, like watercolour bleeding into paper: seconds for the wash to cross one stroke, delay between lines, opacity reached,
-// width of the wet edge (share of the stroke), and how much that edge wanders along the stroke
-const FADE = { sweep: 2.2, stagger: .16, to: .25, soft: .9, wander: .07 };
+// hover fade, like watercolour bleeding into paper: seconds for the wash to cross one stroke, delay between lines (0: all lines together),
+// opacity reached, width of the wet edge (share of the stroke), and how much that edge wanders along the stroke
+const FADE = { sweep: 2.2, stagger: 0, to: .25, soft: .9, wander: .07 };
 // section labels stay hidden until their dot is hovered. reveal: written out from the dot with a short slide. absorb: on hover end the letters,
 // nearest first, slide into the dot while shrinking, blurring and fading; the dot pulses once (pulseR px) as the last letter goes in
 const LABEL = { reveal: .35, slide: 8, absorb: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };

@@ -21,8 +21,9 @@ const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
-// hover fade: seconds for the front to cross one stroke, delay between lines, opacity reached, softness of the front (share of the stroke)
-const FADE = { sweep: .6, stagger: .06, to: .25, soft: .4 };
+// hover fade, like watercolour bleeding into paper: seconds for the wash to cross one stroke, delay between lines, opacity reached,
+// width of the wet edge (share of the stroke), and how much that edge wanders along the stroke
+const FADE = { sweep: 2.2, stagger: .16, to: .25, soft: .9, wander: .07 };
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -500,8 +501,10 @@ class Component extends DCLogic {
   // x: 0 at the start of the visible stroke, 1 at its tail
   fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
-    const rank = li - (this.fadeHL != null && li > this.fadeHL ? 1 : 0), p = clamp((c - rank * FADE.stagger) / FADE.sweep, 0, 1); if (p <= 0) return 1;
-    return 1 - (1 - FADE.to) * smooth(clamp((p * (1 + FADE.soft) - x) / FADE.soft, 0, 1));
+    const rank = li - (this.fadeHL != null && li > this.fadeHL ? 1 : 0), p = easeIO(clamp((c - rank * FADE.stagger) / FADE.sweep, 0, 1)); if (p <= 0) return 1;
+    // the wet edge creeps unevenly, a little ahead here and behind there, and settles gently (smootherstep)
+    const xw = x + FADE.wander * (Math.sin(x * 7.3 + li * 2.1) + .5 * Math.sin(x * 17.9 + li * 4.7)) * Math.sin(Math.PI * p), u = clamp((p * (1 + FADE.soft) - xw) / FADE.soft, 0, 1);
+    return 1 - (1 - FADE.to) * u * u * u * (u * (u * 6 - 15) + 10);
   }
 
   tick = now => {

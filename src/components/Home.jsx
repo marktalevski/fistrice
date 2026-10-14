@@ -20,9 +20,10 @@ const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, 
 const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
-// hover fade, slow and soft like watercolour settling into paper: seconds to fade, and the opacity the other lines reach
-const FADE = { time: 2.2, to: .25 };
 // page: which section this colour leads to (blue → freediving)
+// hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.
+// seconds for the wash to cross a stroke, opacity reached, width of the wet edge (share of the stroke), how much that edge wanders
+const FADE = { sweep: 2.2, to: .25, soft: .9, wander: .07 };
 // section labels stay hidden until their dot is hovered, then come out of it and go back in with the same motion: total seconds, seconds per
 // letter, size and blur while inside the dot, and the dot's pulse (seconds, px) as the last letter goes in
 const LABEL = { time: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };
@@ -497,11 +498,11 @@ class Component extends DCLogic {
   };
   hoverOn = () => { this.hov = 1; };
   hoverOff = () => { this.hov = 0; };
-  // hovering a section dot fades every other line, whole and all together, down to 25%; it comes back the same way when the hover ends
+  // hovering a section dot fades every other line from the start of its stroke to its tail, all at the same time, down to 25%; it plays back in reverse when the hover ends
   fadeTick(dt) {
     dt = Math.max(0, dt); const pg = this.go != null || !(this.T >= this.readyT) ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : null, hl = pg ? LINES.findIndex(L => L.page === pg) : -1;
     if (!this.fadeC) this.fadeC = LINES.map(() => 0);
-    this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? FADE.time : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
+    this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? FADE.sweep : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
   }
   // the button is a 48px circle on the dot (what the pointer hovers); its label sits below, above, left or right of it,
   // or at labelAt (rotated and scaled) when the symbol sets it apart. Gaps match the original layout: 24px below/above, 32px beside
@@ -545,10 +546,12 @@ class Component extends DCLogic {
     if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1;
     if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
     return true; }
-  // opacity multiplier for line li: eases in and out, settling gently at either end (smootherstep)
-  fadeAt(li) {
+  // x: 0 at the start of the visible stroke, 1 at its tail
+  fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
-    const u = clamp(c / FADE.time, 0, 1);
+    const p = easeIO(clamp(c / FADE.sweep, 0, 1)); if (p <= 0) return 1;
+    // the wet edge creeps unevenly, a little ahead here and behind there (the same on every line, so they stay in step), and settles gently (smootherstep)
+    const xw = x + FADE.wander * (Math.sin(x * 7.3 + 2.1) + .5 * Math.sin(x * 17.9 + 4.7)) * Math.sin(Math.PI * p), u = clamp((p * (1 + FADE.soft) - xw) / FADE.soft, 0, 1);
     return 1 - (1 - FADE.to) * u * u * u * (u * (u * 6 - 15) + 10);
   }
 
@@ -653,7 +656,7 @@ class Component extends DCLogic {
         const c0 = [p0[0] + n0[0] * o0, p0[1] + n0[1] * o0], c1 = [p1[0] + n1[0] * o1, p1[1] + n1[1] * o1];
         quads.push({ z, a, col: cc || col, rgb: sub === 1 ? colDa : L.col, brgb: L.col, base: sub === 1 ? qb : 0, pid, sub, mul: false, ink: !!L.keep, q: [[c0[0] - n0[0] * hw0, c0[1] - n0[1] * hw0], [c1[0] - n1[0] * hw1, c1[1] - n1[1] * hw1], [c1[0] + n1[0] * hw1, c1[1] + n1[1] * hw1], [c0[0] + n0[0] * hw0, c0[1] + n0[1] * hw0]] }); };
       { const sw = smooth1(ws, 5), box = (arr, r) => { const c = [0]; for (let q = 1; q < n; q++) c[q] = c[q - 1] + (arr[q] + arr[q - 1]) / 2 * (ss[q] - ss[q - 1]); const o = []; let lo = 0, hi = 0; for (let q = 0; q < n; q++) { while (ss[lo] < ss[q] - r) lo++; if (hi < q) hi = q; while (hi < n - 1 && ss[hi + 1] <= ss[q] + r) hi++; const span = ss[hi] - ss[lo]; o.push(span > 1e-6 ? (c[hi] - c[lo]) / span : arr[q]); } return o; }, sa2 = box(box(as, 32), 32); for (let q = 0; q < n; q++) { ws[q] = sw[q]; as[q] = sa2[q] * smooth(clamp(sa2[q] / .25, 0, 1)); } }
-      if (!isOld && this.fadeC) { const fa = this.fadeAt(LINES.indexOf(L)); if (fa < 1) for (let q = 0; q < n; q++) as[q] *= fa; }
+      if (!isOld && this.fadeC) { const li = LINES.indexOf(L), x0 = ss[0], xl = Math.max(1, ss[n - 1] - x0); for (let q = 0; q < n; q++) as[q] *= this.fadeAt(li, (ss[q] - x0) / xl); }
       const cap = (ci) => { const r = ws[ci] / 2, c = pts[ci], q = []; if (r < .6 || as[ci] < .02) return; for (let k3 = 0; k3 < 12; k3++) { const an = k3 / 12 * 6.2832; q.push([c[0] + Math.cos(an) * r, c[1] + Math.sin(an) * r]); } quads.push({ z: zs[ci], a: as[ci] * (1 - dry[ci] * .9), col, rgb: L.col, pid, sub: 9, mul: false, ink: !!L.keep, q }); };
       cap(0); cap(n - 1);
       for (let i = 0; i < n - 1; i++) {
@@ -731,7 +734,7 @@ class Component extends DCLogic {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);
-    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
+    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0, 1); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
 
     const bP = this.paths.find(P => P.L.page === 'freediving'), bEnd = bP.L.d + this.durOf(bP);
     const dA = smooth(clamp((T - Math.max(this.readyT, bEnd)) / .5, 0, 1)) * (1 - gone);
@@ -768,7 +771,7 @@ class Component extends DCLogic {
       const col = `rgb(${f.col[0]},${f.col[1]},${f.col[2]})`, tail = Math.max(0, kk - .35); ctx.strokeStyle = col; ctx.lineCap = 'round';
       for (let q = 0; q < 24; q++) { const u0 = tail + (kk - tail) * q / 24, u1 = tail + (kk - tail) * (q + 1) / 24, a0 = bz(u0), a1 = bz(u1); ctx.globalAlpha = .85 * (q / 24) * Math.sin(Math.PI * Math.min(1, kk * 1.15)); ctx.lineWidth = 1.5 + 3.5 * q / 24; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); }
       const p = bz(kk); ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], 7 + (/^c\d/.test(k) ? -1.5 : 1) * kk, 0, 6.2832); ctx.fill(); });
-    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2 + LABEL.pulseR * this.labelPulse(pg), al = (1 - gone) * this.fadeAt(pg === 'ink' ? 0 : /^c\d$/.test(pg) ? +pg[1] : LINES.findIndex(L => L.page === pg));
+    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2 + LABEL.pulseR * this.labelPulse(pg), al = (1 - gone) * this.fadeAt(pg === 'ink' ? 0 : /^c\d$/.test(pg) ? +pg[1] : LINES.findIndex(L => L.page === pg), 1);
       if (al <= 0) continue; ctx.globalAlpha = al; ctx.fillStyle = `rgb(${h.col[0]},${h.col[1]},${h.col[2]})`; ctx.beginPath(); ctx.arc(h.p[0], h.p[1], r, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
     this.hovIT += (this.hovI - this.hovIT) * .15;
     { const b = this.inkRef.current, h = this.heads && this.heads.ink; if (b) { const on = h && h.t === T && T >= this.readyT && G == null; if (h && h.t === T) { b.style.left = h.p[0] + 'px'; b.style.top = h.p[1] + 'px'; } b.style.pointerEvents = on ? 'auto' : 'none'; } }

@@ -21,6 +21,8 @@ const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
+// hover fade: seconds for the front to cross one stroke, delay between lines, opacity reached, softness of the front (share of the stroke)
+const FADE = { sweep: .6, stagger: .06, to: .25, soft: .4 };
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -488,11 +490,25 @@ class Component extends DCLogic {
   };
   hoverOn = () => { this.hov = 1; };
   hoverOff = () => { this.hov = 0; };
+  // hovering a section dot fades every other line from the start of its stroke to its tail, one line after another, down to 25%; it plays back in reverse when the hover ends
+  fadeTick(dt) {
+    dt = Math.max(0, dt); const pg = this.go != null ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : null, hl = pg ? LINES.findIndex(L => L.page === pg) : -1;
+    if (hl >= 0) this.fadeHL = hl; if (!this.fadeC) this.fadeC = LINES.map(() => 0);
+    const max = FADE.sweep + FADE.stagger * (LINES.length - 2);
+    this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? max : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
+  }
+  // x: 0 at the start of the visible stroke, 1 at its tail
+  fadeAt(li, x) {
+    const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
+    const rank = li - (this.fadeHL != null && li > this.fadeHL ? 1 : 0), p = clamp((c - rank * FADE.stagger) / FADE.sweep, 0, 1); if (p <= 0) return 1;
+    return 1 - (1 - FADE.to) * smooth(clamp((p * (1 + FADE.soft) - x) / FADE.soft, 0, 1));
+  }
 
   tick = now => {
     cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now;
     this.T += dt; this.hovT += (this.hov - this.hovT) * (1 - Math.exp(-dt * 8)); for (const k of ['sound', 'journal']) this.hovPgT[k] = (this.hovPgT[k] || 0) + ((this.hovPg[k] || 0) - (this.hovPgT[k] || 0)) * (1 - Math.exp(-dt * 8));
+    this.fadeTick(dt);
     if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; location.href = this.dest || BASE + 'freediving/?from=home'; } }
     this.draw();
   };
@@ -589,6 +605,7 @@ class Component extends DCLogic {
         const c0 = [p0[0] + n0[0] * o0, p0[1] + n0[1] * o0], c1 = [p1[0] + n1[0] * o1, p1[1] + n1[1] * o1];
         quads.push({ z, a, col: cc || col, rgb: sub === 1 ? colDa : L.col, brgb: L.col, base: sub === 1 ? qb : 0, pid, sub, mul: false, ink: !!L.keep, q: [[c0[0] - n0[0] * hw0, c0[1] - n0[1] * hw0], [c1[0] - n1[0] * hw1, c1[1] - n1[1] * hw1], [c1[0] + n1[0] * hw1, c1[1] + n1[1] * hw1], [c0[0] + n0[0] * hw0, c0[1] + n0[1] * hw0]] }); };
       { const sw = smooth1(ws, 5), box = (arr, r) => { const c = [0]; for (let q = 1; q < n; q++) c[q] = c[q - 1] + (arr[q] + arr[q - 1]) / 2 * (ss[q] - ss[q - 1]); const o = []; let lo = 0, hi = 0; for (let q = 0; q < n; q++) { while (ss[lo] < ss[q] - r) lo++; if (hi < q) hi = q; while (hi < n - 1 && ss[hi + 1] <= ss[q] + r) hi++; const span = ss[hi] - ss[lo]; o.push(span > 1e-6 ? (c[hi] - c[lo]) / span : arr[q]); } return o; }, sa2 = box(box(as, 32), 32); for (let q = 0; q < n; q++) { ws[q] = sw[q]; as[q] = sa2[q] * smooth(clamp(sa2[q] / .25, 0, 1)); } }
+      if (!isOld && this.fadeC) { const li = LINES.indexOf(L), x0 = ss[0], xl = Math.max(1, ss[n - 1] - x0); for (let q = 0; q < n; q++) as[q] *= this.fadeAt(li, (ss[q] - x0) / xl); }
       const cap = (ci) => { const r = ws[ci] / 2, c = pts[ci], q = []; if (r < .6 || as[ci] < .02) return; for (let k3 = 0; k3 < 12; k3++) { const an = k3 / 12 * 6.2832; q.push([c[0] + Math.cos(an) * r, c[1] + Math.sin(an) * r]); } quads.push({ z: zs[ci], a: as[ci] * (1 - dry[ci] * .9), col, rgb: L.col, pid, sub: 9, mul: false, ink: !!L.keep, q }); };
       cap(0); cap(n - 1);
       for (let i = 0; i < n - 1; i++) {
@@ -666,7 +683,7 @@ class Component extends DCLogic {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);
-    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone; ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
+    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0, 1); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
 
     const bP = this.paths.find(P => P.L.page === 'freediving'), bEnd = bP.L.d + this.durOf(bP);
     const dA = smooth(clamp((T - Math.max(this.readyT, bEnd)) / .5, 0, 1)) * (1 - gone);
@@ -703,7 +720,7 @@ class Component extends DCLogic {
       const col = `rgb(${f.col[0]},${f.col[1]},${f.col[2]})`, tail = Math.max(0, kk - .35); ctx.strokeStyle = col; ctx.lineCap = 'round';
       for (let q = 0; q < 24; q++) { const u0 = tail + (kk - tail) * q / 24, u1 = tail + (kk - tail) * (q + 1) / 24, a0 = bz(u0), a1 = bz(u1); ctx.globalAlpha = .85 * (q / 24) * Math.sin(Math.PI * Math.min(1, kk * 1.15)); ctx.lineWidth = 1.5 + 3.5 * q / 24; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); }
       const p = bz(kk); ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], 7 + (/^c\d/.test(k) ? -1.5 : 1) * kk, 0, 6.2832); ctx.fill(); });
-    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2, al = (1 - gone);
+    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2, al = (1 - gone) * this.fadeAt(pg === 'ink' ? 0 : /^c\d$/.test(pg) ? +pg[1] : LINES.findIndex(L => L.page === pg), 1);
       if (al <= 0) continue; ctx.globalAlpha = al; ctx.fillStyle = `rgb(${h.col[0]},${h.col[1]},${h.col[2]})`; ctx.beginPath(); ctx.arc(h.p[0], h.p[1], r, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
     this.hovIT += (this.hovI - this.hovIT) * .15;
     { const b = this.inkRef.current, h = this.heads && this.heads.ink; if (b) { const on = h && h.t === T && T >= this.readyT && G == null; if (h && h.t === T) { b.style.left = h.p[0] + 'px'; b.style.top = h.p[1] + 'px'; } b.style.pointerEvents = on ? 'auto' : 'none'; } }

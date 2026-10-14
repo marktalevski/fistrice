@@ -672,7 +672,6 @@ class Component extends DCLogic {
 
     this.exitHeads = [];
     if (G != null && this.exits) for (const X of this.exits) { const pid = X.ink && inkPid != null ? inkPid : 'x' + (++pidc);
-      const wpts = []; for (let x = -20; x <= W + 20; x += 10) wpts.push([x, SY + this.waveY(x - LX, X.k, T)]);
       const all = X.pts.slice(), sw = X.pts.length - 1, sl = [0];
       for (let i = 1; i < all.length; i++) sl[i] = sl[i - 1] + Math.hypot(all[i][0] - all[i - 1][0], all[i][1] - all[i - 1][1]);
       const len = sl[all.length - 1], swL = sl[sw], kx = clamp((G - X.d) / (X.dur || 1.5), 0, 1); if (kx <= 0 && !X.h0) continue;
@@ -694,11 +693,19 @@ class Component extends DCLogic {
       const n2 = P2.length;
       for (let i = 0; i < n2 - 1; i++) {
         if (I2[i + 1] !== I2[i] + 1 || A2[i] <= 0 || A2[i + 1] <= 0) continue;
-        const q0 = P2[i], q1 = P2[i + 1], q2 = P2[Math.min(n2 - 1, i + 2)], pr = P2[Math.max(0, i - 1)];
+        // angle each end from its true neighbours only: across an erased stretch the next kept point can be far away (the dot), which would twist the end
+        const q0 = P2[i], q1 = P2[i + 1], q2 = i + 2 < n2 && I2[i + 2] === I2[i + 1] + 1 ? P2[i + 2] : q1, pr = i > 0 && I2[i - 1] === I2[i] - 1 ? P2[i - 1] : q0;
         const t0x = q1[0] - pr[0], t0y = q1[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - q0[0], t1y = q2[1] - q0[1], l1 = Math.hypot(t1x, t1y) || 1;
         const n0 = [-t0y / l0, t0x / l0], n1 = [-t1y / l1, t1x / l1], h0b = W2[i] / 2, h1b = W2[i + 1] / 2;
         quads.push({ z: (Z2[i] + Z2[i + 1]) / 2 + (X.ink ? .02 : 0), a: (A2[i] + A2[i + 1]) / 2, col, rgb: X.col, pid, sub: 0, mul: !X.ink, q: [[q0[0] - n0[0] * h0b, q0[1] - n0[1] * h0b], [q1[0] - n1[0] * h1b, q1[1] - n1[1] * h1b], [q1[0] + n1[0] * h1b, q1[1] + n1[1] * h1b], [q0[0] + n0[0] * h0b, q0[1] + n0[1] * h0b]] });
       }
+      // once a surface line has lifted off its right end towards its dot, the surface carries on out past the right edge, as on the Freediving page
+      if (X.k <= 2 && X.f1 != null) { if (X.tB == null && hh >= sl[X.f1] + 40) X.tB = G;
+        if (X.tB != null) { const e0 = all[X.f1], xr = e0[0] + (W + 20 - e0[0]) * smooth(clamp((G - X.tB) / .5, 0, 1)), ep = [e0];
+          for (let x = Math.ceil((e0[0] + 1) / 9) * 9; x < xr; x += 9) ep.push([x, SY + this.waveY(x - LX, X.k, 0)]); if (xr > e0[0] + 1) ep.push([xr, SY + this.waveY(xr - LX, X.k, 0)]);
+          // width keeps the line's own rhythm, measured along the stroke, so the join doesn't show
+          let se = sl[X.f1]; for (let i = 0; i < ep.length - 1; i++) { const q0 = ep[i], q1 = ep[i + 1], dd = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) || 1, nx = -(q1[1] - q0[1]) / dd, ny = (q1[0] - q0[0]) / dd, tipR = Math.sqrt(clamp((xr - q1[0]) / 26, .04, 1)), hw0 = X.tw * (.84 + .16 * Math.sin(se * .045)) / 2, hw1 = X.tw * (.84 + .16 * Math.sin((se += dd) * .045)) / 2 * (xr >= W + 19 ? 1 : tipR);
+            quads.push({ z: -1.95 + (X.ink ? .02 : 0), a: X.ta, col, rgb: X.col, pid, sub: 0, mul: !X.ink, q: [[q0[0] - nx * hw0, q0[1] - ny * hw0], [q1[0] - nx * hw1, q1[1] - ny * hw1], [q1[0] + nx * hw1, q1[1] + ny * hw1], [q0[0] + nx * hw0, q0[1] + ny * hw0]] }); } } }
       // both blues share the Freediving dot: as they arrive they take on its own blue, so they merge into one dot instead of flickering between two
       const hc = X.k === 1 || X.k === 2 ? `rgb(${X.col.map((v, j) => Math.round(v + ([24, 88, 224][j] - v) * smooth(clamp((kx - .8) / .2, 0, 1)))).join(',')})` : col;
       if (P2.length) { const hp = P2[P2.length - 1], dk = smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1)); this.exitHeads = this.exitHeads || []; this.exitHeads.push({ p: hp, col: hc, r: (X.ink ? 8 : 7) + ((X.k === 3 ? 5.5 : 8) - (X.ink ? 8 : 7)) * dk }); }

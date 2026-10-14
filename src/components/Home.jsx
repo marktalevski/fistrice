@@ -24,9 +24,11 @@ const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octo
 // hover fade, like watercolour bleeding into paper: seconds for the wash to cross one stroke, delay between lines (0: all lines together),
 // opacity reached, width of the wet edge (share of the stroke), and how much that edge wanders along the stroke
 const FADE = { sweep: 2.2, stagger: 0, to: .25, soft: .9, wander: .07 };
-// section labels stay hidden until their dot is hovered. reveal: written out from the dot with a short slide. absorb: on hover end the letters,
-// nearest first, slide into the dot while shrinking, blurring and fading; the dot pulses once (pulseR px) as the last letter goes in
-const LABEL = { reveal: .35, slide: 8, absorb: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };
+// section labels stay hidden until their dot is hovered, then come out of it and go back in with the same motion: total seconds, seconds per
+// letter, size and blur while inside the dot, and the dot's pulse (seconds, px) as the last letter goes in
+const LABEL = { time: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };
+// the ink line draws at its natural pace up to this many seconds of travel, then speeds up, so long symbols (vinyl, coffee) are ready as soon as short ones
+const INK_RUN = 4.2;
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -484,7 +486,7 @@ class Component extends DCLogic {
   };
   goSound = this.goPage('sound'); goJournal = this.goPage('journal');
   sndOn = () => { this.hovPg.sound = 1; }; sndOff = () => { this.hovPg.sound = 0; }; jrnOn = () => { this.hovPg.journal = 1; }; jrnOff = () => { this.hovPg.journal = 0; };
-  durOf(P) { const fast = this.shapeName === 'spring' && this.colorPaths && this.colorPaths[LINES.indexOf(P.L)]; return (2.8 + P.len / (fast ? 2400 : this.shapeName === 'octopus' && P.L.keep ? 1300 : 650)) / P.L.spd; }
+  durOf(P) { const fast = this.shapeName === 'spring' && this.colorPaths && this.colorPaths[LINES.indexOf(P.L)], run = P.len / (fast ? 2400 : this.shapeName === 'octopus' && P.L.keep ? 1300 : 650); return (2.8 + (P.L.keep ? Math.min(run, INK_RUN) : run)) / P.L.spd; }
   endOf(P) { return P.tr ? P.L.d * .6 + (1.6 + (P.len - P.oldLen) / 900) / P.L.spd : (P.d ?? P.L.d) + this.durOf(P); }
   shuffle = () => {
     if (this.go != null || this.morph || !this.paths || this.T < this.readyT) return;
@@ -498,41 +500,40 @@ class Component extends DCLogic {
   hoverOff = () => { this.hov = 0; };
   // hovering a section dot fades every other line from the start of its stroke to its tail, one line after another, down to 25%; it plays back in reverse when the hover ends
   fadeTick(dt) {
-    dt = Math.max(0, dt); const pg = this.go != null ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : null, hl = pg ? LINES.findIndex(L => L.page === pg) : -1;
+    dt = Math.max(0, dt); const pg = this.go != null || !(this.T >= this.readyT) ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : null, hl = pg ? LINES.findIndex(L => L.page === pg) : -1;
     if (hl >= 0) this.fadeHL = hl; if (!this.fadeC) this.fadeC = LINES.map(() => 0);
     const max = FADE.sweep + FADE.stagger * (LINES.length - 2);
     this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? max : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
   }
-  // btn: the section's button; dot: its dot on screen; rot: [degrees, scale] when the label is set apart from the dot
+  // one motion both ways. On hover the letters come out of the dot, nearest first, growing, sharpening and appearing; when the hover ends they
+  // go back in the same way and the dot pulses once as the last one arrives. Each letter keeps its own progress, so a hover that changes its
+  // mind halfway turns around smoothly. btn: the section's button; dot: its dot on screen; rot: [degrees, scale] when the label sits apart
   labelFx(pg, btn, dot, on, rot) {
     const lab = btn && btn.children[1]; if (!lab) return;
-    const L = this.labs || (this.labs = {}), s = L[pg] || (L[pg] = { mode: 'hidden', t: 0, pk: null }), dt = this.dtF || 0, chs = [...lab.children];
-    const reset = () => chs.forEach(c => { c.style.transform = ''; c.style.opacity = ''; c.style.filter = ''; });
-    if (s.pk != null) { s.pk += dt; if (s.pk > LABEL.absorb + LABEL.pulse) s.pk = null; }
-    if (on && (s.mode === 'hidden' || s.mode === 'absorb')) { s.mode = 'reveal'; s.t = 0; s.pk = null; reset(); }
-    else if (!on && (s.mode === 'reveal' || s.mode === 'shown')) { s.mode = 'absorb'; s.t = 0; s.plan = null; s.pk = 0; }
-    else s.t += dt;
-    const side = this.labelAt && this.labelAt[pg] ? 'below' : (this.labelUp && this.labelUp[pg]) || 'below';
-    if (s.mode === 'reveal' || s.mode === 'shown') {
-      const k = s.mode === 'shown' ? 1 : smooth(clamp(s.t / LABEL.reveal, 0, 1)), o = (1 - k) * LABEL.slide, g = 100 - 100 * k;
-      lab.style.opacity = '1';
-      lab.style.clipPath = k >= 1 ? '' : side === 'right' ? `inset(-30% ${g}% -30% -5%)` : side === 'left' ? `inset(-30% -5% -30% ${g}%)` : `inset(-30% ${g / 2}% -30% ${g / 2}%)`;
-      lab.style.transform = !o ? '' : side === 'right' ? `translateX(${-o}px)` : side === 'left' ? `translateX(${o}px)` : side === 'above' ? `translateY(${o}px)` : `translateY(${-o}px)`;
-      if (k >= 1) s.mode = 'shown';
-    } else if (s.mode === 'absorb') {
-      if (!s.plan) { lab.style.clipPath = ''; lab.style.transform = ''; reset();
-        const th = rot ? -rot[0] * Math.PI / 180 : 0, sc = rot ? rot[1] || 1 : 1;
-        const P = chs.map(el => { const r = el.getBoundingClientRect(), dx = dot[0] - (r.left + r.width / 2), dy = dot[1] - (r.top + r.height / 2); return { el, d: Math.hypot(dx, dy), dx: (dx * Math.cos(th) - dy * Math.sin(th)) / sc, dy: (dx * Math.sin(th) + dy * Math.cos(th)) / sc }; });
-        [...P].sort((a, b) => a.d - b.d).forEach((p, i) => { p.rank = i; }); s.plan = P; s.gap = P.length > 1 ? (LABEL.absorb - LABEL.letter) / (P.length - 1) : 0; }
-      for (const p of s.plan) { const k = smooth(clamp((s.t - p.rank * s.gap) / LABEL.letter, 0, 1)), e = k * k;
-        p.el.style.transform = `translate(${(p.dx * k).toFixed(1)}px, ${(p.dy * k).toFixed(1)}px) scale(${(1 - (1 - LABEL.shrink) * k).toFixed(3)})`; p.el.style.opacity = (1 - e).toFixed(3); p.el.style.filter = k > .02 ? `blur(${(LABEL.blur * k).toFixed(2)}px)` : ''; }
-      if (s.t >= LABEL.absorb) { s.mode = 'hidden'; lab.style.opacity = '0'; reset(); }
-    } else { lab.style.opacity = '0'; lab.style.clipPath = ''; lab.style.transform = ''; }
+    const L = this.labs || (this.labs = {}), chs = [...lab.children], s = L[pg] || (L[pg] = { on: false, t: 0, pk: null, p: chs.map(() => 0) }), dt = this.dtF || 0;
+    if (s.pk != null) { s.pk += dt; if (s.pk > LABEL.time + LABEL.pulse) s.pk = null; }
+    if (on !== s.on || !s.plan) {
+      // where each letter rests, untransformed, relative to the dot
+      const keep = chs.map(c => c.style.transform); chs.forEach(c => { c.style.transform = 'none'; });
+      const th = rot ? -rot[0] * Math.PI / 180 : 0, sc = rot ? rot[1] || 1 : 1;
+      const P = chs.map((el, i) => { const r = el.getBoundingClientRect(), dx = dot[0] - (r.left + r.width / 2), dy = dot[1] - (r.top + r.height / 2); return { el, i, d: Math.hypot(dx, dy), dx: (dx * Math.cos(th) - dy * Math.sin(th)) / sc, dy: (dx * Math.sin(th) + dy * Math.cos(th)) / sc }; });
+      chs.forEach((c, i) => { c.style.transform = keep[i]; });
+      [...P].sort((a, b) => a.d - b.d).forEach((p, r) => { p.rank = r; });
+      s.pk = s.on && !on ? 0 : on ? null : s.pk; s.plan = P; s.on = on; s.t = 0; s.gap = P.length > 1 ? (LABEL.time - LABEL.letter) / (P.length - 1) : 0;
+    } else s.t += dt;
+    let vis = 0;
+    for (const p of s.plan) {
+      if (s.t >= p.rank * s.gap) s.p[p.i] = clamp(s.p[p.i] + (on ? dt : -dt) / LABEL.letter, 0, 1);
+      const u = 1 - smooth(s.p[p.i]); vis = Math.max(vis, 1 - u);
+      p.el.style.transform = u < .001 ? '' : `translate(${(p.dx * u).toFixed(1)}px, ${(p.dy * u).toFixed(1)}px) scale(${(1 - (1 - LABEL.shrink) * u).toFixed(3)})`;
+      p.el.style.opacity = (1 - u * u).toFixed(3); p.el.style.filter = u > .02 ? `blur(${(LABEL.blur * u).toFixed(2)}px)` : '';
+    }
+    lab.style.opacity = vis > 0 ? '1' : '0';
   }
   // 0..1 through the dot's pulse as the last absorbed letter arrives
-  labelPulse(pg) { const s = this.labs && this.labs[pg]; if (!s || s.pk == null) return 0; const u = clamp((s.pk - (LABEL.absorb - LABEL.letter * .35)) / LABEL.pulse, 0, 1); return Math.sin(Math.PI * u); }
+  labelPulse(pg) { const s = this.labs && this.labs[pg]; if (!s || s.pk == null) return 0; const u = clamp((s.pk - (LABEL.time - LABEL.letter * .35)) / LABEL.pulse, 0, 1); return Math.sin(Math.PI * u); }
   // touch screens have no hover: the first tap shows the label, the second goes there
-  tapReveal(pg) { if (typeof matchMedia === 'undefined' || !matchMedia('(hover: none)').matches) return false; const s = this.labs && this.labs[pg]; if (s && (s.mode === 'shown' || s.mode === 'reveal')) return false;
+  tapReveal(pg) { if (typeof matchMedia === 'undefined' || !matchMedia('(hover: none)').matches) return false; const s = this.labs && this.labs[pg]; if (s && s.on) return false;
     if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1; return true; }
   // x: 0 at the start of the visible stroke, 1 at its tail
   fadeAt(li, x) {
@@ -790,7 +791,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em;opacity:0")}>
+        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Freediving")}
         </span>
         {"\n  "}
@@ -802,7 +803,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em;opacity:0")}>
+        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Sound")}
         </span>
         {"\n  "}
@@ -812,7 +813,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em;opacity:0")}>
+        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Journal")}
         </span>
         {"\n  "}

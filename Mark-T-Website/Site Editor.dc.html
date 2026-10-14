@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,300&amp;family=JetBrains+Mono:wght@400;500&amp;family=Familjen+Grotesk:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#f2f0e9;color:#10232c}
+a{color:#1f6f86}a:hover{color:#10232c}
+input,textarea,select,button{font:inherit;color:inherit}
+</style>
+</helmet>
+<div style="min-height:100vh;font-family:'Familjen Grotesk', system-ui, sans-serif;font-size:15px;display:flex;flex-direction:column">
+  <header style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:18px 28px;border-bottom:1px solid rgba(16,35,44,.14)">
+    <div style="font-family:'Newsreader', Georgia, serif;font-style:italic;font-weight:300;font-size:26px;line-height:1">Editor</div>
+    <a href="Home%20-%20Brush%20Lines%20v2.dc.html" target="_blank" style="font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.04em;text-decoration:none">Open site ↗</a>
+    <div style="flex:1"></div>
+    <sc-if value="{{ hasNote }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono', monospace;font-size:12px;color:#8a3a1c">{{ note }}</span></sc-if>
+    <div style="display:flex;gap:8px">
+      <button onClick="{{ exportJson }}" style="height:36px;padding:0 14px;border:1px solid rgba(16,35,44,.25);background:#fff;border-radius:6px;cursor:pointer">Export JSON</button>
+      <label style="height:36px;padding:0 14px;border:1px solid rgba(16,35,44,.25);background:#fff;border-radius:6px;cursor:pointer;display:flex;align-items:center">Import<input type="file" accept="application/json,.json" onChange="{{ importJson }}" style="display:none"></label>
+      <button onClick="{{ resetSample }}" style="height:36px;padding:0 14px;border:0;background:none;cursor:pointer;color:#5b6b70">Reset to sample</button>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-wrap:wrap;gap:16px;padding:16px 28px;border-bottom:1px solid rgba(16,35,44,.14);background:#ebe8df">
+    <label style="display:flex;flex-direction:column;gap:6px;flex:1 1 220px;max-width:360px">
+      <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Name</span>
+      <input value="{{ profileName }}" onChange="{{ onName }}" style="height:38px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:6px;flex:2 1 320px;max-width:620px">
+      <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Intro line (optional)</span>
+      <input value="{{ profileIntro }}" onChange="{{ onIntro }}" placeholder="Shown under your name on the home screen" style="height:38px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+    </label>
+  </section>
+
+  <div style="flex:1;display:grid;grid-template-columns:minmax(260px, 340px) minmax(0, 1fr);min-height:0">
+    <aside style="border-right:1px solid rgba(16,35,44,.14);display:flex;flex-direction:column;min-height:0">
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;padding:14px 14px 10px">
+        <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+          <button onClick="{{ tab.pick }}" style="height:40px;border:1px solid rgba(16,35,44,.2);border-radius:6px;cursor:pointer;background:{{ tab.bg }};color:{{ tab.fg }};display:flex;align-items:center;justify-content:center;gap:6px">
+            <span style="font-size:16px">{{ tab.arrow }}</span><span style="font-family:'JetBrains Mono', monospace;font-size:12px">{{ tab.count }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="padding:0 14px 10px">
+        <button onClick="{{ addEntry }}" style="width:100%;height:40px;border:1px dashed rgba(16,35,44,.35);border-radius:6px;background:none;cursor:pointer">+ New entry on {{ lineArrow }}</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:0 8px 20px;display:flex;flex-direction:column;gap:2px">
+        <sc-for list="{{ list }}" as="row" hint-placeholder-count="6">
+          <button onClick="{{ row.pick }}" style="text-align:left;border:0;border-radius:6px;padding:10px 12px;cursor:pointer;background:{{ row.bg }};display:flex;flex-direction:column;gap:3px">
+            <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.04em;color:#4a5b61">{{ row.meta }}</span>
+            <span style="font-size:15px;line-height:1.3">{{ row.title }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </aside>
+
+    <main style="padding:24px 32px 60px;overflow-y:auto">
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:720px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:grid;grid-template-columns:minmax(0, 1fr) 170px 150px;gap:14px">
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Title</span>
+              <input value="{{ sel.title }}" onChange="{{ on.title }}" style="height:40px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff;font-size:17px">
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Date</span>
+              <input type="date" value="{{ sel.date }}" onChange="{{ on.date }}" style="height:40px;padding:0 10px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Line</span>
+              <select value="{{ sel.line }}" onChange="{{ on.line }}" style="height:40px;padding:0 10px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+                <option value="down">Freediving</option>
+                <option value="up">Sound</option>
+                <option value="right">Journal</option>
+              </select>
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Short text</span>
+            <input value="{{ sel.short }}" onChange="{{ on.short }}" style="height:40px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+          </label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Image</span>
+            <sc-if value="{{ hasImage }}" hint-placeholder-val="{{ false }}">
+              <div role="img" style="width:320px;max-width:100%;aspect-ratio:16 / 10;background-image:{{ imageBg }};background-size:cover;background-position:center;border-radius:6px"></div>
+            </sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+              <input value="{{ imageUrl }}" onChange="{{ on.image }}" placeholder="{{ imagePlaceholder }}" style="flex:1 1 260px;height:40px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+              <label style="height:40px;padding:0 14px;border:1px solid rgba(16,35,44,.25);background:#fff;border-radius:6px;cursor:pointer;display:flex;align-items:center">Upload<input type="file" accept="image/*" onChange="{{ onImageFile }}" style="display:none"></label>
+              <sc-if value="{{ hasImage }}" hint-placeholder-val="{{ false }}"><button onClick="{{ clearImage }}" style="height:40px;padding:0 12px;border:0;background:none;cursor:pointer;color:#5b6b70">Remove</button></sc-if>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);gap:14px">
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Link</span>
+              <input value="{{ sel.link }}" onChange="{{ on.link }}" placeholder="https://" style="height:40px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+            </label>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Tags, comma separated</span>
+              <input value="{{ sel.tags }}" onChange="{{ on.tags }}" style="height:40px;padding:0 12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff">
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#4a5b61">Body · empty line starts a new paragraph</span>
+            <textarea value="{{ sel.body }}" onChange="{{ on.body }}" rows="12" style="padding:12px;border:1px solid rgba(16,35,44,.2);border-radius:6px;background:#fff;line-height:1.6;resize:vertical;font-family:'Newsreader', Georgia, serif;font-size:17px"></textarea>
+          </label>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:6px">
+            <span style="font-family:'JetBrains Mono', monospace;font-size:11px;color:#4a5b61">Saved automatically in this browser</span>
+            <button onClick="{{ deleteEntry }}" style="height:38px;padding:0 14px;border:1px solid #b5502c;color:#8a3a1c;background:none;border-radius:6px;cursor:pointer">Delete entry</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ noSel }}" hint-placeholder-val="{{ true }}">
+        <div style="color:#4a5b61;padding-top:40px">Pick an entry on the left, or add a new one.</div>
+      </sc-if>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ARROWS = { down: 'Freediving', up: 'Sound', right: 'Journal' };
+const fmt = iso => { if (!iso) return 'no date'; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+
+class Component extends DCLogic {
+  state = { data: null, line: 'down', selId: null, note: '' };
+
+  componentDidMount() {
+    import('./site-data.js').then(m => { this.m = m; this.setState({ data: m.load() }); });
+  }
+
+  commit(data, extra) {
+    let note = '';
+    try { this.m.save(data); } catch (e) { note = 'Storage full: use smaller images or image links.'; }
+    this.setState({ data, note, ...(extra || {}) });
+  }
+  patch(p) {
+    const d = this.state.data;
+    this.commit({ ...d, entries: d.entries.map(e => e.id === this.state.selId ? { ...e, ...p } : e) }, p.line ? { line: p.line } : null);
+  }
+  field(k) { return e => this.patch({ [k]: e.target.value }); }
+
+  addEntry = () => {
+    const d = this.state.data;
+    const e = { id: this.m.newId(), line: this.state.line, title: 'New entry', date: new Date().toISOString().slice(0, 10), short: '', body: '', tags: '', image: '', link: '' };
+    this.commit({ ...d, entries: [...d.entries, e] }, { selId: e.id });
+  };
+  deleteEntry = () => {
+    if (!confirm('Delete this entry?')) return;
+    const d = this.state.data;
+    this.commit({ ...d, entries: d.entries.filter(e => e.id !== this.state.selId) }, { selId: null });
+  };
+  onImageFile = ev => {
+    const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      this.patch({ image: c.toDataURL('image/jpeg', .82) });
+    };
+    img.src = url; ev.target.value = '';
+  };
+  exportJson = () => {
+    const blob = new Blob([JSON.stringify(this.state.data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'site-entries.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  importJson = ev => {
+    const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    file.text().then(t => {
+      try { const d = JSON.parse(t); if (!Array.isArray(d.entries)) throw 0; this.commit({ profile: d.profile || { name: 'Your Name', intro: '' }, entries: d.entries }, { selId: null }); }
+      catch (e) { this.setState({ note: 'That file is not a valid export.' }); }
+    });
+    ev.target.value = '';
+  };
+  resetSample = () => { if (confirm('Replace everything with the sample entries?')) this.commit(this.m.seed(), { selId: null }); };
+
+  renderVals() {
+    const d = this.state.data, line = this.state.line;
+    const entries = d ? d.entries : [];
+    const counts = { up: 0, right: 0, down: 0 };
+    entries.forEach(e => { if (counts[e.line] != null) counts[e.line]++; });
+    const list = entries.filter(e => e.line === line).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const raw = entries.find(e => e.id === this.state.selId);
+    const sel = raw ? { title: '', date: '', short: '', body: '', link: '', image: '', line: 'up', ...raw, tags: Array.isArray(raw.tags) ? raw.tags.join(', ') : (raw.tags || '') } : null;
+    const isData = sel && sel.image.startsWith('data:');
+    const profile = (d && d.profile) || { name: '', intro: '' };
+    const setProfile = k => e => this.commit({ ...d, profile: { ...profile, [k]: e.target.value } });
+    return {
+      tabs: ['down', 'up', 'right'].map(L => ({ arrow: ARROWS[L], count: counts[L], bg: L === line ? '#10232c' : '#fff', fg: L === line ? '#f2f0e9' : '#10232c', pick: () => this.setState({ line: L, selId: null }) })),
+      lineArrow: ARROWS[line],
+      list: list.map((e, i) => ({ title: e.title || 'Untitled', meta: `${String(i + 1).padStart(2, '0')}  ·  ${fmt(e.date)}`, bg: e.id === this.state.selId ? '#dfe9e8' : 'transparent', pick: () => this.setState({ selId: e.id }) })),
+      hasSel: !!sel, noSel: !sel, sel: sel || {},
+      hasImage: !!(sel && sel.image), imageBg: sel && sel.image ? `url("${sel.image}")` : 'none', imageUrl: sel && !isData ? sel.image : '', imagePlaceholder: isData ? 'Uploaded image (paste a URL to replace)' : 'Image URL, or upload',
+      on: { title: this.field('title'), date: this.field('date'), line: this.field('line'), short: this.field('short'), body: this.field('body'), link: this.field('link'), tags: this.field('tags'), image: this.field('image') },
+      onImageFile: this.onImageFile, clearImage: () => this.patch({ image: '' }),
+      addEntry: this.addEntry, deleteEntry: this.deleteEntry,
+      profileName: profile.name || '', profileIntro: profile.intro || '', onName: setProfile('name'), onIntro: setProfile('intro'),
+      exportJson: this.exportJson, importJson: this.importJson, resetSample: this.resetSample,
+      note: this.state.note, hasNote: !!this.state.note
+    };
+  }
+}
+</script>
+</body>
+</html>

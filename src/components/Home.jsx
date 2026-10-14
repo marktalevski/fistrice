@@ -38,6 +38,8 @@ const LINES = [
   { col: [22, 168, 82], w: 9, d: .85, spd: .97, u: .66 },
   { col: [138, 64, 214], w: 9, d: .95, spd: 1.02, u: .82 }
 ];
+// spacing (px) a symbol's own coloured paths are resampled at before one round of smoothing; about 2.5 px between points once smoothed
+const CP_STEP = 5;
 const cat = (ctrl, n, push) => { for (let i = 0; i < ctrl.length - 1; i++) { const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)]; for (let j = 0; j < n; j++) { const t = j / n, t2 = t * t, t3 = t2 * t; push(.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), .5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)); } } const l = ctrl[ctrl.length - 1]; push(l[0], l[1]); };
 
 const chaikin = (p, n) => { for (let k = 0; k < n; k++) { const o = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; const aw = a[2] ?? 1, bw = b[2] ?? 1; o.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25, aw * .75 + bw * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75, aw * .25 + bw * .75]); } o.push(p[p.length - 1]); p = o; } return p; };
@@ -196,7 +198,7 @@ function shapeOf(name, cx, cy, R) {
       const pt = q => { const th = q / 40 * Math.PI * 2, r = .022 + .055 * Math.abs(Math.cos(2.5 * th)); return [b[0] + Math.cos(th) * r, b[1] + Math.sin(th) * r]; };
       if (k) { const p0 = lp[lp.length - 1], s0 = pt(0); lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(s0[0], s0[1], t); }
       for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : .75); } });
-    colorPaths[1] = chaikin(resample(lp, 4), 2);
+    colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
     st = [-.2, 1.42];
   }
   else if (name === 'maple') {
@@ -243,6 +245,19 @@ function shapeOf(name, cx, cy, R) {
       octopus: [arm(-1, 1.15, 0, 3), arm(-1, .55, 1, 4), arm(1, .55, 1, 5), arm(1, 1.15, 0, 6)],
       wave: WAVES.map(([li, x0, y0, w, h, o]) => ({ li, path: li === 3 ? blueRide : miniWave(x0, y0, w, h, o) })),
       egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, { li: 4, path: [[-.5, -.62], [-.2, -.7], [.1, -.7], [.4, -.64]] }, { li: 5, path: [[-1.1, .3], [-.9, .52], [-.6, .66], [-.3, .72]] }, { li: 6, path: [[.9, -.5], [.7, -.62], [.48, -.66]] }],
+      // mountain: red circles the sun on its own; blue is a river winding down from the saddle, orange a second halo round the sun,
+      // purple a far ridge behind the left slope
+      mountain: [{ li: 3, path: [[-.08, -.5], [-.17, -.24], [.05, .02], [-.13, .3], [.08, .56], [.02, .86]] },
+        { li: 4, path: Array.from({ length: 25 }, (_, q) => { const a = 2.25 + q / 24 * 2.6; return [.98 + Math.cos(a) * .44, -.62 + Math.sin(a) * .44]; }) },
+        { li: 6, path: [[-1.95, .5], [-1.72, .29], [-1.55, .4], [-1.34, .13], [-1.16, .3], [-1.0, .25]] }],
+      // vinyl: sound waves, three arcs off each side of the record, each ending in its dot
+      vinyl: [[1, Math.PI, 1.2], [4, Math.PI, 1.36], [6, Math.PI, 1.52], [3, .35, 1.2], [5, .35, 1.36], [2, .35, 1.52]].map(([li, a0, r]) => ({ li, path: Array.from({ length: 13 }, (_, q) => { const a = a0 + (a0 > 1 ? .36 - q / 12 * .72 : -.36 + q / 12 * .72); return [Math.cos(a) * r, Math.sin(a) * r]; }) })),
+      // plane: red and green are the navigation lights on the port and starboard wingtips; the others stream behind as contrails
+      plane: (() => { const rot = ([x, y]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2], trail = (ex, L, ph) => Array.from({ length: 9 }, (_, q) => { const u = q / 8, ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08); return rot([ex + .03 * Math.sin(u * Math.PI * 2 + ph) * u, ey + .07 + L * u]); });
+        return [{ li: 1, path: [[.05, -.45], [-.45, -.63], [-.85, -.8], [-1.1, -.7]] }, { li: 5, path: [[.42, -.17], [.62, .25], [.79, .66], [.69, 1.08]] },
+          { li: 2, path: trail(-.86, .9, .4) }, { li: 4, path: trail(-.48, .45, 1.6) }, { li: 6, path: trail(.48, .45, 2.9) }, { li: 3, path: trail(.86, .9, 4.1) }]; })(),
+      // longfins: orange, green and purple rise off the right fin's blade as bubble trails
+      longfins: [{ li: 5, path: [[1.0, .95], [1.08, .7], [1.02, .45], [1.1, .2]] }, { li: 4, path: [[1.08, 1.02], [1.2, .84], [1.16, .64]] }, { li: 6, path: [[.97, .9], [.93, .74], [.99, .6]] }],
       // samurai: one coloured line comes in to the middle of each of the six circles
       samurai: [{ li: 1, path: [[-.95, -1.05], [-.7, -.9], [-.45, -.7], [-.26, -.61]] }, { li: 2, path: [[.95, -1.05], [.7, -.9], [.45, -.7], [.26, -.61]] }, { li: 3, path: [[-1.0, -.2], [-.7, -.32], [-.45, -.31], [-.26, -.27]] },
         { li: 4, path: [[.82, -.67], [.64, -.47], [.44, -.32], [.26, -.27]] }, { li: 5, path: [[-.9, .45], [-.66, .3], [-.44, .13], [-.26, .07]] }, { li: 6, path: [[.9, .45], [.66, .3], [.44, .13], [.26, .07]] }]
@@ -256,7 +271,7 @@ function shapeOf(name, cx, cy, R) {
         for (let k = 0; k < ride.length; k++) { const a = ride[Math.max(0, k - 2)], b = ride[Math.min(ride.length - 1, k + 2)], tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, f = Math.min(1, k / 6); pts.push([ride[k][0] - ty / tl * off * sg * f, ride[k][1] + tx / tl * off * sg * f]); }
         const A = pts[pts.length - 1], T = [tx0 / tl0, ty0 / tl0], dd = Math.hypot(E[0] - A[0], E[1] - A[1]), k1 = Math.min(dd * .6, R * .45), C1 = [A[0] + T[0] * k1, A[1] + T[1] * k1], C2 = [E[0] + (C1[0] - E[0]) * .3, E[1] + (C1[1] - E[1]) * .3];
         for (let q = 1; q <= 24; q++) { const u = q / 24, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; pts.push([a * A[0] + b * C1[0] + c * C2[0] + d * E[0], a * A[1] + b * C1[1] + c * C2[1] + d * E[1]]); } }
-      colorPaths[sp.li] = chaikin(resample(pts.map(p => [p[0], p[1], sp.w || 1]), 4), 2); } }
+      colorPaths[sp.li] = chaikin(resample(pts.map(p => [p[0], p[1], sp.w || 1]), CP_STEP), 1); } }
   const glyph = ['egg', 'samurai', 'hangul', 'spring', 'octopus', 'maple', 'signature', 'triskele', 'frog', 'plane', 'triforce', 'onsen', 'mountain', 'muaythai', 'coffee', 'fox', 'gameboy', 'longfins'].includes(name);
   const gRes = name === 'hangul' ? [6, 3] : [7, 3];
   let Q = glyph ? chaikin(resample(P, gRes[0]), gRes[1]) : chaikin(resample(P, 20), 4);
@@ -266,7 +281,7 @@ function shapeOf(name, cx, cy, R) {
   const lTip = (a, Lp) => [cx + Math.sin(a) * (Lp + .12) * R, cy + (.55 - Math.cos(a) * (Lp + .12)) * R];
   const wEnd = li => { const W0 = WAVES.find(v => v[0] === li), p = li === 3 ? blueRide : miniWave(...W0.slice(1)), e = p[p.length - 1]; return [cx + e[0] * R, cy + e[1] * R]; };
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
-        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
+        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'vinyl' ? (() => { const at = (a, r) => [cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R]; return { sound: at(Math.PI - .36, 1.2), freediving: at(.35 + .36, 1.2), journal: at(.35 + .36, 1.52) }; })() : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
 }
 
@@ -399,7 +414,7 @@ class Component extends DCLogic {
             const da2 = da - dS * .18, m = Math.max(2, Math.ceil(Math.abs(da2) / .05)), rEnd = best[2] - ringR(best[1]); for (let q = 1; q <= m; q++) { const u = q / m, a = aW + da2 * u, r = ringR(a) + rEnd * u; seg.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
           const sm = avg(avg(avg(seg, 3), 3), 3); sm[0] = e; sm[sm.length - 1] = E; for (let q = 1; q < sm.length; q++) arc.push(sm[q]); }
         for (let q = n0; q < arc.length; q++) { z.push(.3); cw.push(1); wl.push(1); } }
-      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai'))) {
+      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'mountain' || this.shapeName === 'vinyl' || this.shapeName === 'plane'))) {
         if (rev) { arc.reverse(); z.reverse(); cw.reverse(); wl.reverse(); }
         { const S0 = this.stations[L.page], lim = Math.floor(arc.length * .45); let popped = 0;
           while (arc.length > 12 && popped < lim) { const e1 = arc[arc.length - 1], p1 = arc[arc.length - 5], tx = e1[0] - p1[0], ty = e1[1] - p1[1], tl = Math.hypot(tx, ty) || 1, sx = S0[0] - e1[0], sy = S0[1] - e1[1], sl = Math.hypot(sx, sy) || 1;
@@ -501,9 +516,9 @@ class Component extends DCLogic {
   };
   hoverOn = () => { this.hov = 1; };
   hoverOff = () => { this.hov = 0; };
-  // hovering a section dot fades every other line from the start of its stroke to its tail, all at the same time, down to 25%; it plays back in reverse when the hover ends
+  // hovering a section dot (or the black ink dot) fades every other line from the start of its stroke to its tail, all at the same time, down to 25%; it plays back in reverse when the hover ends
   fadeTick(dt) {
-    dt = Math.max(0, dt); const pg = this.go != null || !(this.T >= this.readyT) ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : null, hl = pg ? LINES.findIndex(L => L.page === pg) : -1;
+    dt = Math.max(0, dt); const pg = this.go != null || !(this.T >= this.readyT) ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : this.hovI ? 'ink' : null, hl = pg === 'ink' ? 0 : pg ? LINES.findIndex(L => L.page === pg) : -1;
     if (!this.fadeC) this.fadeC = LINES.map(() => 0);
     this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? FADE.sweep : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
   }
@@ -726,7 +741,8 @@ class Component extends DCLogic {
     const addQ = (c2, q) => { if (q.length === 4) { const mx0 = (q[0][0] + q[3][0]) / 2, my0 = (q[0][1] + q[3][1]) / 2, mx1 = (q[1][0] + q[2][0]) / 2, my1 = (q[1][1] + q[2][1]) / 2, l = Math.hypot(mx1 - mx0, my1 - my0) || 1, ex = (mx1 - mx0) / l * EXT, ey = (my1 - my0) / l * EXT; c2.moveTo(q[0][0] - ex, q[0][1] - ey); c2.lineTo(q[1][0] + ex, q[1][1] + ey); c2.lineTo(q[2][0] + ex, q[2][1] + ey); c2.lineTo(q[3][0] - ex, q[3][1] - ey); } else { c2.moveTo(q[0][0], q[0][1]); for (let k3 = 1; k3 < q.length; k3++) c2.lineTo(q[k3][0], q[k3][1]); } c2.closePath(); };
     for (const g of GL) {
       const am = g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-      for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 255); if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
+      // opacity in 85 levels (steps of 3/255): finer is invisible, and every distinct level costs a fill
+      for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 85) * 3; if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
       if (!bk.size) continue;
       const bx0 = Math.max(0, Math.floor(TF.a * x0 + TF.e) - 3), by0 = Math.max(0, Math.floor(TF.d * y0 + TF.f) - 3), bx1 = Math.min(cvs.width, Math.ceil(TF.a * x1 + TF.e) + 3), by1 = Math.min(cvs.height, Math.ceil(TF.d * y1 + TF.f) + 3), bw = bx1 - bx0, bh = by1 - by0; if (bw <= 0 || bh <= 0) continue;
       // inverted mask: white, darken with (1 - alpha)

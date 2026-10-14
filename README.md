@@ -19,7 +19,9 @@ Each component is the Claude Design prototype's own logic class, unchanged excep
 
 ## Journal entries
 
-The published entries are in `src/data/site.json`. To change them, run `npm run dev`, open the editor at <http://localhost:4321/markt/editor/>, edit (changes save in that browser only), click **Export JSON**, and save the file over `src/data/site.json`.
+The published entries are in `public/data/site.json`; pages fetch it when they need it. To change them, run `npm run dev`, open the editor at <http://localhost:4321/markt/editor/>, edit (changes save in that browser only), click **Export JSON**, and save the downloaded `site.json` over `public/data/site.json`.
+
+Photos uploaded in the editor are stored inside `site.json`, which makes it slower to load. For anything more than a few photos, put the image files in `public/images/` and paste their address (for example `/markt/images/dive-1.jpg`) into the entry's image field instead.
 
 ## Design files
 

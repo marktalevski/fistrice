@@ -284,7 +284,7 @@ class Component extends DCLogic {
     setTimeout(() => { try { sessionStorage.removeItem('nav-from'); } catch (e) {} }, 4000);
     this.raf = requestAnimationFrame(this.tick);
   }
-  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); if (this.offTap) document.removeEventListener('pointerdown', this.offTap); }
   // paint, not outline. Four things real strokes do:
   // 1. ridges catch the light: one light from the upper left, so the edge facing it gets a pale highlight and the opposite edge a soft shadow, swapping as the stroke turns
   // 2. colour mixed on the brush stays in stripes: two or three bands of the same hue, a little lighter or deeper, running the length of the stroke
@@ -439,7 +439,7 @@ class Component extends DCLogic {
     if (this.shapeName === 'spring' && !this.trans && !this.fromDive) { const ink = this.paths[0], e = this.endOf(ink); this.paths.forEach((P, li) => { if (this.colorPaths[li] && !P.tr) P.d = Math.max(P.d ?? P.L.d, e - this.durOf(P) + .3); }); }
     // label placement: decided once, against every settled stroke
     { const pts = []; this.paths.forEach(P => P.pts.forEach((p, i) => { if (i >= P.arc0 && (!P.L.keep || (P.wt[i] ?? 1) >= .2)) pts.push(p); }));
-      const lw = { freediving: 116, sound: 74, journal: 84 }, lh = { freediving: 18, sound: 18, journal: 18 };
+      const mw = r => { const e = r.current && r.current.children[1]; return e && e.offsetWidth ? e.offsetWidth + 4 : 0; }, lw = { freediving: mw(this.btnRef) || 116, sound: mw(this.sndRef) || 74, journal: mw(this.jrnRef) || 84 }, lh = { freediving: 18, sound: 18, journal: 18 };
       this.labelUp = {};
       for (const pg of ['freediving', 'sound', 'journal']) { const S = this.stations[pg], w = lw[pg], h = lh[pg];
         const boxes = { below: [S[0] - w / 2 - 6, S[0] + w / 2 + 6, S[1] + 10, S[1] + 18 + h * 1.6], above: [S[0] - w / 2 - 6, S[0] + w / 2 + 6, S[1] - 18 - h * 1.6, S[1] - 10], right: [S[0] + 10, S[0] + 22 + w, S[1] - h, S[1] + h], left: [S[0] - 22 - w, S[0] - 10, S[1] - h, S[1] + h] };
@@ -520,7 +520,7 @@ class Component extends DCLogic {
       chs.forEach((c, i) => { c.style.transform = keep[i]; });
       [...P].sort((a, b) => a.d - b.d).forEach((p, r) => { p.rank = r; });
       s.pk = s.on && !on ? 0 : on ? null : s.pk; s.plan = P; s.on = on; s.t = 0; s.gap = P.length > 1 ? (LABEL.time - LABEL.letter) / (P.length - 1) : 0;
-    } else s.t += dt;
+    } else { s.t += dt; if (s.p.every(v => v === (on ? 1 : 0)) && s.rest) return; }
     let vis = 0;
     for (const p of s.plan) {
       if (s.t >= p.rank * s.gap) s.p[p.i] = clamp(s.p[p.i] + (on ? dt : -dt) / LABEL.letter, 0, 1);
@@ -528,13 +528,15 @@ class Component extends DCLogic {
       p.el.style.transform = u < .001 ? '' : `translate(${(p.dx * u).toFixed(1)}px, ${(p.dy * u).toFixed(1)}px) scale(${(1 - (1 - LABEL.shrink) * u).toFixed(3)})`;
       p.el.style.opacity = (1 - u * u).toFixed(3); p.el.style.filter = u > .02 ? `blur(${(LABEL.blur * u).toFixed(2)}px)` : '';
     }
-    lab.style.opacity = vis > 0 ? '1' : '0';
+    lab.style.opacity = vis > 0 ? '1' : '0'; s.rest = s.p.every(v => v === (on ? 1 : 0));
   }
   // 0..1 through the dot's pulse as the last absorbed letter arrives
   labelPulse(pg) { const s = this.labs && this.labs[pg]; if (!s || s.pk == null) return 0; const u = clamp((s.pk - (LABEL.time - LABEL.letter * .35)) / LABEL.pulse, 0, 1); return Math.sin(Math.PI * u); }
   // touch screens have no hover: the first tap shows the label, the second goes there
   tapReveal(pg) { if (typeof matchMedia === 'undefined' || !matchMedia('(hover: none)').matches) return false; const s = this.labs && this.labs[pg]; if (s && s.on) return false;
-    if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1; return true; }
+    if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1;
+    if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
+    return true; }
   // x: 0 at the start of the visible stroke, 1 at its tail
   fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
@@ -791,7 +793,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
+        <span data-lab="home" style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Freediving")}
         </span>
         {"\n  "}
@@ -803,7 +805,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
+        <span data-lab="home" style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Sound")}
         </span>
         {"\n  "}
@@ -813,7 +815,7 @@ function View(v) {
         {"\n    "}
         <span style={sty("width:18px;height:18px")} />
         {"\n    "}
-        <span style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
+        <span data-lab="home" style={sty("font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0")}>
           {letters("Journal")}
         </span>
         {"\n  "}

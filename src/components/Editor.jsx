@@ -10,7 +10,7 @@ class Component extends DCLogic {
   state = { data: null, line: 'down', selId: null, note: '' };
 
   componentDidMount() {
-    import('../lib/site-data.js').then(m => { this.m = m; this.setState({ data: m.loadDraft() }); });
+    import('../lib/site-data.js').then(m => { this.m = m; return m.loadDraft(); }).then(data => this.setState({ data }));
   }
 
   commit(data, extra) {
@@ -48,7 +48,7 @@ class Component extends DCLogic {
   };
   exportJson = () => {
     const blob = new Blob([JSON.stringify(this.state.data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'site-entries.json'; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'site.json'; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   importJson = ev => {
@@ -59,7 +59,7 @@ class Component extends DCLogic {
     });
     ev.target.value = '';
   };
-  resetSample = () => { if (confirm('Throw away your changes and go back to the published entries?')) this.commit(this.m.seed(), { selId: null }); };
+  resetSample = () => { if (confirm('Throw away your changes and go back to the published entries?')) this.m.seed().then(d => this.commit(d, { selId: null })); };
 
   renderVals() {
     const d = this.state.data, line = this.state.line;

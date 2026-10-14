@@ -11,6 +11,21 @@ const { title, noindex } = Astro.props;
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="icon" href={`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}favicon.svg`} type="image/svg+xml" />
     <slot name="head" />
+    <script is:inline>
+      // The pages animate their way out before navigating. When Back restores one from the back-forward cache
+      // it would resume with that exit already finished (a blank page), so start it fresh instead.
+      addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+      // Labels are set in Papyrus where it's installed (macOS, iOS, Windows with Office). Elsewhere they go back
+      // to the original Newsreader styles, not a plain substitute.
+      try {
+        const x = document.createElement('canvas').getContext('2d'), w = f => { x.font = '40px ' + f; return x.measureText('Freediving Journal').width; };
+        if (w('Papyrus, monospace') === w('monospace') && w('Papyrus, serif') === w('serif')) document.documentElement.classList.add('no-papyrus');
+      } catch (e) {}
+    </script>
+    <style is:inline>
+      html.no-papyrus [data-lab="home"] { font-family: 'Newsreader', Georgia, serif !important; font-style: italic !important; font-weight: 300 !important; letter-spacing: -0.01em !important; }
+      html.no-papyrus [data-lab="nav"] { font-family: 'Newsreader', Georgia, serif !important; font-weight: 600 !important; }
+    </style>
   </head>
   <body>
     <slot />

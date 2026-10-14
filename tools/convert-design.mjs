@@ -14,7 +14,7 @@ const PAGES = [
   { file: 'Freediving v2.dc.html', name: 'Freediving', route: 'freediving', title: 'Freediving · Mark T' },
   { file: 'Sound.dc.html', name: 'Sound', route: 'sound', title: 'Sound · Mark T' },
   { file: 'Journal.dc.html', name: 'Journal', route: 'journal', title: 'Journal · Mark T' },
-  { file: 'Site Editor.dc.html', name: 'Editor', route: 'editor', title: 'Editor · Mark T', noindex: true },
+  { file: 'Site Editor.dc.html', name: 'Editor', route: 'editor', title: 'Editor · Mark T', noindex: true, dir: 'src/editor' }, // local-only, see astro.config.mjs
 ];
 
 // design file name (either spelling) → path under the site base
@@ -138,7 +138,8 @@ ${styleText.split('\n').map(l => '      ' + l).join('\n')}
   <${P.name} client:only="react" />
 </Base>
 `;
-  fs.mkdirSync(path.join(root, 'src/pages'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'src/pages', P.route + '.astro'), astro);
+  const dir = P.dir || 'src/pages';
+  fs.mkdirSync(path.join(root, dir), { recursive: true });
+  fs.writeFileSync(path.join(root, dir, P.route + '.astro'), astro);
   console.log('ok', P.file, '→', P.name + '.jsx', Object.keys(defaults).length ? defaults : '');
 }

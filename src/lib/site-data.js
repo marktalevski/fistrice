@@ -1,7 +1,7 @@
-// Journal data. The published entries live in src/data/site.json and every visitor
-// sees those. The Editor keeps a working copy in this browser (localStorage) until
-// it is exported and saved over site.json.
-import published from '../data/site.json';
+// Journal data. The published entries live in public/data/site.json and every visitor sees those; they are
+// fetched when a page needs them, so entry images never weigh down the page code. The Editor keeps a
+// working copy in this browser (localStorage) until it is exported and saved over public/data/site.json.
+import { BASE } from './dc.js';
 
 export const KEY = 'tl-site-v1';
 export const LINES = ['up', 'right', 'down'];
@@ -9,18 +9,21 @@ export const LINES = ['up', 'right', 'down'];
 let n = 0;
 const id = () => 'e' + Date.now().toString(36) + (n++).toString(36) + Math.random().toString(36).slice(2, 5);
 
-const copy = d => JSON.parse(JSON.stringify(d));
+const EMPTY = { profile: { name: '', intro: '' }, entries: [] };
 
 // what the site shows
-export function load() { return copy(published); }
-
-// the Editor's working copy, or the published entries if there is none yet
-export function loadDraft() {
-  try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch (e) {}
-  return copy(published);
+export async function load() {
+  try { const r = await fetch(BASE + 'data/site.json', { cache: 'no-cache' }); if (r.ok) return await r.json(); } catch (e) {}
+  return { ...EMPTY, entries: [] };
 }
 
-export function seed() { return copy(published); }
+// the Editor's working copy, or the published entries if there is none yet
+export async function loadDraft() {
+  try { const r = localStorage.getItem(KEY); if (r) return JSON.parse(r); } catch (e) {}
+  return load();
+}
+
+export function seed() { return load(); }
 
 export function save(data) {
   localStorage.setItem(KEY, JSON.stringify(data));

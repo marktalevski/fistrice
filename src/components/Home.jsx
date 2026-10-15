@@ -23,7 +23,7 @@ const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octo
 // page: which section this colour leads to (blue → freediving)
 // hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.
 // seconds for the wash to cross a stroke, opacity reached, width of the wet edge (share of the stroke), how much that edge wanders
-const FADE = { sweep: 2.2, to: .25, soft: .9, wander: .07 };
+const FADE = { sweep: 1.1, to: .25, soft: .9, wander: .07 };
 // section labels stay hidden until their dot is hovered, then come out of it and go back in with the same motion: total seconds, seconds per
 // letter, size and blur while inside the dot, and the dot's pulse (seconds, px) as the last letter goes in
 const LABEL = { time: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };

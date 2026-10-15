@@ -318,9 +318,9 @@ function shapeOf(name, cx, cy, R) {
         // red and green are the wind streaming back off the port and starboard wingtips
         return [{ li: 1, path: planeWind(-1, .6) }, { li: 5, path: planeWind(1, 2.4) },
           { li: 2, path: trail(-.86, .9, .4) }, { li: 4, path: trail(-.48, .45, 1.6) }, { li: 6, path: trail(.48, .45, 2.9) }, { li: 3, path: trail(.86, .9, 4.1) }]; })(),
-      // longfins: green runs down the left blade beside its rib, orange down the right blade beside its rib, purple down the outside of the right fin
+      // longfins: green runs down the left blade beside its rib, orange down the right blade beside its rib, purple down the outside of the right fin, ending clear of its outline
       longfins: [{ li: 5, path: [[.1, -.35], [.1, .1], [.1, .55], [.1, .95]].map(p => finPt(-.4, .16, p)) }, { li: 4, path: [[-.1, -.35], [-.1, .1], [-.1, .55], [-.1, .95]].map(p => finPt(.4, -.16, p)) },
-        { li: 6, path: [[.28, -.55], [.29, -.3], [.35, -.1], [.43, .5], [.47, .95], [.44, 1.12]].map(p => finPt(.4, -.16, p)) }],
+        { li: 6, path: [[.3, -.55], [.32, -.3], [.39, -.1], [.49, .5], [.57, .9], [.66, 1.06]].map(p => finPt(.4, -.16, p)) }],
       // hangul (마크, a name stamp): red cuts the stamp's square, clockwise from its top left corner (Sound's dot ends there); the others write
       // the letters over the red: purple ㅏ's upright, yellow its arm (Journal's dot at the tip), green ㅋ's top and side, orange ㅋ's middle bar
       // (right to left, so its dot sits clear of green), blue the ㅡ (Freediving's dot at its right end). Points close to each corner keep it square

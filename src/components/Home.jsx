@@ -38,6 +38,10 @@ const LINES = [
   { col: [22, 168, 82], w: 9, d: .85, spd: .97, u: .66 },
   { col: [138, 64, 214], w: 9, d: .95, spd: 1.02, u: .82 }
 ];
+// book: handwritten notes on the pages, each a pen line with a dot. Left page: the dot leads and the line runs right; right page: the line runs
+// right and ends in its dot. [dot x, y, other end x, colour, pen width] in unit coordinates
+const BOOK_NOTES = [[-1.17, -.345, -.37, [232, 80, 52], 2], [-1.16, 0, -.42, [0, 158, 224], 2], [-1.17, .35, -.36, [40, 190, 70], 5],
+  [1.16, -.31, .29, [214, 24, 128], 2], [1.15, -.03, .32, [255, 206, 0], 2], [1.14, .27, .41, [232, 34, 44], 2]];
 // spacing (px) a symbol's own coloured paths are resampled at before one round of smoothing; about 2.5 px between points once smoothed
 const CP_STEP = 5;
 const cat = (ctrl, n, push) => { for (let i = 0; i < ctrl.length - 1; i++) { const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)]; for (let j = 0; j < n; j++) { const t = j / n, t2 = t * t, t3 = t2 * t; push(.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), .5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)); } } const l = ctrl[ctrl.length - 1]; push(l[0], l[1]); };
@@ -241,7 +245,8 @@ function shapeOf(name, cx, cy, R) {
         for (let q = 0; q <= 10; q++) { const u = .08 + .92 * q / 10, b = Math.sin(Math.PI * u) * wp * .62 * sg; path.push([B[0] + d[0] * Lp * u + n[0] * b, B[1] + d[1] * Lp * u + n[1] * b]); }
         path.push([B[0] + d[0] * (Lp + .12), B[1] + d[1] * (Lp + .12)]); return { li, path }; }).concat([{ li: 6, path: [[0, .6], [.01, .8], [.03, 1.0], [.02, 1.2], [-.02, 1.38]] }]),
       camera: [{ li: 4, f: [-.26, .15], t: [0, -.11], e: [0, .15] }, { li: 5, f: [-.75, -.45], t: [-.5, -.72], e: [-.45, -.58] }, { li: 6, f: [.55, -.45], t: [1.2, -.42], e: [.95, -.22] }],
-      spring: [{ li: 4, f: [-.55, -.2], t: [-.36, -.66], e: [-.31, -.8] }, { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, f: [.66, -.3], t: [.84, -.86], e: [.88, -.99] }],
+      // spring: purple sprouts its own small twig to the upper left instead of ending at the top-right twig tip beside the black ink dot
+      spring: [{ li: 4, f: [-.55, -.2], t: [-.36, -.66], e: [-.31, -.8] }, { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, path: [[.66, -.2], [.62, -.45], [.52, -.66], [.38, -.84]] }],
       octopus: [arm(-1, 1.15, 0, 3), arm(-1, .55, 1, 4), arm(1, .55, 1, 5), arm(1, 1.15, 0, 6)],
       wave: WAVES.map(([li, x0, y0, w, h, o]) => ({ li, path: li === 3 ? blueRide : miniWave(x0, y0, w, h, o) })),
       egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, { li: 4, path: [[-.5, -.62], [-.2, -.7], [.1, -.7], [.4, -.64]] }, { li: 5, path: [[-1.1, .3], [-.9, .52], [-.6, .66], [-.3, .72]] }, { li: 6, path: [[.9, -.5], [.7, -.62], [.48, -.66]] }],
@@ -564,6 +569,22 @@ class Component extends DCLogic {
     if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1;
     if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
     return true; }
+  // the book's notes write themselves in, left to right, one after another as the drawing finishes; they fade with the coloured lines on hover
+  bookNotes(ctx, gone) {
+    const { cx, cy, R } = this.geo, sc = R / 258, t0 = this.endOf(this.paths[0]) - 1.6, fade = Math.min(...[1, 2, 3, 4, 5, 6].map(li => this.fadeAt(li, .5)));
+    BOOK_NOTES.forEach(([dx, y, ex, col, w], i) => {
+      const k = smooth(clamp((this.T - t0 - i * .18) / .7, 0, 1)); if (k <= 0) return;
+      const left = dx < 0, x0 = Math.min(dx, ex), x1 = Math.max(dx, ex), r = rng(31 + i * 7), n = 36, pts = [];
+      for (let q = 0; q <= n; q++) { const u = q / n, x = x0 + (x1 - x0) * u, bump = r() < .12 ? (r() - .5) * .05 : 0; pts.push([cx + x * R, cy + (y + .006 * Math.sin(u * 23 + i) + bump + (r() - .5) * .008) * R]); }
+      const a = (1 - gone) * fade, c = 'rgb(' + col.join(',') + ')', m = Math.max(1, Math.round(k * n));
+      ctx.globalAlpha = .9 * a; ctx.strokeStyle = c; ctx.lineWidth = w * sc; ctx.lineCap = ctx.lineJoin = 'round';
+      ctx.beginPath(); for (let q = 0; q <= m; q++) q ? ctx.lineTo(pts[q][0], pts[q][1]) : ctx.moveTo(pts[0][0], pts[0][1]); ctx.stroke();
+      // the dot appears where the pen starts (left page) or where it finishes (right page)
+      const dk = left ? smooth(clamp(k / .25, 0, 1)) : smooth(clamp((k - .8) / .2, 0, 1));
+      if (dk > 0) { ctx.globalAlpha = a; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + y * R, 10.5 * sc * dk, 0, 6.2832); ctx.fill(); }
+    });
+    ctx.globalAlpha = 1;
+  }
   // x: 0 at the start of the visible stroke, 1 at its tail
   fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
@@ -764,6 +785,7 @@ class Component extends DCLogic {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);
+    if (this.shapeName === 'book' && !this.morph) this.bookNotes(ctx, gone);
     if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0, 1); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
 
     const bP = this.paths.find(P => P.L.page === 'freediving'), bEnd = bP.L.d + this.durOf(bP);

@@ -15,11 +15,13 @@ const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionS
 // the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
 const PHI = (1 + Math.sqrt(5)) / 2;
 const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
-// a small breaking wave: low run-in, rise to the top of its crest, then a clockwise golden spiral that tightens to its centre (dot), like the big curl
+// a small wave: one golden spiral the whole way. It starts wide at the lower left (MINI_BACK turns before the crest, about φ^(4·MINI_BACK) ≈ 1.9 times wider),
+// sweeps up over the crest at radius r, and keeps tightening clockwise into its centre (dot), like the big curl
+const MINI_BACK = .34;
 const miniC = (x0, y0, w, h, o = {}) => { const r = (o.rf ?? .5) * h; return [[x0 + w - r, y0 - h + r], r]; };
 const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, o), tn = o.turns ?? 1.05, out = [];
-  cat([[x0, y0], [x0 + .45 * (C[0] - x0), y0 - .06 * h], [C[0] - 1.05 * r, C[1] + .25 * r], [C[0] - .55 * r, C[1] - .85 * r], [C[0], C[1] - r]], 8, (x, y) => out.push([x, y]));
-  for (const p of goldSpiral(C, r, -Math.PI / 2, tn, 44)) out.push(p); return out; };
+  const a0 = -Math.PI / 2 - MINI_BACK * Math.PI * 2, r0 = r * Math.pow(PHI, 4 * MINI_BACK);
+  out.push([C[0] + Math.cos(a0) * r0, C[1] + Math.sin(a0) * r0]); for (const p of goldSpiral(C, r0, a0, MINI_BACK + tn, 44)) out.push(p); return out; };
 const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];

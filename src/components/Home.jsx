@@ -44,6 +44,10 @@ const INK_RUN = 4.2;
 // the hangul stamp's square, in unit coordinates, clockwise from the top left corner and back to it
 const SEAL = { x: 1.0, y: 1.02 };
 const SEAL_SQ = (() => { const X = SEAL.x, Y = SEAL.y, e = .05; return [[-X, -Y], [-X + e, -Y], [0, -Y], [X - e, -Y], [X, -Y], [X, -Y + e], [X, 0], [X, Y - e], [X, Y], [X - e, Y], [0, Y], [-X + e, Y], [-X, Y], [-X, Y - e], [-X, 0], [-X, -Y + e], [-X, -Y + .01]]; })();
+// the egg white's wobbly outline: angle a (clockwise on screen, 0 at the right), k scales it about the centre (below 1 runs inside it)
+const EGG_WOB = a => 1 + .06 * Math.sin(a * 3 + .6) + .07 * Math.sin(a * 5 + 2.1) + .025 * Math.sin(a * 9 + .4);
+const eggWhite = (a, k) => { const rr = EGG_WOB(a) * k; return [Math.cos(a) * 1.3 * rr, .02 + Math.sin(a) * .86 * rr]; };
+const eggArc = (a0, a1, k, n = 40) => Array.from({ length: n + 1 }, (_, q) => eggWhite(a0 + (a1 - a0) * q / n, k));
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -159,8 +163,7 @@ function shapeOf(name, cx, cy, R) {
 
   else if (name === 'egg') { const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
     // sunny side up, seen at a slight angle: wobbly white with a thickness edge underneath, a domed yolk with a shine and a soft shadow
-    const wob = a => 1 + .06 * Math.sin(a * 3 + .6) + .07 * Math.sin(a * 5 + 2.1) + .025 * Math.sin(a * 9 + .4);
-    const white = Array.from({ length: 91 }, (_, q) => { const a = Math.PI * .55 + q / 90 * Math.PI * 2.03, rr = wob(a); return [Math.cos(a) * 1.3 * rr, .02 + Math.sin(a) * .86 * rr, 1]; });
+    const wob = EGG_WOB, white = Array.from({ length: 91 }, (_, q) => { const a = Math.PI * .55 + q / 90 * Math.PI * 2.03; return [...eggWhite(a, 1), 1]; });
     const edge = []; for (let q = 0; q <= 40; q++) { const a = Math.PI * .18 + q / 40 * Math.PI * .64, rr = wob(a); edge.push([Math.cos(a) * 1.3 * rr * .97, .02 + Math.sin(a) * .86 * rr + .1, .6 + .3 * Math.sin(Math.PI * q / 40)]); }
     const Y = [.18, -.12], yolk = Array.from({ length: 61 }, (_, q) => { const a = -Math.PI * .6 + q / 60 * Math.PI * 2.02; return [Y[0] + Math.cos(a) * .5, Y[1] + Math.sin(a) * .42, 1.1]; });
     const shine = catW([[Y[0] - .3, Y[1] - .02], [Y[0] - .22, Y[1] - .2], [Y[0] - .04, Y[1] - .28]], 6, .85, .7);
@@ -271,7 +274,10 @@ function shapeOf(name, cx, cy, R) {
       spring: [{ li: 4, f: [-.55, -.2], t: [-.36, -.66], e: [-.31, -.8] }, { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, path: [[.66, -.2], [.62, -.45], [.52, -.66], [.38, -.84]] }],
       octopus: [arm(-1, 1.15, 0, 3), arm(-1, .55, 1, 4), arm(1, .55, 1, 5), arm(1, 1.15, 0, 6)],
       wave: WAVES.map(([li, x0, y0, w, h, o]) => ({ li, path: li === 3 ? blueRide : miniWave(x0, y0, w, h, o) })),
-      egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, { li: 4, path: [[-.5, -.62], [-.2, -.7], [.1, -.7], [.4, -.64]] }, { li: 5, path: [[-1.1, .3], [-.9, .52], [-.6, .66], [-.3, .72]] }, { li: 6, path: [[.9, -.5], [.7, -.62], [.48, -.66]] }],
+      egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, 
+        // orange runs inside the white along its top, green inside it along the bottom, purple circles outside the yolk; each ends well apart
+        { li: 4, path: eggArc(Math.PI * .97, Math.PI * 1.8, .78) }, { li: 5, path: eggArc(Math.PI * .22, Math.PI * .8, .84) },
+        { li: 6, path: Array.from({ length: 49 }, (_, q) => { const a = -Math.PI * .08 + q / 48 * Math.PI * 1.1; return [.18 + Math.cos(a) * .66, -.12 + Math.sin(a) * .56]; }) }],
       // mountain: red circles the sun on its own; blue is a river winding down from the saddle, orange a second halo round the sun,
       // purple a far ridge behind the left slope
       mountain: [{ li: 3, path: [[-.08, -.5], [-.17, -.24], [.05, .02], [-.13, .3], [.08, .56], [.02, .86]] },

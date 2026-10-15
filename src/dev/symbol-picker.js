@@ -18,12 +18,13 @@ function mark() {
 
 function build() {
   const h = home(); if (!h || !h.shapeName) { setTimeout(build, 200); return; }
-  const names = h.constructor.SHAPES || [];
+  // alphabetical here (← / → follow this order too); Home's own list stays as it is
+  const names = [...(h.constructor.SHAPES || [])].sort();
   bar = document.createElement('div');
   bar.setAttribute('data-dev', 'symbol-picker');
   bar.style.cssText = 'position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;align-items:stretch;gap:2px;max-height:calc(100vh - 20px);overflow-y:auto;padding:6px;border-radius:10px;background:rgba(245,243,238,.85);backdrop-filter:blur(4px);font:12px/1 system-ui, sans-serif;box-shadow:0 1px 6px rgba(0,0,0,.12)';
   for (const n of names) {
-    const b = document.createElement('button'); b.textContent = n; b.dataset.name = n;
+    const b = document.createElement('button'); b.textContent = n[0].toUpperCase() + n.slice(1); b.dataset.name = n;
     b.style.cssText = 'border:1px solid #14141433;border-radius:6px;padding:3px 8px;cursor:pointer;font:inherit;text-align:left';
     b.onclick = () => show(n);
     bar.appendChild(b);

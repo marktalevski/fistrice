@@ -563,7 +563,8 @@ class Component extends DCLogic {
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now;
     this.T += dt; this.hovT += (this.hov - this.hovT) * (1 - Math.exp(-dt * 8)); for (const k of ['sound', 'journal']) this.hovPgT[k] = (this.hovPgT[k] || 0) + ((this.hovPg[k] || 0) - (this.hovPgT[k] || 0)) * (1 - Math.exp(-dt * 8));
     this.fadeTick(dt); this.dtF = Math.max(0, dt);
-    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; location.href = this.dest || BASE + 'freediving/?from=home'; } }
+    // leaving for Freediving: keep a picture of this last frame, which that page shows while it loads so there's no blank moment in between
+    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} location.href = this.dest || BASE + 'freediving/?from=home'; } }
     this.draw();
   };
 

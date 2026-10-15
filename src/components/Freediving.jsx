@@ -223,6 +223,7 @@ class Component extends DCLogic {
     }
     if (this.props.motion ?? true) this.t += dt;
     this.draw(this.t);
+    if (!this.coverOff) { this.coverOff = true; const c = document.getElementById('arrive-cover'); if (c) c.remove(); }
   };
 
   layout(dt) {

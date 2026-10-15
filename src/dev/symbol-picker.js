@@ -1,6 +1,6 @@
 // Local-only symbol picker for designing the Home symbols. astro.config.mjs injects it under `npm run dev` only, so the published
 // site never has it: there the ink dot keeps picking at random.
-// A row of symbol names along the top of Home: click one to brush it in, or press ← / → to step through them.
+// A column of symbol names down the left of Home: click one to brush it in, or press ← / → to step through them.
 const home = () => window.__home;
 let bar = null, want = null, timer = 0;
 
@@ -21,10 +21,10 @@ function build() {
   const names = h.constructor.SHAPES || [];
   bar = document.createElement('div');
   bar.setAttribute('data-dev', 'symbol-picker');
-  bar.style.cssText = 'position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:50;display:flex;flex-wrap:wrap;justify-content:center;gap:4px;max-width:calc(100vw - 32px);padding:6px;border-radius:10px;background:rgba(245,243,238,.85);backdrop-filter:blur(4px);font:12px/1 system-ui, sans-serif;box-shadow:0 1px 6px rgba(0,0,0,.12)';
+  bar.style.cssText = 'position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:50;display:flex;flex-direction:column;align-items:stretch;gap:2px;max-height:calc(100vh - 20px);overflow-y:auto;padding:6px;border-radius:10px;background:rgba(245,243,238,.85);backdrop-filter:blur(4px);font:12px/1 system-ui, sans-serif;box-shadow:0 1px 6px rgba(0,0,0,.12)';
   for (const n of names) {
     const b = document.createElement('button'); b.textContent = n; b.dataset.name = n;
-    b.style.cssText = 'border:1px solid #14141433;border-radius:6px;padding:4px 7px;cursor:pointer;font:inherit';
+    b.style.cssText = 'border:1px solid #14141433;border-radius:6px;padding:3px 8px;cursor:pointer;font:inherit;text-align:left';
     b.onclick = () => show(n);
     bar.appendChild(b);
   }

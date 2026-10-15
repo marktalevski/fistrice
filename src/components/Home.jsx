@@ -41,6 +41,9 @@ const FADE = { sweep: 1.1, to: .25, soft: .9, wander: .07 };
 const LABEL = { time: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };
 // the ink line draws at its natural pace up to this many seconds of travel, then speeds up, so long symbols (vinyl, coffee) are ready as soon as short ones
 const INK_RUN = 4.2;
+// the hangul stamp's square, in unit coordinates, clockwise from the top left corner and back to it
+const SEAL = { x: 1.0, y: 1.02 };
+const SEAL_SQ = (() => { const X = SEAL.x, Y = SEAL.y, e = .05; return [[-X, -Y], [-X + e, -Y], [0, -Y], [X - e, -Y], [X, -Y], [X, -Y + e], [X, 0], [X, Y - e], [X, Y], [X - e, Y], [0, Y], [-X + e, Y], [-X, Y], [-X, Y - e], [-X, 0], [-X, -Y + e], [-X, -Y + .01]]; })();
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -201,11 +204,10 @@ function shapeOf(name, cx, cy, R) {
     st = [0, 1.55];
   }
   else if (name === 'hangul') {
-    const t = .12;
-    strokes([[[-1.45, -.5, .9], [-1.45, .25, 1]], [[-1.45, .25, t], [-1.45, -.5, t]], [[-1.45, -.5, 1], [-.93, -.5, 1], [-.93, .25, 1]], [[-.93, .25, t], [-1.45, .25, t]], [[-1.45, .25, .9], [-.93, .25, 1]],
-      [[-.93, .25, t], [-.62, -.82, t]], [[-.62, -.82, 1], [-.62, .72, .9]], [[-.62, .72, t], [-.62, -.06, t]], [[-.62, -.06, 1], [-.34, -.06, .8]],
-      [[-.34, -.06, t], [.02, -.58, t]], [[.02, -.58, 1], [.7, -.58, 1], [.68, -.2, 1], [.6, .12, .7]], [[.6, .12, t], [.06, -.24, t]], [[.06, -.24, 1], [.66, -.24, .9]],
-      [[.66, -.24, t], [-.1, .46, t]], [[-.1, .46, 1.05], [.85, .46, 1]]]);
+    // a name stamp (dojang): the red line cuts the square and the letters are written inside it, one stroke per line. The black ink writes ㅁ: its left side, then top and right as one stroke, then the base
+    const t = .02;
+    strokes([[[-.78, -.82, 1], [-.78, -.16, 1]], [[-.78, -.16, t], [-.78, -.82, t]], [[-.78, -.82, 1], [-.12, -.82, 1], [-.12, -.16, 1]],
+      [[-.12, -.16, t], [-.78, -.16, t]], [[-.78, -.16, 1], [-.12, -.16, 1]]]);
     st = [.38, .85];
   }
   else if (name === 'spring') {
@@ -281,12 +283,12 @@ function shapeOf(name, cx, cy, R) {
           { li: 2, path: trail(-.86, .9, .4) }, { li: 4, path: trail(-.48, .45, 1.6) }, { li: 6, path: trail(.48, .45, 2.9) }, { li: 3, path: trail(.86, .9, 4.1) }]; })(),
       // longfins: orange, green and purple rise off the right fin's blade as bubble trails
       longfins: [{ li: 5, path: [[1.0, .95], [1.08, .7], [1.02, .45], [1.1, .2]] }, { li: 4, path: [[1.08, 1.02], [1.2, .84], [1.16, .64]] }, { li: 6, path: [[.97, .9], [.93, .74], [.99, .6]] }],
-      // hangul (마크): each coloured line runs beside one stroke of the letters, like an echo of the brush, and ends in its dot where that stroke ends.
-      // red down the left of ㅁ, orange under its base, purple down beside ㅏ, yellow over ㅋ's top, green under ㅋ's middle bar (right to left, its dot at the bar's start), blue under ㅡ
-      // (ㅡ is brushed left to right, so the black dot sits at its right end; blue runs the other way and ends at the left, clear of it)
-      hangul: [{ li: 1, path: [[-1.56, -.42], [-1.56, -.1], [-1.56, .2], [-1.6, .36]] }, { li: 4, path: [[-1.4, .36], [-1.17, .37], [-.96, .36], [-.86, .32]] },
-        { li: 6, path: [[-.53, .1], [-.53, .35], [-.53, .6], [-.5, .78]] }, { li: 2, path: [[.04, -.68], [.36, -.69], [.68, -.68], [.8, -.62]] },
-        { li: 5, path: [[.52, -.15], [.32, -.14], [.1, -.15]] }, { li: 3, path: [[.84, .57], [.4, .58], [-.02, .57], [-.16, .52]] }],
+      // hangul (마크, a name stamp): red cuts the stamp's square, clockwise from its top left corner (Sound's dot ends there); the others write
+      // the letters over the red: purple ㅏ's upright, yellow its arm (Journal's dot at the tip), green ㅋ's top and side, orange ㅋ's middle bar
+      // (right to left, so its dot sits clear of green), blue the ㅡ (Freediving's dot at its right end). Points close to each corner keep it square
+      hangul: [{ li: 1, path: SEAL_SQ }, { li: 6, path: [[.3, -.92], [.3, -.64], [.3, -.36], [.3, -.1]] }, { li: 2, path: [[.3, -.5], [.45, -.5], [.6, -.5], [.74, -.5]] },
+        { li: 5, path: [[-.8, .1], [-.2, .1], [.4, .1], [.68, .1], [.72, .12], [.72, .3], [.72, .54]] }, { li: 4, path: [[.62, .33], [.14, .33], [-.34, .33], [-.8, .33]] },
+        { li: 3, path: [[-.84, .76], [-.28, .76], [.28, .76], [.84, .76]] }],
       // samurai: one coloured line comes in to the middle of each of the six circles
       samurai: [{ li: 1, path: [[-.95, -1.05], [-.7, -.9], [-.45, -.7], [-.26, -.61]] }, { li: 2, path: [[.95, -1.05], [.7, -.9], [.45, -.7], [.26, -.61]] }, { li: 3, path: [[-1.0, -.2], [-.7, -.32], [-.45, -.31], [-.26, -.27]] },
         { li: 4, path: [[.82, -.67], [.64, -.47], [.44, -.32], [.26, -.27]] }, { li: 5, path: [[-.9, .45], [-.66, .3], [-.44, .13], [-.26, .07]] }, { li: 6, path: [[.9, .45], [.66, .3], [.44, .13], [.26, .07]] }]
@@ -312,7 +314,9 @@ function shapeOf(name, cx, cy, R) {
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
         return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, -1.3, -2.3, -4, 1.04) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R, cy + bookRowY(1.15, .5) * R],
         // labels sit just outside the pages, level with their dots (32 px gap plus half the label's width)
-        labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - 1.6 * R, cy + .36 * R], journal: [cx + .8 * R, cy - .62 * R], freediving: [cx - .16 * R, cy + .52 * R] } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
+        labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - SEAL.x * R, cy - (SEAL.y - .01) * R], journal: [cx + .74 * R, cy - .5 * R], freediving: [cx + .84 * R, cy + .76 * R],
+        // labels sit just outside the stamp's right edge, clear of the letters
+        labelAt: { journal: [cx + SEAL.x * R + 58, cy - .5 * R], freediving: [cx + SEAL.x * R + 74, cy + .76 * R] } } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
 }
 

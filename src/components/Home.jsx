@@ -824,8 +824,12 @@ class Component extends DCLogic {
       if (bloomR && k === topPid && Q.a < .2) continue;
       if (k === topPid) { top = 10; if (bloomR) { const m = Q.q[2] || Q.q[0], qx = (Q.q[0][0] + m[0]) / 2, qy = (Q.q[0][1] + m[1]) / 2; let d = 1e9; for (const b of this.blooms) d = Math.min(d, Math.hypot(b[0] - qx, b[1] - qy)); d /= bloomR;
         // just past a petal's rim is only the brush's unseen move leaving it: drop that wash (the twig, beyond the last petal, stays)
-        if (d > .074 && d < .2 && qx < this.blooms[this.blooms.length - 1][0] + bloomR * .05) continue;
-        if (d < .135) { let bi = 0, bd = 1e18; this.blooms.forEach((b, n) => { const e = (b[0] - qx) ** 2 + (b[1] - qy) ** 2; if (e < bd) { bd = e; bi = n; } }); const pale = bi % 2;
+        const twigX = this.blooms[this.blooms.length - 1][0] + bloomR * .05;
+        if (d > .074 && d < .2 && qx < twigX) continue;
+        // the twig flows out of the last petal: its pink deepens to Sound's red along the way, in nine steps
+        if (d >= .074 && qx >= twigX) { const n = Math.round(smooth(clamp((qx - twigX) / (bloomR * .4), 0, 1)) * 8), A = [246, 174, 198], Z = [232, 34, 44];
+          k = topPid + ':t' + n; col = 'rgb(' + A.map((v, j) => Math.round(v + (Z[j] - v) * n / 8)).join(',') + ')'; top = 10.05; }
+        else if (d < .135) { let bi = 0, bd = 1e18; this.blooms.forEach((b, n) => { const e = (b[0] - qx) ** 2 + (b[1] - qy) ** 2; if (e < bd) { bd = e; bi = n; } }); const pale = bi % 2;
           k = topPid + (pale ? ':a' : ':b'); col = pale ? 'rgb(246,174,198)' : 'rgb(236,128,164)'; top = 10.1; } } }
       let g = groups.get(k); if (!g) { g = { col, ink: !!Q.ink, top, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
     const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top || a.zs / a.n) - (b.ink ? -10 : b.top || b.zs / b.n));

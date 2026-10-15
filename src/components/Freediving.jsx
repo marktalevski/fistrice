@@ -5,6 +5,8 @@ import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 
 // the rope down from the buoy, wide enough for its twist to show
 const ROPE_W = 3.6;
+// leaving for Home: how long each colour takes to gather at the centre, circle there with the others and go up into its dot (s)
+const SWIRL_DUR = 3.6;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = x => x * x * (3 - 2 * x);
 const fmt = iso => { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
@@ -214,9 +216,9 @@ class Component extends DCLogic {
     if (this.leaveT != null) { this.leaveT += dt;
       // once the colour is in, each label is drawn up into its dot: rising, narrowing, softening
       document.querySelectorAll('nav[aria-label="Pages"] > [data-navk]').forEach((el, i) => { const lab = el.querySelector(':scope > span:last-child'), dot = el.querySelector('[data-navdot]'); if (!lab) return;
-        const k = clamp((this.leaveT - 2.45 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
+        const k = clamp((this.leaveT - SWIRL_DUR * .85 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
         if (dot && k > 0) { const u = clamp((k - .55) / .45, 0, 1); dot.style.transform = 'scale(' + (1 + .18 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } });
-      if (this.leaveT > 3.55 && !this.left) { this.left = true; location.href = BASE + '?from=dive'; } }
+      if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; location.href = BASE + '?from=dive'; } }
     if (this.fromHome && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - 1.3) / .9, 0, 1)); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
     if (!this.state.introDone) { this.introT += dt; if (this.introT >= (this.tideIntro ? this.tide0 + 1.8 : 3.8)) this.setState({ introDone: true }); }
     this.p += (this.target - this.p) * (1 - Math.exp(-dt * 5.5));
@@ -339,14 +341,26 @@ class Component extends DCLogic {
   absorb(ctx, src, D, g, O) {
     if (g <= 0 || g >= 1 || src.length < 2) return;
     const S = src[src.length - 1], P0 = src[Math.max(0, src.length - 4)], tl = Math.hypot(S[0] - P0[0], S[1] - P0[1]) || 1, T = [(S[0] - P0[0]) / tl, (S[1] - P0[1]) / tl], lift = O.lift ?? 90;
-    // the route rises in an arc: up and a little onwards first, then curving over and in to the dot from below-left
-    const dist = Math.hypot(D[0] - S[0], D[1] - S[1]), C1 = [S[0] + T[0] * lift + dist * .12, S[1] + T[1] * lift - Math.min(dist * .42, 190)], C2 = [D[0] - dist * .3, D[1] + dist * .18], route = [];
-    for (let q = 1; q <= 48; q++) { const u = q / 48, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, sw = (O.sway || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * u + (O.ph || 0));
-      route.push([a * S[0] + b * C1[0] + c * C2[0] + d * D[0] + sw, a * S[1] + b * C1[1] + c * C2[1] + d * D[1]]); }
+    const route = [], ringAt = [], bez = (A, B, C, E, n, sway) => { for (let q = 1; q <= n; q++) { const u = q / n, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, sw = (sway || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * u + (O.ph || 0));
+      route.push([a * A[0] + b * B[0] + c * C[0] + d * E[0] + sw, a * A[1] + b * B[1] + c * C[1] + d * E[1]]); } };
+    if (O.ring) {
+      // into the middle of the screen, round it clockwise on its own ring (drawing in a little as it goes, like water down a drain) with
+      // the other colours on theirs, and out of the ring at the point where it is already heading for its dot
+      const M = [innerWidth / 2, innerHeight * .48], r0 = O.ring, rAt = u => r0 * (1 - .28 * u), TAU = Math.PI * 2;
+      const a0 = Math.atan2(S[1] - M[1], S[0] - M[0]) + .5, aOut = Math.atan2(D[1] - M[1], D[0] - M[0]) - Math.PI / 2, sweep = TAU * 1.2 + (((aOut - a0 - TAU * 1.2) % TAU) + TAU) % TAU;
+      const on = u => { const a = a0 + sweep * u, r = rAt(u); return [M[0] + Math.cos(a) * r, M[1] + Math.sin(a) * r]; }, tan = u => { const a = a0 + sweep * u; return [-Math.sin(a), Math.cos(a)]; };
+      const E = on(0), tE = tan(0), d1 = Math.hypot(E[0] - S[0], E[1] - S[1]);
+      bez(S, [S[0] + T[0] * lift, S[1] + T[1] * lift - lift * .5], [E[0] - tE[0] * d1 * .45, E[1] - tE[1] * d1 * .45], E, 40, O.sway);
+      ringAt.push(route.length); const N = Math.ceil(sweep / TAU * 64); for (let q = 1; q <= N; q++) route.push(on(q / N)); ringAt.push(route.length);
+      const X = on(1), tX = tan(1), d2 = Math.hypot(D[0] - X[0], D[1] - X[1]);
+      bez(X, [X[0] + tX[0] * d2 * .4, X[1] + tX[1] * d2 * .4], [D[0] - 30, D[1] + Math.min(d2 * .3, 110)], D, 40, 0);
+    } else { // the plain route rises in an arc: up and a little onwards first, then curving over and in to the dot from below-left
+      const dist = Math.hypot(D[0] - S[0], D[1] - S[1]); bez(S, [S[0] + T[0] * lift + dist * .12, S[1] + T[1] * lift - Math.min(dist * .42, 190)], [D[0] - dist * .3, D[1] + dist * .18], D, 48, O.sway); }
     const all = src.concat(route), nS = src.length, sl = [0]; for (let q = 1; q < all.length; q++) sl.push(sl[q - 1] + Math.hypot(all[q][0] - all[q - 1][0], all[q][1] - all[q - 1][1]));
     const tot = sl[sl.length - 1], srcL = sl[nS - 1], io = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
     // the head eases off the end of the line and into the dot; the tail sets off a little later and catches it up exactly at the dot
-    const head = srcL + (tot - srcL) * io(clamp(g / .82, 0, 1)), cut = Math.min(head, tot * io(clamp((g - .1) / .9, 0, 1)));
+    const ge = io(clamp(g / .82, 0, 1)), Lin = ringAt.length ? sl[nS - 1 + ringAt[0]] : 0, Lout = ringAt.length ? sl[nS - 1 + ringAt[1]] : 0;
+    const head = !ringAt.length ? srcL + (tot - srcL) * ge : ge < .3 ? srcL + (Lin - srcL) * ge / .3 : ge < .74 ? Lin + (Lout - Lin) * (ge - .3) / .44 : Lout + (tot - Lout) * (ge - .74) / .26, cut = Math.min(head, tot * io(clamp((g - .1) / .9, 0, 1)));
     const at = q => { if (q <= 0) return all[0]; let k = 1; while (k < all.length - 1 && sl[k] < q) k++; const f = (q - sl[k - 1]) / Math.max(1e-6, sl[k] - sl[k - 1]); return [all[k - 1][0] + (all[k][0] - all[k - 1][0]) * f, all[k - 1][1] + (all[k][1] - all[k - 1][1]) * f]; };
     const P = [at(cut)], L = [cut]; for (let q = 0; q < all.length; q++) if (sl[q] > cut && sl[q] < head) { P.push(all[q]); L.push(sl[q]); } P.push(at(head)); L.push(head);
     const n = P.length; if (n < 2 || head - cut < .5) return;
@@ -360,11 +374,11 @@ class Component extends DCLogic {
   }
   // each surface line, reeled in from its right-hand end
   reelWave(ctx, k, st, sy, o, t, W) {
-    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28], T0 = [.45, .7, .9][k], DUR = [1.8, 1.85, 1.75][k], g = (lt - T0) / DUR;
+    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28], T0 = [.3, .42, .54][k], DUR = SWIRL_DUR, g = (lt - T0) / DUR;
     const src = []; for (let x = -20; x <= W - 6; x += 10) src.push([x, sy + this.waveY(x - o.x, k, t)]);
     const col = [[20, 20, 20], [0, 158, 224], [34, 86, 186]][k];
     if (g <= 0) { this.brush(ctx, src, st[0], st[1], k * 200, true, false, css(col)); return; }
-    this.absorb(ctx, src, D, g, { w: st[0] * 1.4, a: Math.min(1, st[1] + .35), colA: col, colB: col, lift: 60 + 30 * k, sway: [10, 22, 16][k], ph: k * 1.3 });
+    this.absorb(ctx, src, D, g, { w: st[0] * 1.4, a: Math.min(1, st[1] + .35), colA: col, colB: col, lift: 60 + 30 * k, sway: [10, 22, 16][k], ph: k * 1.3, ring: [92, 128, 110][k] });
     this.navPulse(k ? 'freediving' : 'home', g);
   }
   // a menu dot breathes once as the tail of its line goes in
@@ -555,14 +569,14 @@ class Component extends DCLogic {
     this.sqDrain = 0;
     if (this.leaveT != null && this.navPos && this.navPos.c4 && this.buoyPos) {
       const lt = this.leaveT, B = this.buoyPos, F = flagAt(B), ez = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2, DUR = 1.5;
-      const RC = this.redC || [232, 34, 44], tB = .1, tF = .35, tS = .6, BS = B[2] || 1, DU = { b: 1.8, f: 1.6, s: 1.9 };
+      const RC = this.redC || [232, 34, 44], tB = .1, tF = .2, tS = .4, BS = B[2] || 1, DU = { b: SWIRL_DUR, f: SWIRL_DUR, s: SWIRL_DUR };
       this.buoyDrain = smooth(clamp((lt - tB) / .7, 0, 1)); this.flagDrain = smooth(clamp((lt - tF) / .7, 0, 1)); this.sqDrain = smooth(clamp((lt - tS) / .7, 0, 1));
       // buoy: off along the top of its float, left to right; flag: along its top edge; squid: up through its body
       const buoySrc = Array.from({ length: 13 }, (_, q) => { const a = Math.PI + q / 12 * Math.PI; return [B[0] + Math.cos(a) * 22 * BS, B[1] + Math.sin(a) * 13 * BS]; });
       const flagSrc = [[B[0], B[1] - 46 * BS], [B[0] + 11 * BS, B[1] - 46.5 * BS], [B[0] + 22 * BS, B[1] - 46 * BS]];
-      this.absorb(WX, buoySrc, this.navPos.c4, (lt - tB) / DU.b, { w: 3.4, colA: [255, 118, 18], colB: [255, 118, 18], lift: 40, sway: 18, ph: .4 }); this.navPulse('c4', (lt - tB) / DU.b);
-      if (this.navPos.sound) { this.absorb(WX, flagSrc, this.navPos.sound, (lt - tF) / DU.f, { w: 3, colA: RC, colB: RC, lift: 30, sway: 10, ph: 1.9 });
-        if (this.sqPos) { const [qx, qy] = this.sqPos; this.absorb(WX, [[qx, qy + 22], [qx, qy + 8], [qx, qy - 8], [qx, qy - 20]], this.navPos.sound, (lt - tS) / DU.s, { w: 3.4, colA: [244, 138, 172], colB: RC, lift: 50, sway: 24, ph: 3.1 }); }
+      this.absorb(WX, buoySrc, this.navPos.c4, (lt - tB) / DU.b, { w: 3.4, colA: [255, 118, 18], colB: [255, 118, 18], lift: 40, sway: 18, ph: .4, ring: 74 }); this.navPulse('c4', (lt - tB) / DU.b);
+      if (this.navPos.sound) { this.absorb(WX, flagSrc, this.navPos.sound, (lt - tF) / DU.f, { w: 3, colA: RC, colB: RC, lift: 30, sway: 10, ph: 1.9, ring: 56 });
+        if (this.sqPos) { const [qx, qy] = this.sqPos; this.absorb(WX, [[qx, qy + 22], [qx, qy + 8], [qx, qy - 8], [qx, qy - 20]], this.navPos.sound, (lt - tS) / DU.s, { w: 3.4, colA: [244, 138, 172], colB: RC, lift: 50, sway: 24, ph: 3.1, ring: 146 }); }
         this.navPulse('sound', Math.max((lt - tF) / DU.f, (lt - tS) / DU.s)); }
     }
     if (sy > -80 && sy < H + 80) {

@@ -231,9 +231,9 @@ function shapeOf(name, cx, cy, R) {
     B.forEach((b, k) => { blooms.push([cx + b[0] * R, cy + b[1] * R]);
       const pt = q => { const th = q / 40 * Math.PI * 2, r = .022 + .055 * Math.abs(Math.cos(2.5 * th)); return [b[0] + Math.cos(th) * r, b[1] + Math.sin(th) * r]; };
       if (k) { const p0 = lp[lp.length - 1], s0 = pt(0); lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(s0[0], s0[1], t); }
-      for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : .75); } });
+      for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : 1); } });
     // after the last blossom, red carries on as a little twig out to the Sound dot
-    [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, .75));
+    [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, 1));
     colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
     st = [-.2, 1.42];
   }
@@ -698,9 +698,11 @@ class Component extends DCLogic {
       ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .35; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; return;
     }
     const oldCut = this.oldPaths && T < 1.8 ? smooth(clamp(T / 1.6, 0, 1)) : -1; if (oldCut < 0) this.oldPaths = null;
-    let pidc = 0, inkPid = null; const runs = (this.oldPaths ? this.oldPaths.map(P => [P, 1]) : []).concat(this.paths.map(P => [P, 0]));
+    let pidc = 0, inkPid = null, topPid = null; const runs = (this.oldPaths ? this.oldPaths.map(P => [P, 1]) : []).concat(this.paths.map(P => [P, 0]));
     for (const [P, isOld] of runs) {
       const tr = P.tr, L = P.L, dur = tr ? (1.6 + (P.len - P.oldLen) / 900) / L.spd : this.durOf(P), k = isOld ? 1 : clamp((T - (tr ? L.d * .6 : (P.d ?? L.d))) / dur, 0, 1); if ((k <= 0 && !tr) || (L.keep && G != null && !this.dest)) continue; const pid = ++pidc; if (L.keep && !isOld) inkPid = pid;
+      // spring: red draws the cherry blossoms, the focus, so it is painted last and at full strength, over every other colour
+      if (!isOld && L === LINES[1] && this.shapeName === 'spring') topPid = pid;
       const newL = P.len - P.entry, ek = tr ? easeIO(k) : 0, bodyL = tr ? P.oldLen + (newL - P.oldLen) * smooth(k) : 0;
       const h = tr ? P.oldLen + (P.len - P.oldLen) * ek : P.len * easeIO(k), tEnd = (P.d ?? L.d) + dur, fin = isOld || tr ? 1 : smooth(clamp((T - tEnd) / 1.2, 0, 1));
       const cut = isOld ? P.entry + (P.len - P.entry) * oldCut : tr ? h - bodyL - 1 : -1e9; P.cut0 = tr ? Math.max(0, P.s.findIndex(v => v >= cut)) : P.arc0 - 1;
@@ -725,7 +727,8 @@ class Component extends DCLogic {
         if (tr) w *= Math.pow(clamp((s - cut) / 120, 0, 1), .65) / Math.min(1, .45 + s / 70);
         if (isArc) { const TRV = tr && !isOld, E0 = TRV ? Math.max(0, cut) : P.entry, L0 = TRV ? h : P.len, ua = clamp((s - E0) / Math.max(1, L0 - E0), 0, 1), sa = clamp((s - E0) / 40, 0, 1); const press = ua < .04 ? .75 + .55 * smooth(ua / .04) : ua < .12 ? 1.3 - .3 * smooth((ua - .04) / .08) : 1; const multi = ['signature', 'hangul', 'maple', 'triskele', 'octopus', 'spring', 'frog', 'plane', 'onsen', 'mountain', 'muaythai', 'fox', 'gameboy', 'longfins', 'egg', 'samurai'].includes(this.shapeName), se = (L.keep ? P.len : L0) - s, hl = multi ? 50 : Math.min(150, (L0 - E0) * .4), harai = se < hl ? .42 + .58 * smooth(se / hl) : 1; w *= (L.keep ? press : 1) * (multi ? 1 : 1 - .12 * ua) * harai * (L.keep ? 1 : Math.sqrt(Math.max(.1, sa))); if (L.keep) { dr = multi ? smooth(clamp((70 - se) / 70, 0, 1)) * .6 : smooth(clamp((50 - se) / 50, 0, 1)) * .35; w *= 1 + this.hovT * .12; } else if (!L.page) dr = clamp((s - (L0 - 200)) / 200, 0, 1) * .8; }
         if (P.wt[i] < (L.keep && this.shapeName === 'samurai' ? .5 : .2) || (this.colorPaths[LINES.indexOf(L)] && i >= P.arc0 && P.wt[i] < .5)) { a *= ['hangul', 'signature', 'maple', 'triskele', 'frog', 'spring', 'octopus', 'plane', 'onsen', 'mountain', 'muaythai', 'coffee', 'fox', 'gameboy', 'longfins', 'egg', 'samurai', 'wave'].includes(this.shapeName) ? 0 : .06; w *= .4; } else if (P.wt[i] < 1) a *= clamp(.25 + .75 * P.wt[i], 0, 1); if (isOld) { const tp = clamp((s - cut) / 120, 0, 1); w *= Math.pow(tp, .65); a *= Math.min(1, tp * 1.5); }
-        if (L.page) a = Math.min(1, a / .94) * (.62 + .38 * Math.pow(clamp(1 - (h - s) / 900, 0, 1), 1.2));
+        // page lines fade a little towards their start; not spring's red, whose start is the blossoms
+        if (L.page && !(L === LINES[1] && this.shapeName === 'spring')) a = Math.min(1, a / .94) * (.62 + .38 * Math.pow(clamp(1 - (h - s) / 900, 0, 1), 1.2));
         else if (!L.keep && isArc) { const nh = smooth(clamp(1 - (h - s) / 220, 0, 1)); a *= (.72 + .28 * Math.pow(.5 + .5 * Math.sin(s * .006 + P.ph * 2.3), 1.5)) * (1 - nh) + nh; }
         if (!L.keep && !isOld) { const nh = smooth(clamp(1 - (h - s) / 90, 0, 1)), wb = (L.w || 8) * .55; if (w < wb) w += (wb - w) * nh; }
         pts.push(pt); ws.push(w); as.push(clamp(a, 0, 1) * .94); zs.push(z); ss.push(s); dry.push(dr);
@@ -806,14 +809,14 @@ class Component extends DCLogic {
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }
     const groups = new Map();
-    for (const Q of quads) { const k = Q.pid ?? 'u'; let g = groups.get(k); if (!g) { g = { col: Q.col, ink: !!Q.ink, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
-    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.zs / a.n) - (b.ink ? -10 : b.zs / b.n));
+    for (const Q of quads) { const k = Q.pid ?? 'u'; let g = groups.get(k); if (!g) { g = { col: Q.col, ink: !!Q.ink, top: k === topPid, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
+    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top ? 10 : a.zs / a.n) - (b.ink ? -10 : b.top ? 10 : b.zs / b.n));
     // each line: an opacity mask built with max-blending (overlaps keep the strongest value, slight overlaps hide joins), then page = page*(1-m) + colour*m — exact translucency, no levels, no seams
     const cvs = ctx.canvas, mkC = k => { if (!this[k]) this[k] = document.createElement('canvas'); const c = this[k]; if (c.width !== cvs.width || c.height !== cvs.height) { c.width = cvs.width; c.height = cvs.height; } return c; };
     const lcv = mkC('layerC'), lcv2 = mkC('layerC2'), lcv3 = mkC('layerC3'), lc = lcv.getContext('2d'), lc2 = lcv2.getContext('2d'), lc3 = lcv3.getContext('2d'), TF = ctx.getTransform(), EXT = .5;
     const addQ = (c2, q) => { if (q.length === 4) { const mx0 = (q[0][0] + q[3][0]) / 2, my0 = (q[0][1] + q[3][1]) / 2, mx1 = (q[1][0] + q[2][0]) / 2, my1 = (q[1][1] + q[2][1]) / 2, l = Math.hypot(mx1 - mx0, my1 - my0) || 1, ex = (mx1 - mx0) / l * EXT, ey = (my1 - my0) / l * EXT; c2.moveTo(q[0][0] - ex, q[0][1] - ey); c2.lineTo(q[1][0] + ex, q[1][1] + ey); c2.lineTo(q[2][0] + ex, q[2][1] + ey); c2.lineTo(q[3][0] - ex, q[3][1] - ey); } else { c2.moveTo(q[0][0], q[0][1]); for (let k3 = 1; k3 < q.length; k3++) c2.lineTo(q[k3][0], q[k3][1]); } c2.closePath(); };
     for (const g of GL) {
-      const am = g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      const am = g.top ? 1.3 : g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       // opacity in 85 levels (steps of 3/255): finer is invisible, and every distinct level costs a fill
       for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 85) * 3; if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
       if (!bk.size) continue;

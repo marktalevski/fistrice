@@ -58,7 +58,12 @@ class Component extends DCLogic {
     if (this.key !== key) { this.key = key; this.P = this.path(D, A, E); }
     const { pts, s, sA, tot } = this.P, h = tot * easeIO(clamp((t - .15) / 1.5, 0, 1)), cut = sA * smooth(clamp((t - 1.2) / 1.1, 0, 1));
     const P = [], Wd = [];
-    for (let i = 0; i < pts.length; i++) { if (s[i] > h) break; if (s[i] < cut) continue; P.push(pts[i]); Wd.push(7 * (.86 + .14 * Math.sin(s[i] * .045)) * Math.sqrt(clamp((h - s[i]) / 40, .06, 1)) * Math.sqrt(clamp((s[i] - cut) / 50, .06, 1)) * (s[i] < sA ? .75 : 1)); }
+    // tip and tail sit exactly where they should, between stored points, so the slow start and finish glide instead of stepping
+    const at = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    for (let i = 0; i < pts.length; i++) { let si = s[i], p = pts[i], tipEnd = false;
+      if (si > h) { if (!i || s[i - 1] >= h) break; p = at(pts[i - 1], p, (h - s[i - 1]) / (si - s[i - 1])); si = h; tipEnd = true; }
+      if (si < cut) { if (i + 1 >= pts.length || s[i + 1] <= cut) continue; p = at(p, pts[i + 1], (cut - si) / (s[i + 1] - si)); si = cut; }
+      P.push(p); Wd.push(7 * (.86 + .14 * Math.sin(si * .045)) * Math.sqrt(clamp((h - si) / 40, .06, 1)) * Math.sqrt(clamp((si - cut) / 50, .06, 1)) * (si < sA ? .75 : 1)); if (tipEnd) break; }
     const col = 'rgb(' + COL.join(',') + ')';
     if (P.length > 1) {
       const Lp = [], Rp = [], n = P.length;

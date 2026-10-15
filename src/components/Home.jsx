@@ -74,6 +74,7 @@ const loopify = (P, R) => {
   return out;
 };
 const smooth1 = (a, r) => a.map((v, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - r); j <= Math.min(a.length - 1, i + r); j++) { t += a[j]; c++; } return t / c; });
+const lerpPt = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
 const easeIO = k => .5 - .5 * Math.cos(Math.PI * k);
 // blue rides the big wave: up its back just inside the black line, over the crest, and curls into the heart of the curl
 const blueRide = (() => { const o = []; cat([[-1.05, .7], [-.62, .48], [-.3, .1], [-.06, -.3], [.2, -.57], [.48, -.66], [.72, -.63]], 10, (x, y) => o.push([x, y]));
@@ -652,7 +653,10 @@ class Component extends DCLogic {
       const cut = isOld ? P.entry + (P.len - P.entry) * oldCut : tr ? h - bodyL - 1 : -1e9; P.cut0 = tr ? Math.max(0, P.s.findIndex(v => v >= cut)) : P.arc0 - 1;
       const pts = [], ws = [], as = [], zs = [], ss = [], dry = [];
       for (let i = 0; i < P.pts.length; i++) {
-        const s = P.s[i]; if (s > h) break; if (s < cut) continue;
+        // the tip (and a retreating tail) sit exactly where they should, between stored points, so slow motion glides instead of hopping a point at a time
+        let s = P.s[i], pt = P.pts[i], tipEnd = false;
+        if (s > h) { if (!i || P.s[i - 1] >= h) break; pt = lerpPt(P.pts[i - 1], pt, (h - P.s[i - 1]) / (s - P.s[i - 1])); s = h; tipEnd = true; }
+        if (s < cut) { const s1 = P.s[i + 1]; if (s1 == null || s1 <= cut) continue; pt = lerpPt(pt, P.pts[i + 1], (cut - s) / (s1 - s)); s = cut; }
         const behind = isOld ? 1e4 : h - s, isArc = i >= P.arc0 || (tr && !isOld), ue = clamp(s / P.entry, 0, 1), join = smooth(clamp((s - P.entry) / 120, 0, 1));
         // arm (entry) stays like a tentacle while travelling, then retracts
         const tailP = -160 + (P.entry + 160) * fin; let a = isArc || tr ? 1 : clamp((s - tailP) / 160, 0, 1) * clamp(1 - Math.max(0, behind - P.entry * .9) / 200, 0, 1);
@@ -671,7 +675,8 @@ class Component extends DCLogic {
         if (L.page) a = Math.min(1, a / .94) * (.62 + .38 * Math.pow(clamp(1 - (h - s) / 900, 0, 1), 1.2));
         else if (!L.keep && isArc) { const nh = smooth(clamp(1 - (h - s) / 220, 0, 1)); a *= (.72 + .28 * Math.pow(.5 + .5 * Math.sin(s * .006 + P.ph * 2.3), 1.5)) * (1 - nh) + nh; }
         if (!L.keep && !isOld) { const nh = smooth(clamp(1 - (h - s) / 90, 0, 1)), wb = (L.w || 8) * .55; if (w < wb) w += (wb - w) * nh; }
-        pts.push(P.pts[i]); ws.push(w); as.push(clamp(a, 0, 1) * .94); zs.push(z); ss.push(s); dry.push(dr);
+        pts.push(pt); ws.push(w); as.push(clamp(a, 0, 1) * .94); zs.push(z); ss.push(s); dry.push(dr);
+        if (tipEnd) break;
       }
       const n = pts.length; if (n < 2) continue;
       if (!isOld) { this.heads = this.heads || {}; this.heads[L.keep ? 'ink' : L.page || 'c' + LINES.indexOf(L)] = { p: pts[n - 1], a: as[n - 1], w: ws[n - 1], col: L.col, t: T, set: smooth(clamp((T - tEnd + .4) / 1.0, 0, 1)) }; }
@@ -706,7 +711,9 @@ class Component extends DCLogic {
       const hh = h0 + (len - h0) * (X.f0 != null ? .65 * easeIO(kx) + .35 * (1 - Math.pow(1 - kx, 2)) : 1 - Math.pow(1 - kx, 2.2)), col = `rgb(${X.col[0]},${X.col[1]},${X.col[2]})`;
       const P2 = [], W2 = [], A2 = [], Z2 = [], I2 = []; if (X.f0 != null && X.tA == null && hh >= sl[X.f0]) X.tA = G;
       for (let i = 0; i < all.length; i++) {
-        const sv = sl[i]; if (sv > hh) break; const inF = X.f0 != null && i >= X.f0 && i <= X.f1; if (!inF && sv < len * smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1))) continue;
+        let sv = sl[i], pt = all[i], tipEnd = false; const inF = X.f0 != null && i >= X.f0 && i <= X.f1, tailCut = len * smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1));
+        if (sv > hh) { if (!i || sl[i - 1] >= hh) break; pt = lerpPt(all[i - 1], pt, (hh - sl[i - 1]) / (sv - sl[i - 1])); sv = hh; tipEnd = true; }
+        if (!inF && sv < tailCut) { const s1 = sl[i + 1]; if (s1 == null || s1 <= tailCut) continue; pt = lerpPt(pt, all[i + 1], (tailCut - sv) / (s1 - sv)); sv = tailCut; }
         const behind = hh - sv, onW = X.f0 != null ? inF : i >= sw, onC = i < nC, u = clamp((sv - s0) / (swL - s0), 0, 1);
         const z = onW || onC ? .05 : Math.min(X.f0 != null ? .3 : 9, -.7 + 1.9 * Math.pow(Math.sin(Math.PI * u), 1.2));
         const sc = Math.pow(3.4, z), tip = Math.sqrt(clamp(behind / 26, .04, 1)), blend = X.f0 != null ? (onW ? 1 : smooth(clamp(1 - Math.min(Math.abs(i - X.f0), Math.abs(i - X.f1)) / 10, 0, 1))) : smooth(clamp((sv - swL + 160) / 160, 0, 1));
@@ -715,7 +722,8 @@ class Component extends DCLogic {
         if (!onW && blend > 0) a = a * (1 - blend) + X.ta * blend * clamp(1 - behind / TLx, .4, 1);
         if (X.ink && !onW) a = Math.min(1, a * 1.1);
         if (onC && X.circW && X.circW[i] < .2) a = 0;
-        P2.push(all[i]); W2.push(w); A2.push(a); Z2.push(z + (onW ? -2 : 0)); I2.push(i);
+        P2.push(pt); W2.push(w); A2.push(a); Z2.push(z + (onW ? -2 : 0)); I2.push(i);
+        if (tipEnd) break;
       }
       const n2 = P2.length;
       for (let i = 0; i < n2 - 1; i++) {
@@ -739,7 +747,8 @@ class Component extends DCLogic {
     }
 
     // each line is filled as one shape per opacity level (nested, stacked), so it never overlaps itself or seams; lines then blend translucently with each other
-    let sig = quads.length; for (let i = 0; i < quads.length; i += 7) { const Q = quads[i]; sig = (sig * 31 + Math.round(Q.a * 997) + Math.round(Q.q[0][0] * 8) * 3 + Math.round(Q.q[0][1] * 8) * 7 + Math.round(Q.q[2][0] * 8) * 11) % 2147483647; }
+    // signature of every piece of paint: if a slow-moving tip were missed, the frame would be reused and the tip would hop when it was noticed
+    let sig = quads.length; for (let i = 0; i < quads.length; i++) { const Q = quads[i]; sig = (sig * 31 + Math.round(Q.a * 997) + Math.round(Q.q[0][0] * 8) * 3 + Math.round(Q.q[0][1] * 8) * 7 + Math.round(Q.q[2][0] * 8) * 11) % 2147483647; }
     const cvs0 = ctx.canvas; if (!this.strokeC) this.strokeC = document.createElement('canvas'); const scv = this.strokeC; const sizeOk = scv.width === cvs0.width && scv.height === cvs0.height; if (!sizeOk) { scv.width = cvs0.width; scv.height = cvs0.height; }
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }

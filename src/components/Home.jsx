@@ -264,6 +264,8 @@ function shapeOf(name, cx, cy, R) {
     const IN = {
       enso: [{ li: 6, f: [Math.cos(3.3), Math.sin(3.3)], t: [Math.cos(4.0), Math.sin(4.0)], e: [-.24, -.42] }, { li: 5, f: [1, 0], t: [Math.cos(.62), Math.sin(.62)], e: [.38, .26] }],
       spiral: [.4, .58, .74].map((u, k) => ({ li: 4 + k, f: spP(u - .07), t: spP(u), e: spP(u + .01, -.15) })),
+      // triskele: orange, green and purple each echo one arm on its inner side (the same curve, drawn in a little), ending well inside it
+      triskele: [[4, 1], [5, 2], [6, 0]].map(([li, k]) => ({ li, path: Array.from({ length: 31 }, (_, q) => { const u = .3 + q / 30 * .6, a = Math.PI / 2 + k * Math.PI * 2 / 3, th = a - 2.5 + u * 2.5, rr = (.08 + 1.05 * Math.pow(u, .9)) * .78; return [Math.cos(th) * rr, Math.sin(th) * rr]; }) })),
       // triforce: each small triangle gets its own pattern. Orange spirals in to the heart of the top one, green zigzags along the
       // left one's base like a row of little peaks, purple traces a smaller triangle inside the right one
       triforce: [{ li: 4, path: Array.from({ length: 49 }, (_, q) => { const u = q / 48, a = -Math.PI / 2 + u * Math.PI * 2 * 1.4, r = .24 * (1 - .9 * u); return [Math.cos(a) * r, -.36 + Math.sin(a) * r]; }) },

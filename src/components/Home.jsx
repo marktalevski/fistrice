@@ -15,19 +15,20 @@ const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionS
 // the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
 const PHI = (1 + Math.sqrt(5)) / 2;
 const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
-// a small wave: water runs in flat from the left (x0, y0), rises up the wave's back and rolls over the crest into a golden spiral that tightens
-// clockwise into its centre (dot), like the big curl. The spiral takes over MINI_BACK turns before the top of the crest; the back is a smooth curve
-// that leaves the water level and meets the spiral exactly along its own direction, so there is no kink where the two join
-const MINI_BACK = .22;
-const miniC = (x0, y0, w, h, o = {}) => { const r = (o.rf ?? .5) * h; return [[x0 + w - r, y0 - h + r], r]; };
-const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, o), tn = o.turns ?? 1.05, out = [];
-  const a0 = -Math.PI / 2 - MINI_BACK * Math.PI * 2, r0 = r * Math.pow(PHI, 4 * MINI_BACK), k = Math.log(PHI) / (Math.PI / 2);
-  const S = [C[0] + Math.cos(a0) * r0, C[1] + Math.sin(a0) * r0], tx = -k * Math.cos(a0) - Math.sin(a0), ty = -k * Math.sin(a0) + Math.cos(a0), tl = Math.hypot(tx, ty);
-  const B = [x0, y0], d = Math.hypot(S[0] - B[0], S[1] - B[1]), C1 = [B[0] + d * .55, B[1]], C2 = [S[0] - tx / tl * d * .35, S[1] - ty / tl * d * .35];
-  for (let q = 0; q <= 20; q++) { const u = q / 20, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, e = u ** 3; out.push([a * B[0] + b * C1[0] + c * C2[0] + e * S[0], a * B[1] + b * C1[1] + c * C2[1] + e * S[1]]); }
-  for (const p of goldSpiral(C, r0, a0, MINI_BACK + tn, 44)) out.push(p); return out; };
-const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
-  [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
+// a small wave, drawn from Mark's sketch, in its own units (crest top at 0,0, the wave 1 tall): a long flat run-in along the water with a
+// slight dip, an S-shaped rise up the back to the crest, then a round golden-spiral curl (radius MINI_R) into the centre dot
+const MINI_BACK = [[-2.4, 1.0], [-2.1, 1.02], [-1.8, 1.04], [-1.45, .92], [-1.05, .64], [-.65, .3], [-.3, .07], [0, 0]], MINI_R = .34;
+// how much bigger than its WAVES box a small wave is drawn, so its curl reads clearly round the dot
+const MINI_GROW = 1.9;
+// scale s and crest top T so the wave starts at (x0, y0) on the water and fits width w and height h
+const miniFit = (x0, y0, w, h) => { const b = MINI_BACK[0], s = Math.min(w / (-b[0] + MINI_R), h / b[1]) * MINI_GROW; return [s, [x0 - b[0] * s, y0 - b[1] * s]]; };
+const miniC = (x0, y0, w, h) => { const [s, T] = miniFit(x0, y0, w, h); return [[T[0], T[1] + MINI_R * s], MINI_R * s, s]; };
+const miniWave = (x0, y0, w, h, o = {}) => { const [s, T] = miniFit(x0, y0, w, h), [C, r] = miniC(x0, y0, w, h), out = [];
+  cat(MINI_BACK.map(p => [T[0] + p[0] * s, T[1] + p[1] * s]), 6, (x, y) => out.push([x, y]));
+  for (const p of goldSpiral(C, r, -Math.PI / 2, o.turns ?? .9, 44)) out.push(p); return out; };
+// [line, start x, start y (on the water), width, height, options] in unit coordinates; li 3 (blue) rides the big wave instead
+const WAVES = [[1, -2.85, 1.34, .6, 1, {}], [3, -1.6, .66, 1.6, 1.0, {}], [2, 1.3, 1.85, .75, 1, {}],
+  [4, -1.55, 1.85, .72, 1, {}], [5, .05, 1.45, .66, 1, {}], [6, 1.3, .35, .58, 1, {}]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
 // hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.
@@ -301,7 +302,7 @@ function shapeOf(name, cx, cy, R) {
   const lTip = (a, Lp) => [cx + Math.sin(a) * (Lp + .12) * R, cy + (.55 - Math.cos(a) * (Lp + .12)) * R];
   const wEnd = li => { const W0 = WAVES.find(v => v[0] === li), p = li === 3 ? blueRide : miniWave(...W0.slice(1)), e = p[p.length - 1]; return [cx + e[0] * R, cy + e[1] * R]; };
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
-        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R, cy + bookRowY(1.15, .5) * R],
+        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, -1.3, -2.3, -4, 1.04) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R, cy + bookRowY(1.15, .5) * R],
         // labels sit just outside the pages, level with their dots (32 px gap plus half the label's width)
         labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };

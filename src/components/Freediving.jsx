@@ -3,6 +3,8 @@
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 
+// the rope down from the buoy, wide enough for its twist to show
+const ROPE_W = 3.6;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = x => x * x * (3 - 2 * x);
 const fmt = iso => { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
@@ -106,6 +108,21 @@ class Component extends DCLogic {
     for (let i = 1; i < n; i++) ctx.lineTo(Lp[i][0], Lp[i][1]);
     for (let i = n - 1; i >= 0; i--) ctx.lineTo(Rp[i][0], Rp[i][1]);
     ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  // the rope's lay: thin slanted gaps between its strands, where the water shows through, so it reads as twisted rope rather than a line.
+  // They sit inside the rope's own width (which swells and thins like the brush), and after the drop-in they spread down from the buoy
+  ropeTwist(ctx, o, a0, a1, LS) {
+    if (this.twistT0 == null) this.twistT0 = this.rt || 0;
+    const reach = ((this.rt || 0) - this.twistT0 - .15) * 650, P = 5.5, SL = 1.3; if (reach <= 0) return;
+    ctx.lineWidth = .9; ctx.lineCap = 'round';
+    for (let y = a0 + ((P - ((a0 - o.y) % P)) % P); y < a1; y += P) {
+      const k = smooth(clamp((reach - (y - LS)) / 90, 0, 1)); if (k <= 0) break;
+      const wy = y - o.y, hw = ROPE_W * (.84 + .16 * Math.sin(wy * .045) + .1 * Math.sin(wy * .011 + 2)) / 2 - .45, x = o.x + Math.sin(wy * .02) * .7;
+      ctx.globalAlpha = .6 * k; ctx.strokeStyle = css(this.waterAt(this.yToM(wy)));
+      ctx.beginPath(); ctx.moveTo(x - hw, y + hw * SL); ctx.lineTo(x + hw, y - hw * SL); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   }
 
   cu(k) { const r = { r: [.02, .24], g: [.16, .44], b: [.36, .66], y: [.58, .88] }[k], f = this.cf || 0; return smooth(clamp((f - r[0]) / (r[1] - r[0]), 0, 1)); }
@@ -564,16 +581,15 @@ class Component extends DCLogic {
     const bob = Math.sin(t * 1.3) * 2, BS = clamp(W / 900, .75, 1), BY = sy + this.waveY(0, 0, t) - 2 + bob, LS = BY + 12 * BS;
     if (intro) {
       const d = smooth(clamp((T - 1.9) / 1.3, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - 1.6) / .4, 0, 1));
-      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin(y * .02) * .7, y]); pts.push([o.x, end]); this.brush(ctx, pts, 2.8, .9, 0, true, d < 1, '#141414'); }
+      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W, .9, LS - o.y, false, d < 1, '#141414'); }
       if (drop > 0) { this.buoyPos = [o.x, BY - (1 - drop) * 60, BS * drop]; this.drawBuoy(ctx, o.x, BY - (1 - drop) * 60, BS * drop, t); }
     } else {
       const a0 = Math.max(LS, -20), a1 = Math.min(o.y + this.lineEnd, H + 20);
-      if (a1 > a0) { for (let ya = a0; ya < a1; ya += 18) { const yb = Math.min(a1, ya + 19), pts = []; for (let y = ya; y <= yb; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((yb - o.y) * .02) * .7, yb]); this.brush(ctx, pts, 2.8, .9, ya - o.y, false, false, this.ropeInk((ya + yb) / 2 - o.y)); } }
-      if (a1 > a0) {
-        ctx.lineWidth = 1; ctx.globalAlpha = .5;
-        for (let y = a0 + ((9 - ((a0 - o.y) % 9)) % 9); y < a1; y += 9) { ctx.strokeStyle = this.ropeInk(y - o.y); ctx.beginPath(); ctx.moveTo(o.x - 2.2, y - 2); ctx.lineTo(o.x + 2.2, y + 2); ctx.stroke(); }
-        ctx.globalAlpha = 1;
-      }
+      // one stroke, its ink changing with depth through a gradient (drawn in pieces, every join showed as a dark band across the rope)
+      if (a1 > a0) { const pts = [], gr = ctx.createLinearGradient(0, a0, 0, a1); for (let y = a0; y < a1; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((a1 - o.y) * .02) * .7, a1]);
+        for (let y = a0; y < a1 + 18; y += 18) { const yy = Math.min(y, a1); gr.addColorStop((yy - a0) / (a1 - a0), this.ropeInk(yy - o.y)); }
+        this.brush(ctx, pts, ROPE_W, .9, a0 - o.y, false, false, gr); }
+      if (a1 > a0) this.ropeTwist(ctx, o, a0, a1, LS);
       { const pz = this.pos, nowT = performance.now(), dtT = Math.min(.05, (nowT - (this.tailT || nowT)) / 1000); this.tailT = nowT;
         const head = Math.max(0, al), dA = head - (this.prevAl ?? head); this.prevAl = head; const kk = 1 - Math.exp(-dtT * 3.5);
         if (Math.abs(dA) > .3) { const nd = dA > 0 ? 1 : -1; if (nd !== this.ropeDir) { this.ropeDir = nd; this.tailW = head; } }

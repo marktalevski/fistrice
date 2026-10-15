@@ -48,6 +48,12 @@ const SEAL_SQ = (() => { const X = SEAL.x, Y = SEAL.y, e = .05; return [[-X, -Y]
 const EGG_WOB = a => 1 + .06 * Math.sin(a * 3 + .6) + .07 * Math.sin(a * 5 + 2.1) + .025 * Math.sin(a * 9 + .4);
 const eggWhite = (a, k) => { const rr = EGG_WOB(a) * k; return [Math.cos(a) * 1.3 * rr, .02 + Math.sin(a) * .86 * rr]; };
 const eggArc = (a0, a1, k, n = 40) => Array.from({ length: n + 1 }, (_, q) => eggWhite(a0 + (a1 - a0) * q / n, k));
+// a point in a fin's own frame (the longfins symbol: fin centred at sx, tilted by rot) placed on the symbol
+const finPt = (sx, rot, [x, y]) => [sx + x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)];
+// a wisp of steam rising from y0 to y1 at x, swaying more as it rises
+const wisp = (x, y0, y1, amp, ph) => Array.from({ length: 13 }, (_, q) => { const u = q / 12; return [x + amp * Math.sin(u * Math.PI * 2.2 + ph) * (.35 + .65 * u), y0 + (y1 - y0) * u]; });
+// the plane's wind: a wavy stream blowing back off a wingtip (sd -1 port, 1 starboard), in the plane's tilted frame
+const planeWind = (sd, ph) => Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = sd * (1.27 + .13 * u + .05 * Math.sin(u * Math.PI * 3 + ph) * u), y = .33 + .8 * u; return [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2]; });
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -226,6 +232,8 @@ function shapeOf(name, cx, cy, R) {
       const pt = q => { const th = q / 40 * Math.PI * 2, r = .022 + .055 * Math.abs(Math.cos(2.5 * th)); return [b[0] + Math.cos(th) * r, b[1] + Math.sin(th) * r]; };
       if (k) { const p0 = lp[lp.length - 1], s0 = pt(0); lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(s0[0], s0[1], t); }
       for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : .75); } });
+    // after the last blossom, red carries on as a little twig out to the Sound dot
+    [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, .75));
     colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
     st = [-.2, 1.42];
   }
@@ -271,24 +279,32 @@ function shapeOf(name, cx, cy, R) {
         path.push([B[0] + d[0] * (Lp + .12), B[1] + d[1] * (Lp + .12)]); return { li, path }; }).concat([{ li: 6, path: [[0, .6], [.01, .8], [.03, 1.0], [.02, 1.2], [-.02, 1.38]] }]),
       camera: [{ li: 4, f: [-.26, .15], t: [0, -.11], e: [0, .15] }, { li: 5, f: [-.75, -.45], t: [-.5, -.72], e: [-.45, -.58] }, { li: 6, f: [.55, -.45], t: [1.2, -.42], e: [.95, -.22] }],
       // spring: purple sprouts its own small twig to the upper left instead of ending at the top-right twig tip beside the black ink dot
-      spring: [{ li: 4, f: [-.55, -.2], t: [-.36, -.66], e: [-.31, -.8] }, { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, path: [[.66, -.2], [.62, -.45], [.52, -.66], [.38, -.84]] }],
       octopus: [arm(-1, 1.15, 0, 3), arm(-1, .55, 1, 4), arm(1, .55, 1, 5), arm(1, 1.15, 0, 6)],
       wave: WAVES.map(([li, x0, y0, w, h, o]) => ({ li, path: li === 3 ? blueRide : miniWave(x0, y0, w, h, o) })),
       egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, 
         // orange runs inside the white along its top, green inside it along the bottom, purple circles outside the yolk; each ends well apart
         { li: 4, path: eggArc(Math.PI * .97, Math.PI * 1.8, .78) }, { li: 5, path: eggArc(Math.PI * .22, Math.PI * .8, .84) },
         { li: 6, path: Array.from({ length: 49 }, (_, q) => { const a = -Math.PI * .08 + q / 48 * Math.PI * 1.1; return [.18 + Math.cos(a) * .66, -.12 + Math.sin(a) * .56]; }) }],
-      // mountain: red circles the sun on its own; blue is a river winding down from the saddle, orange a second halo round the sun,
-      // purple a far ridge behind the left slope
-      mountain: [{ li: 3, path: [[-.08, -.5], [-.17, -.24], [.05, .02], [-.13, .3], [.08, .56], [.02, .86]] },
+      // mountain: red circles the sun on its own; orange is a second halo round it. Yellow is the snow line under the summit, blue a river
+      // winding down from where the snow melts, purple a gull gliding in the sky to the left
+      mountain: [{ li: 2, path: [[-.4, -.44], [-.29, -.35], [-.18, -.45], [-.06, -.34], [.06, -.45], [.17, -.35], [.28, -.44], [.36, -.4]] },
+        { li: 3, path: [[-.17, -.26], [.05, .02], [-.13, .3], [.08, .56], [.02, .86]] },
         { li: 4, path: Array.from({ length: 25 }, (_, q) => { const a = 2.25 + q / 24 * 2.6; return [.98 + Math.cos(a) * .44, -.62 + Math.sin(a) * .44]; }) },
-        { li: 6, path: [[-1.95, .5], [-1.72, .29], [-1.55, .4], [-1.34, .13], [-1.16, .3], [-1.0, .25]] }],
+        { li: 6, path: [[-1.66, -.96], [-1.54, -1.05], [-1.42, -1.0], [-1.33, -.92], [-1.24, -1.0], [-1.12, -1.06], [-.99, -.98]] }],
+      // onsen: orange, green and purple are wisps of steam rising out of the bath beside the black ones
+      onsen: [{ li: 4, path: wisp(-.78, .36, -.36, .07, .3) }, { li: 6, path: wisp(-.21, .3, -.42, .05, 2.1) }, { li: 5, path: wisp(.79, .36, -.36, .07, 4.0) }],
+      // spring: red draws the blossoms (see the shape), blue rides the drooping branch to its tip, yellow the upright branch, orange its own twig in the open on the left
+      spring: [{ li: 3, path: [[-1.31, .08], [-1.37, .45], [-1.24, .82], [-.9, 1.03], [-.66, 1.11]] }, { li: 2, path: [[-.58, 0], [-.43, -.4], [-.31, -.7], [-.27, -.84]] },
+        { li: 4, path: [[-1.58, -.04], [-1.67, -.3], [-1.66, -.52], [-1.57, -.7]] },
+        { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, path: [[.66, -.2], [.62, -.45], [.52, -.66], [.38, -.84]] }],
       // plane: red and green are the navigation lights on the port and starboard wingtips; the others stream behind as contrails
       plane: (() => { const rot = ([x, y]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2], trail = (ex, L, ph) => Array.from({ length: 9 }, (_, q) => { const u = q / 8, ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08); return rot([ex + .03 * Math.sin(u * Math.PI * 2 + ph) * u, ey + .07 + L * u]); });
-        return [{ li: 1, path: [[.05, -.45], [-.45, -.63], [-.85, -.8], [-1.1, -.7]] }, { li: 5, path: [[.42, -.17], [.62, .25], [.79, .66], [.69, 1.08]] },
+        // red and green are the wind streaming back off the port and starboard wingtips
+        return [{ li: 1, path: planeWind(-1, .6) }, { li: 5, path: planeWind(1, 2.4) },
           { li: 2, path: trail(-.86, .9, .4) }, { li: 4, path: trail(-.48, .45, 1.6) }, { li: 6, path: trail(.48, .45, 2.9) }, { li: 3, path: trail(.86, .9, 4.1) }]; })(),
-      // longfins: orange, green and purple rise off the right fin's blade as bubble trails
-      longfins: [{ li: 5, path: [[1.0, .95], [1.08, .7], [1.02, .45], [1.1, .2]] }, { li: 4, path: [[1.08, 1.02], [1.2, .84], [1.16, .64]] }, { li: 6, path: [[.97, .9], [.93, .74], [.99, .6]] }],
+      // longfins: green runs down the left blade beside its rib, orange down the right blade beside its rib, purple down the outside of the right fin
+      longfins: [{ li: 5, path: [[.1, -.35], [.1, .1], [.1, .55], [.1, .95]].map(p => finPt(-.4, .16, p)) }, { li: 4, path: [[-.1, -.35], [-.1, .1], [-.1, .55], [-.1, .95]].map(p => finPt(.4, -.16, p)) },
+        { li: 6, path: [[.28, -.55], [.29, -.3], [.35, -.1], [.43, .5], [.47, .95], [.44, 1.12]].map(p => finPt(.4, -.16, p)) }],
       // hangul (마크, a name stamp): red cuts the stamp's square, clockwise from its top left corner (Sound's dot ends there); the others write
       // the letters over the red: purple ㅏ's upright, yellow its arm (Journal's dot at the tip), green ㅋ's top and side, orange ㅋ's middle bar
       // (right to left, so its dot sits clear of green), blue the ㅡ (Freediving's dot at its right end). Points close to each corner keep it square
@@ -320,7 +336,7 @@ function shapeOf(name, cx, cy, R) {
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
         return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, -1.3, -2.3, -4, 1.04) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R, cy + bookRowY(1.15, .5) * R],
         // labels sit just outside the pages, level with their dots (32 px gap plus half the label's width)
-        labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - SEAL.x * R, cy - (SEAL.y - .01) * R], journal: [cx + .74 * R, cy - .5 * R], freediving: [cx + .84 * R, cy + .76 * R],
+        labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R], journal: [cx + .36 * R, cy - .4 * R] } : name === 'spring' ? { sound: [cx + 1.64 * R, cy - .39 * R], journal: [cx - .27 * R, cy - .84 * R], freediving: [cx - .66 * R, cy + 1.11 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; const w = planeWind(-1, .6).pop(); return { sound: [cx + w[0] * R, cy + w[1] * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - SEAL.x * R, cy - (SEAL.y - .01) * R], journal: [cx + .74 * R, cy - .5 * R], freediving: [cx + .84 * R, cy + .76 * R],
         // labels sit just outside the stamp's right edge, clear of the letters
         labelAt: { journal: [cx + SEAL.x * R + 58, cy - .5 * R], freediving: [cx + SEAL.x * R + 74, cy + .76 * R] } } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
@@ -455,7 +471,7 @@ class Component extends DCLogic {
             const da2 = da - dS * .18, m = Math.max(2, Math.ceil(Math.abs(da2) / .05)), rEnd = best[2] - ringR(best[1]); for (let q = 1; q <= m; q++) { const u = q / m, a = aW + da2 * u, r = ringR(a) + rEnd * u; seg.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
           const sm = avg(avg(avg(seg, 3), 3), 3); sm[0] = e; sm[sm.length - 1] = E; for (let q = 1; q < sm.length; q++) arc.push(sm[q]); }
         for (let q = n0; q < arc.length; q++) { z.push(.3); cw.push(1); wl.push(1); } }
-      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'hangul' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'plane'))) {
+      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'hangul' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'plane' || this.shapeName === 'spring'))) {
         if (rev) { arc.reverse(); z.reverse(); cw.reverse(); wl.reverse(); }
         { const S0 = this.stations[L.page], lim = Math.floor(arc.length * .45); let popped = 0;
           while (arc.length > 12 && popped < lim) { const e1 = arc[arc.length - 1], p1 = arc[arc.length - 5], tx = e1[0] - p1[0], ty = e1[1] - p1[1], tl = Math.hypot(tx, ty) || 1, sx = S0[0] - e1[0], sy = S0[1] - e1[1], sl = Math.hypot(sx, sy) || 1;

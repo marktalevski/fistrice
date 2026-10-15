@@ -30,7 +30,7 @@ const miniWave = (x0, y0, w, h, o = {}) => { const [s, T] = miniFit(x0, y0, w, h
   for (const p of goldSpiral(C, r, -Math.PI / 2, WAVE_TURNS, 44)) out.push(p); return out; };
 // [line, start x, start y (on the water), width, height, options] in unit coordinates; li 3 (blue) rides the big wave instead
 // the small waves sit in one row under the big one, evenly spaced and alternately high and low (blue rides the big wave)
-const WAVES = [[3, -1.6, .66, 1.6, 1.0, {}], ...[1, 4, 5, 2, 6].map((li, k) => [li, -2.85 + k * 1.1, k % 2 ? 1.85 : 1.55, .6, 1, {}])];
+const WAVES = [[3, -1.6, .66, 1.6, 1.0, {}], ...[1, 4, 5, 2, 6].map((li, k) => [li, -2.25 + k * .85, k % 2 ? 1.74 : 1.52, .6, 1, {}])];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
 // hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.

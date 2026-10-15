@@ -226,10 +226,11 @@ function shapeOf(name, cx, cy, R) {
       [[-.7, 1.15, t], [-.62, .02, t]], [[-.62, .02, .7], [-.46, -.4, .45], [-.34, -.7, .22]],
       [[-.34, -.7, t], [.3, .04, t]], [[.3, .04, .6], [.58, .24, .38], [.9, .3, .22]],
       [[.9, .3, t], [.62, -.12, t]], [[.62, -.12, .55], [.72, -.55, .35], [.86, -.9, .22]]]);
-    // cherry petals, brushed by the red line: some resting along the branches, some drifting down through the air below them.
-    // [centre x, y, angle, size] in unit coordinates, in the order the brush visits them (left to right, ending by the twig)
-    const PET = [[-1.47, .48, .5, 1], [-1.05, .56, 2.9, .9], [-1.02, -.2, 2.1, 1.05], [-.7, .8, .9, .85], [-.52, -.47, 1.2, 1], [-.35, .42, 5.0, .9],
-      [-.3, -.8, 3.6, .95], [.05, .02, .8, 1.05], [.25, .63, 1.5, .85], [.6, .28, 2.6, 1], [.66, -.38, 1.9, .95], [.76, -.62, 4.4, 1], [.86, .8, 3.3, .8], [1.2, -.33, .3, 1]];
+    // cherry petals, brushed by the red line: most resting along the branches, a few drifting in the air below them.
+    // [centre x, y, angle, size] in unit coordinates; the brush visits them left to right and ends on the petal by the twig
+    const PET = [[-1.76, .03, 2.6, .95], [-1.45, .5, .5, 1], [-1.2, .95, 1.9, .95], [-1.05, -.17, 2.1, 1.05], [-.95, .5, 2.9, .85], [-.85, 1.12, .2, .9],
+      [-.55, -.4, 1.2, 1], [-.5, .1, 4.0, .95], [-.3, -.8, 3.6, .95], [-.2, .6, 1.5, .85], [.05, .02, .8, 1.05], [.42, .17, 2.4, .95], [.55, .75, 3.3, .8],
+      [.6, .28, 2.6, 1], [.68, -.38, 1.9, .95], [.76, -.62, 4.4, 1], [.95, -.2, 5.2, .95], [1.2, -.33, .3, 1]];
     const lp = [], lq = (x, y, w) => lp.push([cx + x * R, cy + y * R, w]);
     PET.forEach(([x, y, a, sz], k) => { blooms.push([cx + x * R, cy + y * R]);
       // one petal in one movement of the brush: out from its narrow base along one side, round the notched tip and back along the other,
@@ -237,6 +238,8 @@ function shapeOf(name, cx, cy, R) {
       const L1 = .13 * sz, c = Math.cos(a), sn = Math.sin(a), bx = x - c * L1 / 2, by = y - sn * L1 / 2, at = (d, side) => [bx + c * d - sn * side, by + sn * d + c * side];
       // the brush lifts between petals: the lift is set a hair from the last mark, or resampling would drop it and fade the weight across the move
       if (k) { const p0 = lp[lp.length - 1]; lq((p0[0] - cx) / R + .002, (p0[1] - cy) / R, t); lq(bx - .002, by, t); }
+      // the brush sets down a little before the first petal, unseen, so that petal is already at full pressure
+      else { lq(bx - .28, by + .04, t); lq(bx - .002, by, t); }
       [[0, 0, .45], [.25, -.018, 1], [.58, -.026, 1.15], [.88, -.02, 1], [1, -.009, .85], [.9, 0, .75], [1, .009, .85], [.88, .018, 1], [.58, .024, 1.15], [.25, .016, 1], [.02, 0, .5]]
         .forEach(([u, sw, w]) => lq(...at(L1 * u, sw * sz), w)); });
     // after the last petal, red carries on as a little twig out to the Sound dot

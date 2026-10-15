@@ -38,10 +38,8 @@ const LINES = [
   { col: [22, 168, 82], w: 9, d: .85, spd: .97, u: .66 },
   { col: [138, 64, 214], w: 9, d: .95, spd: 1.02, u: .82 }
 ];
-// book: handwritten notes on the pages, each a pen line with a dot. Left page: the dot leads and the line runs right; right page: the line runs
-// right and ends in its dot. [dot x, y, other end x, colour, pen width] in unit coordinates
-const BOOK_NOTES = [[-1.17, -.345, -.37, [232, 80, 52], 2], [-1.16, 0, -.42, [0, 158, 224], 2], [-1.17, .35, -.36, [40, 190, 70], 5],
-  [1.16, -.31, .29, [214, 24, 128], 2], [1.15, -.03, .32, [255, 206, 0], 2], [1.14, .27, .41, [232, 34, 44], 2]];
+// book: [line, dot x, y, other end x] in unit coordinates
+const BOOK_NOTES = [[1, -1.17, -.345, -.37], [3, -1.16, 0, -.42], [5, -1.17, .35, -.36], [6, 1.16, -.31, .29], [2, 1.15, -.03, .32], [4, 1.14, .27, .41]];
 // spacing (px) a symbol's own coloured paths are resampled at before one round of smoothing; about 2.5 px between points once smoothed
 const CP_STEP = 5;
 const cat = (ctrl, n, push) => { for (let i = 0; i < ctrl.length - 1; i++) { const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)]; for (let j = 0; j < n; j++) { const t = j / n, t2 = t * t, t3 = t2 * t; push(.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), .5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)); } } const l = ctrl[ctrl.length - 1]; push(l[0], l[1]); };
@@ -229,13 +227,14 @@ function shapeOf(name, cx, cy, R) {
     const spP = (u, dr = 0) => { const r = 1.15 * Math.pow(1 - u, .8) + .04 + dr, th = Math.PI * .5 + u * Math.PI * 2 * 2.4; return [Math.cos(th) * r, Math.sin(th) * r]; };
     const pet = (a, Lp, wp, li) => { const B = [0, .55], d = [Math.sin(a), -Math.cos(a)], n = [Math.cos(a), Math.sin(a)]; return { li, f: [B[0] + d[0] * Lp * .4 - n[0] * wp * .8, B[1] + d[1] * Lp * .4 - n[1] * wp * .8], t: [B[0] + d[0] * Lp, B[1] + d[1] * Lp], e: [B[0] + d[0] * (Lp + .16), B[1] + d[1] * (Lp + .16)] }; };
     const arm = (sd, spread, inner, li) => { const b0 = sd * .22 * (inner ? .5 : 1), ex = b0 + sd * spread; return { li, f: [b0 + sd * spread * .6, .3], t: [ex, 1.0], e: [ex - sd * .27, 1.03] }; };
-    const scrib = (() => { const o = []; [[-.3, 1.06, 1], [-.06, 1.0, -1], [.18, .8, 1]].forEach(([y, xe, d]) => { const n = Math.round((xe - .28) / .04); for (let k = 0; k <= n; k++) { const x = d > 0 ? .28 + k * .04 : xe - k * .04; o.push([x, y + .018 * Math.sin(x * 26)]); } }); return o; })();
     const IN = {
       enso: [{ li: 6, f: [Math.cos(3.3), Math.sin(3.3)], t: [Math.cos(4.0), Math.sin(4.0)], e: [-.24, -.42] }, { li: 5, f: [1, 0], t: [Math.cos(.62), Math.sin(.62)], e: [.38, .26] }],
       spiral: [.4, .58, .74].map((u, k) => ({ li: 4 + k, f: spP(u - .07), t: spP(u), e: spP(u + .01, -.15) })),
       triforce: [{ li: 4, f: [-.32, -.08], t: [.3, -.08], e: [0, -.36] }, { li: 5, f: [-.9, .82], t: [-.25, .82], e: [-.525, .5] }, { li: 6, f: [.62, .1], t: [.92, .6], e: [.525, .5] }],
       gameboy: [{ li: 4, path: [[-.42, -.22], [-.3, -.3], [-.18, -.44], [-.02, -.56]] }, { li: 5, path: [[.8, -.05], [.72, .1], [.6, .2], [.47, .27]] }, { li: 6, path: [[.62, .72], [.48, .62], [.32, .52], [.21, .45]] }],
-      book: [{ li: 5, path: scrib }, { li: 6, path: [[.1, -.66], [.13, -.3], [.1, .1], [.13, .5], [.18, .85], [.27, 1.04]] }],
+      // book: the coloured lines are handwritten notes. Left page: red, blue, green, each written towards its dot on the left;
+      // right page: purple, yellow, orange, each written out to its dot on the right
+      book: BOOK_NOTES.map(([li, dx, y, ex], i) => ({ li, path: Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = ex + (dx - ex) * u; return [x, y + .014 * Math.sin(u * 19 + i * 1.7) + .008 * Math.sin(u * 47 + i)]; }) })),
       coffee: [{ li: 4, path: [[-.66, -.4], [-.3, -.49], [.15, -.5], [.58, -.43]] }, { li: 5, path: [[-.8, -.02], [-.66, .28], [-.4, .48], [-.08, .57]] }, { li: 6, path: [[.62, -.24], [.4, -.27], [.2, -.3], [.06, -.33]] }],
       headphones: [[1, -.72, 1], [2, .72, -1]].map(([li, x, sd]) => { const path = []; for (let q = 0; q <= 16; q++) { const u = q / 16, a = -Math.PI / 2 - sd * u * Math.PI * 1.7, r = .17 * (1 - .9 * u); path.push([x + Math.cos(a) * r, .35 + Math.sin(a) * r * 1.5]); } return { li, path }; }),
       maple: (() => { const vp = (li, ctrl) => { const o = []; cat(ctrl, 10, (x, y) => o.push([x, y])); return { li, path: o }; };
@@ -286,7 +285,7 @@ function shapeOf(name, cx, cy, R) {
   const lTip = (a, Lp) => [cx + Math.sin(a) * (Lp + .12) * R, cy + (.55 - Math.cos(a) * (Lp + .12)) * R];
   const wEnd = li => { const W0 = WAVES.find(v => v[0] === li), p = li === 3 ? blueRide : miniWave(...W0.slice(1)), e = p[p.length - 1]; return [cx + e[0] * R, cy + e[1] * R]; };
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
-        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'vinyl' ? (() => { const at = (a, r) => [cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R]; return { sound: at(Math.PI - .36, 1.2), freediving: at(.35 + .36, 1.2), journal: at(.35 + .36, 1.52) }; })() : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
+        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy - .345 * R], freediving: [cx - 1.16 * R, cy], journal: [cx + 1.15 * R, cy - .03 * R] } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R] } : name === 'vinyl' ? (() => { const at = (a, r) => [cx + Math.cos(a) * r * R, cy + Math.sin(a) * r * R]; return { sound: at(Math.PI - .36, 1.2), freediving: at(.35 + .36, 1.2), journal: at(.35 + .36, 1.52) }; })() : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; return { sound: [cx - 1.1 * R, cy - .7 * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
 }
 
@@ -419,7 +418,7 @@ class Component extends DCLogic {
             const da2 = da - dS * .18, m = Math.max(2, Math.ceil(Math.abs(da2) / .05)), rEnd = best[2] - ringR(best[1]); for (let q = 1; q <= m; q++) { const u = q / m, a = aW + da2 * u, r = ringR(a) + rEnd * u; seg.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
           const sm = avg(avg(avg(seg, 3), 3), 3); sm[0] = e; sm[sm.length - 1] = E; for (let q = 1; q < sm.length; q++) arc.push(sm[q]); }
         for (let q = n0; q < arc.length; q++) { z.push(.3); cw.push(1); wl.push(1); } }
-      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'mountain' || this.shapeName === 'vinyl' || this.shapeName === 'plane'))) {
+      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'vinyl' || this.shapeName === 'plane'))) {
         if (rev) { arc.reverse(); z.reverse(); cw.reverse(); wl.reverse(); }
         { const S0 = this.stations[L.page], lim = Math.floor(arc.length * .45); let popped = 0;
           while (arc.length > 12 && popped < lim) { const e1 = arc[arc.length - 1], p1 = arc[arc.length - 5], tx = e1[0] - p1[0], ty = e1[1] - p1[1], tl = Math.hypot(tx, ty) || 1, sx = S0[0] - e1[0], sy = S0[1] - e1[1], sl = Math.hypot(sx, sy) || 1;
@@ -569,22 +568,6 @@ class Component extends DCLogic {
     if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1;
     if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
     return true; }
-  // the book's notes write themselves in, left to right, one after another as the drawing finishes; they fade with the coloured lines on hover
-  bookNotes(ctx, gone) {
-    const { cx, cy, R } = this.geo, sc = R / 258, t0 = this.endOf(this.paths[0]) - 1.6, fade = Math.min(...[1, 2, 3, 4, 5, 6].map(li => this.fadeAt(li, .5)));
-    BOOK_NOTES.forEach(([dx, y, ex, col, w], i) => {
-      const k = smooth(clamp((this.T - t0 - i * .18) / .7, 0, 1)); if (k <= 0) return;
-      const left = dx < 0, x0 = Math.min(dx, ex), x1 = Math.max(dx, ex), r = rng(31 + i * 7), n = 36, pts = [];
-      for (let q = 0; q <= n; q++) { const u = q / n, x = x0 + (x1 - x0) * u, bump = r() < .12 ? (r() - .5) * .05 : 0; pts.push([cx + x * R, cy + (y + .006 * Math.sin(u * 23 + i) + bump + (r() - .5) * .008) * R]); }
-      const a = (1 - gone) * fade, c = 'rgb(' + col.join(',') + ')', m = Math.max(1, Math.round(k * n));
-      ctx.globalAlpha = .9 * a; ctx.strokeStyle = c; ctx.lineWidth = w * sc; ctx.lineCap = ctx.lineJoin = 'round';
-      ctx.beginPath(); for (let q = 0; q <= m; q++) q ? ctx.lineTo(pts[q][0], pts[q][1]) : ctx.moveTo(pts[0][0], pts[0][1]); ctx.stroke();
-      // the dot appears where the pen starts (left page) or where it finishes (right page)
-      const dk = left ? smooth(clamp(k / .25, 0, 1)) : smooth(clamp((k - .8) / .2, 0, 1));
-      if (dk > 0) { ctx.globalAlpha = a; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + dx * R, cy + y * R, 10.5 * sc * dk, 0, 6.2832); ctx.fill(); }
-    });
-    ctx.globalAlpha = 1;
-  }
   // x: 0 at the start of the visible stroke, 1 at its tail
   fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
@@ -785,7 +768,6 @@ class Component extends DCLogic {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);
-    if (this.shapeName === 'book' && !this.morph) this.bookNotes(ctx, gone);
     if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0, 1); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
 
     const bP = this.paths.find(P => P.L.page === 'freediving'), bEnd = bP.L.d + this.durOf(bP);

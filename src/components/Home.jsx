@@ -11,12 +11,15 @@ const INK = [20, 20, 20], BLUE = [24, 88, 224];
 const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionStorage.getItem('shape-seen') || '{}'); } catch (e) {}
   const opts = SHAPES.filter(x => x !== exclude), w = opts.map(x => 1 / Math.pow(1 + (seen[x] || 0), 2)), tot = w.reduce((a, b) => a + b, 0); let r = Math.random() * tot, k = 0; while (k < opts.length - 1 && (r -= w[k]) > 0) k++;
   const pick = opts[k]; seen[pick] = (seen[pick] || 0) + 1; try { sessionStorage.setItem('shape-seen', JSON.stringify(seen)); sessionStorage.setItem('home-shape', pick); } catch (e) {} return pick; };
-// a small breaking wave: low run-in, rise over the crest to a pointed lip that throws forward, then a quick hook back under into the barrel (dot)
-// a small breaking wave: low run-in, rise to the top of its crest, then a clockwise spiral that tightens to its centre (dot), like the blue curl
+// golden spiral: from the top of a circle of radius r0 round c (angle a0), turning clockwise, the radius shrinks by φ every quarter turn,
+// the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
+const PHI = (1 + Math.sqrt(5)) / 2;
+const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
+// a small breaking wave: low run-in, rise to the top of its crest, then a clockwise golden spiral that tightens to its centre (dot), like the big curl
 const miniC = (x0, y0, w, h, o = {}) => { const r = (o.rf ?? .5) * h; return [[x0 + w - r, y0 - h + r], r]; };
 const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, o), tn = o.turns ?? 1.05, out = [];
   cat([[x0, y0], [x0 + .45 * (C[0] - x0), y0 - .06 * h], [C[0] - 1.05 * r, C[1] + .25 * r], [C[0] - .55 * r, C[1] - .85 * r], [C[0], C[1] - r]], 8, (x, y) => out.push([x, y]));
-  for (let q = 1; q <= 44; q++) { const u = q / 44, a = -Math.PI / 2 + u * Math.PI * 2 * tn, rr = r * (1 - .62 * u); out.push([C[0] + Math.cos(a) * rr, C[1] + Math.sin(a) * rr]); } return out; };
+  for (const p of goldSpiral(C, r, -Math.PI / 2, tn, 44)) out.push(p); return out; };
 const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
@@ -78,7 +81,7 @@ const lerpPt = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
 const easeIO = k => .5 - .5 * Math.cos(Math.PI * k);
 // blue rides the big wave: up its back just inside the black line, over the crest, and curls into the heart of the curl
 const blueRide = (() => { const o = []; cat([[-1.05, .7], [-.62, .48], [-.3, .1], [-.06, -.3], [.2, -.57], [.48, -.66], [.72, -.63]], 10, (x, y) => o.push([x, y]));
-  const c = [.72, -.38]; for (let q = 1; q <= 40; q++) { const u = q / 40, a = -Math.PI / 2 + u * Math.PI * 2 * .92, r = .25 * (1 - .55 * u); o.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]); } return o; })();
+  for (const p of goldSpiral([.72, -.38], .25, -Math.PI / 2, .92, 44)) o.push(p); return o; })();
 const catW = (ctrl, n, w0, w1) => { const o = []; cat(ctrl, n, (x, y) => o.push([x, y])); return o.map((p, i) => [p[0], p[1], w0 + (w1 - w0) * i / Math.max(1, o.length - 1)]); };
 function shapeOf(name, cx, cy, R) {
   const blooms = [], colorPaths = {}, P = [], push = (x, y, w = 1) => P.push([cx + x * R, cy + y * R, w]), extra = [];
@@ -135,7 +138,8 @@ function shapeOf(name, cx, cy, R) {
   else if (name === 'wave') {
     const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
     const back = catW([[-1.9, .74], [-1.45, .7], [-1.0, .6], [-.6, .36], [-.3, -.02], [-.05, -.42], [.22, -.68], [.5, -.76], [.72, -.72]], 12, .7, 1.1), cur = [], c = [.72, -.38];
-    for (let q = 1; q <= 70; q++) { const u = q / 70, a = -Math.PI / 2 + u * TAU * 1.0, r = .34 * (1 - u * .62); cur.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 1.05 - .4 * u]); }
+    // the curl is a golden spiral round the heart of the wave
+    for (const p of goldSpiral(c, .34, -Math.PI / 2, 1.0, 70, u => 1.05 - .4 * u)) cur.push(p);
     const face = catW([[.56, .06], [.66, .34], [.9, .58], [1.3, .7], [1.9, .74]], 12, .95, .6);
     strokes([back, cur, hc(cur[cur.length - 1], face[0]), face]);
     st = [-.25, 1.25];

@@ -226,18 +226,20 @@ function shapeOf(name, cx, cy, R) {
       [[-.7, 1.15, t], [-.62, .02, t]], [[-.62, .02, .7], [-.46, -.4, .45], [-.34, -.7, .22]],
       [[-.34, -.7, t], [.3, .04, t]], [[.3, .04, .6], [.58, .24, .38], [.9, .3, .22]],
       [[.9, .3, t], [.62, -.12, t]], [[.62, -.12, .55], [.72, -.55, .35], [.86, -.9, .22]]]);
-    const B = [[-1.45, .5], [-1.12, .98], [-.75, 1.1], [-1.0, -.18], [-.5, -.45], [-.3, -.78], [.05, .04], [.6, .3], [.92, .24], [.75, -.6], [.66, -.36], [1.2, -.33]];
+    // cherry petals, brushed by the red line: some resting along the branches, some drifting down through the air below them.
+    // [centre x, y, angle, size] in unit coordinates, in the order the brush visits them (left to right, ending by the twig)
+    const PET = [[-1.47, .48, .5, 1], [-1.05, .56, 2.9, .9], [-1.02, -.2, 2.1, 1.05], [-.7, .8, .9, .85], [-.52, -.47, 1.2, 1], [-.35, .42, 5.0, .9],
+      [-.3, -.8, 3.6, .95], [.05, .02, .8, 1.05], [.25, .63, 1.5, .85], [.6, .28, 2.6, 1], [.66, -.38, 1.9, .95], [.76, -.62, 4.4, 1], [.86, .8, 3.3, .8], [1.2, -.33, .3, 1]];
     const lp = [], lq = (x, y, w) => lp.push([cx + x * R, cy + y * R, w]);
-    B.forEach((b, k) => { blooms.push([cx + b[0] * R, cy + b[1] * R]);
-      // one blossom, brushed as an ink painter does it: each petal in one movement, out from the heart along one side, round the notched rim
-      // and back along the other side, so the brush fills it; then a few short flicks for the stamens
-      const rot = k * 1.71, Lp = .1, at = (a, d, side = 0) => [b[0] + Math.cos(a) * d - Math.sin(a) * side, b[1] + Math.sin(a) * d + Math.cos(a) * side];
-      if (k) { const p0 = lp[lp.length - 1]; lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(b[0], b[1], t); }
-      for (let i = 0; i < 5; i++) { const a = rot + i * Math.PI * 2 / 5, L1 = Lp * (.92 + .12 * Math.sin(k * 3.1 + i * 2.3)), sd = .008 * Math.sin(k + i);
-        [[.01, 0, .5], [.3, -.026, 1], [.62, -.034, 1.1], [.9, -.026, 1], [1, -.012, .9], [.88, 0, .8], [1, .012, .9], [.9, .026, 1], [.62, .034, 1.1], [.3, .026, 1], [.02, 0, .6]]
-          .forEach(([u, sw, w]) => lq(...at(a, L1 * u, sw + sd * Math.sin(Math.PI * u)), w)); }
-      for (let i = 0; i < 5; i++) { const a = rot + .63 + i * Math.PI * 2 / 5; lq(...at(a, .004), .3); lq(...at(a, .03), .36); lq(...at(a, .03), t); lq(b[0], b[1], t); } });
-    // after the last blossom, red carries on as a little twig out to the Sound dot
+    PET.forEach(([x, y, a, sz], k) => { blooms.push([cx + x * R, cy + y * R]);
+      // one petal in one movement of the brush: out from its narrow base along one side, round the notched tip and back along the other,
+      // so the brush fills it. It is a little cupped, so one side bows more than the other
+      const L1 = .13 * sz, c = Math.cos(a), sn = Math.sin(a), bx = x - c * L1 / 2, by = y - sn * L1 / 2, at = (d, side) => [bx + c * d - sn * side, by + sn * d + c * side];
+      // the brush lifts between petals: the lift is set a hair from the last mark, or resampling would drop it and fade the weight across the move
+      if (k) { const p0 = lp[lp.length - 1]; lq((p0[0] - cx) / R + .002, (p0[1] - cy) / R, t); lq(bx - .002, by, t); }
+      [[0, 0, .45], [.25, -.018, 1], [.58, -.026, 1.15], [.88, -.02, 1], [1, -.009, .85], [.9, 0, .75], [1, .009, .85], [.88, .018, 1], [.58, .024, 1.15], [.25, .016, 1], [.02, 0, .5]]
+        .forEach(([u, sw, w]) => lq(...at(L1 * u, sw * sz), w)); });
+    // after the last petal, red carries on as a little twig out to the Sound dot
     [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, 1));
     colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
     st = [-.2, 1.42];
@@ -814,12 +816,17 @@ class Component extends DCLogic {
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }
     const groups = new Map();
-    // spring's red brushes the cherry blossoms: the petals take blossom pink, the hearts and stamens a deep rose, and the twig out to the
-    // Sound dot stays red. Each colour is its own paint group, all over the other lines
+    // spring's red brushes the cherry petals: they take blossom pink, every other one paler, and the twig out to the Sound dot stays red.
+    // Each colour is its own paint group, all over the other lines
     const bloomR = this.blooms && this.blooms.length && topPid != null ? this.geo.R : 0;
     for (const Q of quads) { let k = Q.pid ?? 'u', col = Q.col, top = 0;
+      // the faint wash that softening leaves along the brush's unseen moves between petals would show as stalks once boosted: skip it
+      if (bloomR && k === topPid && Q.a < .2) continue;
       if (k === topPid) { top = 10; if (bloomR) { const m = Q.q[2] || Q.q[0], qx = (Q.q[0][0] + m[0]) / 2, qy = (Q.q[0][1] + m[1]) / 2; let d = 1e9; for (const b of this.blooms) d = Math.min(d, Math.hypot(b[0] - qx, b[1] - qy)); d /= bloomR;
-        if (d < .135) { const heart = d < .027; k = topPid + (heart ? ':h' : ':p'); col = heart ? 'rgb(196,38,88)' : 'rgb(242,150,182)'; top = heart ? 10.2 : 10.1; } } }
+        // just past a petal's rim is only the brush's unseen move leaving it: drop that wash (the twig, beyond the last petal, stays)
+        if (d > .074 && d < .2 && qx < this.blooms[this.blooms.length - 1][0] + bloomR * .05) continue;
+        if (d < .135) { let bi = 0, bd = 1e18; this.blooms.forEach((b, n) => { const e = (b[0] - qx) ** 2 + (b[1] - qy) ** 2; if (e < bd) { bd = e; bi = n; } }); const pale = bi % 2;
+          k = topPid + (pale ? ':a' : ':b'); col = pale ? 'rgb(246,174,198)' : 'rgb(236,128,164)'; top = 10.1; } } }
       let g = groups.get(k); if (!g) { g = { col, ink: !!Q.ink, top, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
     const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top || a.zs / a.n) - (b.ink ? -10 : b.top || b.zs / b.n));
     // each line: an opacity mask built with max-blending (overlaps keep the strongest value, slight overlaps hide joins), then page = page*(1-m) + colour*m — exact translucency, no levels, no seams
@@ -827,7 +834,7 @@ class Component extends DCLogic {
     const lcv = mkC('layerC'), lcv2 = mkC('layerC2'), lcv3 = mkC('layerC3'), lc = lcv.getContext('2d'), lc2 = lcv2.getContext('2d'), lc3 = lcv3.getContext('2d'), TF = ctx.getTransform(), EXT = .5;
     const addQ = (c2, q) => { if (q.length === 4) { const mx0 = (q[0][0] + q[3][0]) / 2, my0 = (q[0][1] + q[3][1]) / 2, mx1 = (q[1][0] + q[2][0]) / 2, my1 = (q[1][1] + q[2][1]) / 2, l = Math.hypot(mx1 - mx0, my1 - my0) || 1, ex = (mx1 - mx0) / l * EXT, ey = (my1 - my0) / l * EXT; c2.moveTo(q[0][0] - ex, q[0][1] - ey); c2.lineTo(q[1][0] + ex, q[1][1] + ey); c2.lineTo(q[2][0] + ex, q[2][1] + ey); c2.lineTo(q[3][0] - ex, q[3][1] - ey); } else { c2.moveTo(q[0][0], q[0][1]); for (let k3 = 1; k3 < q.length; k3++) c2.lineTo(q[k3][0], q[k3][1]); } c2.closePath(); };
     for (const g of GL) {
-      const am = g.top ? 1.3 : g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      const am = g.top ? 2.5 : g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       // opacity in 85 levels (steps of 3/255): finer is invisible, and every distinct level costs a fill
       for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 85) * 3; if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
       if (!bk.size) continue;

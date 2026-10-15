@@ -809,8 +809,14 @@ class Component extends DCLogic {
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }
     const groups = new Map();
-    for (const Q of quads) { const k = Q.pid ?? 'u'; let g = groups.get(k); if (!g) { g = { col: Q.col, ink: !!Q.ink, top: k === topPid, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
-    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top ? 10 : a.zs / a.n) - (b.ink ? -10 : b.top ? 10 : b.zs / b.n));
+    // spring's blossoms are painted like real cherry blossom: pale, near-white pink at the petal tips, soft pink through the middle and a deep rose
+    // centre, by how far each piece of the red line is from its blossom's heart (the twig stays Sound's red). Each band is its own paint group
+    const bloomR = this.blooms && this.blooms.length && topPid != null ? this.geo.R : 0, BLOSSOM = ['rgb(206,34,72)', 'rgb(240,128,162)', 'rgb(251,206,220)'];
+    for (const Q of quads) { let k = Q.pid ?? 'u', col = Q.col, top = 0;
+      if (k === topPid) { top = 10; if (bloomR) { const m = Q.q[2] || Q.q[0], cxq = (Q.q[0][0] + m[0]) / 2, cyq = (Q.q[0][1] + m[1]) / 2; let d = 1e9; for (const b of this.blooms) d = Math.min(d, Math.hypot(b[0] - cxq, b[1] - cyq)); d /= bloomR;
+        const band = d < .036 ? 0 : d < .058 ? 1 : d < .11 ? 2 : -1; if (band >= 0) { k = topPid + ':' + band; col = BLOSSOM[band]; top = 10 + (2 - band) * .1; } } }
+      let g = groups.get(k); if (!g) { g = { col, ink: !!Q.ink, top, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
+    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top || a.zs / a.n) - (b.ink ? -10 : b.top || b.zs / b.n));
     // each line: an opacity mask built with max-blending (overlaps keep the strongest value, slight overlaps hide joins), then page = page*(1-m) + colour*m — exact translucency, no levels, no seams
     const cvs = ctx.canvas, mkC = k => { if (!this[k]) this[k] = document.createElement('canvas'); const c = this[k]; if (c.width !== cvs.width || c.height !== cvs.height) { c.width = cvs.width; c.height = cvs.height; } return c; };
     const lcv = mkC('layerC'), lcv2 = mkC('layerC2'), lcv3 = mkC('layerC3'), lc = lcv.getContext('2d'), lc2 = lcv2.getContext('2d'), lc3 = lcv3.getContext('2d'), TF = ctx.getTransform(), EXT = .5;

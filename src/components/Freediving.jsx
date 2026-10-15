@@ -74,6 +74,8 @@ class Component extends DCLogic {
     removeEventListener('pointerdown', this.onPD); removeEventListener('touchstart', this.onTS); removeEventListener('touchmove', this.onTM);
   }
 
+  // the line that colours the squid: Sound's red where it leaves the dot, turning to the squid's pink (244,138,172) as it arrives
+  redToPink(ctx, A, B) { const gr = ctx.createLinearGradient(A[0], A[1], B[0], B[1]); gr.addColorStop(0, 'rgb(232,34,44)'); gr.addColorStop(.35, 'rgb(232,34,44)'); gr.addColorStop(1, 'rgb(244,138,172)'); return gr; }
   // flight stroke (matches Home's travelling lines): fading tail, swelling body, tapered head, head dot
   brushFly(ctx, pts, w, a, col, swell = 1.4, dot = true) {
     const n = pts.length; if (n < 2) return;
@@ -313,42 +315,43 @@ class Component extends DCLogic {
   }
   // leaving for Home: each surface line lifts off in turn and dances its own figure up to its menu dot
   // black: one grand calligraphic swoop, bold in the middle · light blue: a single slow, open loop that swells as it turns · deep blue: a weaving ribbon that twists thin-thick
-  danceWave(ctx, k, st, sy, o, t, W) {
-    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28];
-    const T0 = [.45, .7, .9][k], DUR = [1.9, 1.95, 1.75][k], g = (lt - T0) / DUR; if (g > 1.25) return;
-    const navL = Math.min(...Object.values(NP).map(p => p[0])) - 34, xl = clamp(navL - [380, 260, 160][k], W * .2, W - 90);
-    const cK = 1 - smooth(clamp((lt - T0 + .5) / .5, 0, 1)), pts = [];
-    for (let x = -20; x <= W - 6; x += 10) { const xx = x <= xl ? x : xl + (x - xl) * cK; if (x > xl && pts.length && xx - pts[pts.length - 1][0] < 2) continue; pts.push([xx, sy + this.waveY(xx - o.x, k, t)]); }
-    const col = ['#141414', 'rgb(0,158,224)', 'rgb(34,86,186)'][k];
-    if (cK > .01 || g <= 0) { this.brush(ctx, pts, st[0], st[1], k * 200, true, false, col); return; }
-    const S0 = pts[pts.length - 1], dx = D[0] - S0[0], dy = D[1] - S0[1];
-    const cr = (P, n) => { const out = []; for (let i = 0; i < P.length - 1; i++) { const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)]; for (let q = 1; q <= n; q++) { const u = q / n, u2 = u * u, u3 = u2 * u; out.push([0, 1].map(j => .5 * (2 * p1[j] + (-p0[j] + p2[j]) * u + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * u2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * u3))); } } return out; };
-    let route;
-    if (k === 0) route = cr([S0, [S0[0] + dx * .22, S0[1] + 34], [S0[0] + dx * .56, S0[1] + dy * .42], [D[0] - 54, D[1] + 52], D], 14);
-    else if (k === 1) { const r = clamp(Math.abs(dy) * .3, 30, 62), C = [S0[0] + dx * .5, S0[1] + dy * .42], wp = [S0, [C[0] - r * 1.5, C[1] + r * .95]];
-      for (let q = 0; q <= 8; q++) { const th = Math.PI / 2 - 2 * Math.PI * q / 8; wp.push([C[0] + Math.cos(th) * r, C[1] + Math.sin(th) * r]); }
-      wp.push([C[0] + r * 1.6, C[1] + r * .2], [D[0] - 28, D[1] + 50], D); route = cr(wp, 8); }
-    else { const C1 = [S0[0] + dx * .4, S0[1] + 24], C2 = [D[0] - 40, D[1] + 90]; route = [];
-      for (let q = 1; q <= 60; q++) { const u = q / 60, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, p = [a * S0[0] + b * C1[0] + c * C2[0] + d * D[0], a * S0[1] + b * C1[1] + c * C2[1] + d * D[1]];
-        const ta = [3 * (1 - u) ** 2 * (C1[0] - S0[0]) + 6 * (1 - u) * u * (C2[0] - C1[0]) + 3 * u * u * (D[0] - C2[0]), 3 * (1 - u) ** 2 * (C1[1] - S0[1]) + 6 * (1 - u) * u * (C2[1] - C1[1]) + 3 * u * u * (D[1] - C2[1])], tl = Math.hypot(ta[0], ta[1]) || 1, off = 26 * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * 2.2 * u);
-        route.push([p[0] - ta[1] / tl * off, p[1] + ta[0] / tl * off]); } }
-    const all = pts.concat(route), nS = pts.length, sl = [0]; for (let i = 1; i < all.length; i++) sl.push(sl[i - 1] + Math.hypot(all[i][0] - all[i - 1][0], all[i][1] - all[i - 1][1]));
-    const tot = sl[sl.length - 1], surfL = sl[nS - 1], rL = Math.max(1, tot - surfL), hk = (1 - Math.cos(Math.PI * clamp(g, 0, 1))) / 2, head = surfL + rL * hk;
-    const TL0 = rL * [.55, .5, .62][k], ga = smooth(clamp(g / .5, 0, 1)), TL = (head + (TL0 - head) * ga) * (1 - smooth(clamp((g - 1) / .25, 0, 1))), cut = Math.max(0, head - TL);
-    const prof = [u => 1 + 1.5 * Math.pow(Math.sin(Math.PI * u), 1.2), u => .8 + 1.7 * Math.exp(-(((u - .5) / .17) ** 2)), u => .55 + 1.5 * Math.sin(3 * Math.PI * u) ** 2][k], bR = [3.4, 2.4, 2.2][k];
-    const P = [], Wd = [], A = [];
-    for (let i = 0; i < all.length; i++) { const sv = sl[i]; if (sv < cut) continue; let p = all[i], s2 = sv; if (sv > head) { if (!i) break; const f = (head - sl[i - 1]) / Math.max(.001, sv - sl[i - 1]); p = [all[i - 1][0] + (p[0] - all[i - 1][0]) * f, all[i - 1][1] + (p[1] - all[i - 1][1]) * f]; s2 = head; }
-      const u = clamp((s2 - surfL) / rL, 0, 1), bl = smooth(clamp(u / .08, 0, 1)); let w = st[0] * (1 - bl) + bR * prof(u) * bl;
-      w *= Math.sqrt(clamp((head - s2) / 26, .08, 1)) * Math.sqrt(clamp((s2 - cut) / 34, .12, 1));
-      const aB = s2 <= surfL ? st[1] : Math.min(1, st[1] + .45), fw = smooth(clamp((s2 - cut) / Math.max(1, head - cut), 0, 1));
-      P.push(p); Wd.push(w); A.push(aB * (1 - ga * .8 * (1 - fw))); if (sv > head) break; }
-    const n = P.length; if (n >= 2) { ctx.fillStyle = col;
-      for (let i = 0; i < n - 1; i++) { const pr = P[Math.max(0, i - 1)], q = P[i + 1], q2 = P[Math.min(n - 1, i + 2)], p0 = P[i], t0x = q[0] - pr[0], t0y = q[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - p0[0], t1y = q2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1, h0 = Wd[i] / 2, h1 = Wd[i + 1] / 2;
-        ctx.globalAlpha = (A[i] + A[i + 1]) / 2; ctx.beginPath(); ctx.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); ctx.lineTo(q[0] + t1y / l1 * h1, q[1] - t1x / l1 * h1); ctx.lineTo(q[0] - t1y / l1 * h1, q[1] + t1x / l1 * h1); ctx.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); ctx.closePath(); ctx.fill(); }
-      const hp = P[n - 1], r = 2.6 + 5.4 * smooth(clamp((g - .7) / .35, 0, 1)); ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(hp[0], hp[1], r, 0, 6.2832); ctx.fill(); }
+  // leaving for Home, every line is reeled into its menu dot like a thread: it stays where it is while its leading end lifts off and glides up
+  // into the dot, and the rest follows along the same path, always forwards, until the tail goes in. src: the line as it lies (ending where it
+  // lifts off), D: the dot, g: 0..1 through the move. O: w (width), a (opacity), colA/colB (colour leaving / arriving), lift (how far the end
+  // carries on before turning up), sway (px of side-to-side drift on the way), ph (phase of that drift)
+  absorb(ctx, src, D, g, O) {
+    if (g <= 0 || g >= 1 || src.length < 2) return;
+    const S = src[src.length - 1], P0 = src[Math.max(0, src.length - 4)], tl = Math.hypot(S[0] - P0[0], S[1] - P0[1]) || 1, T = [(S[0] - P0[0]) / tl, (S[1] - P0[1]) / tl], lift = O.lift ?? 90;
+    // the route rises in an arc: up and a little onwards first, then curving over and in to the dot from below-left
+    const dist = Math.hypot(D[0] - S[0], D[1] - S[1]), C1 = [S[0] + T[0] * lift + dist * .12, S[1] + T[1] * lift - Math.min(dist * .42, 190)], C2 = [D[0] - dist * .3, D[1] + dist * .18], route = [];
+    for (let q = 1; q <= 48; q++) { const u = q / 48, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, sw = (O.sway || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * u + (O.ph || 0));
+      route.push([a * S[0] + b * C1[0] + c * C2[0] + d * D[0] + sw, a * S[1] + b * C1[1] + c * C2[1] + d * D[1]]); }
+    const all = src.concat(route), nS = src.length, sl = [0]; for (let q = 1; q < all.length; q++) sl.push(sl[q - 1] + Math.hypot(all[q][0] - all[q - 1][0], all[q][1] - all[q - 1][1]));
+    const tot = sl[sl.length - 1], srcL = sl[nS - 1], io = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
+    // the head eases off the end of the line and into the dot; the tail sets off a little later and catches it up exactly at the dot
+    const head = srcL + (tot - srcL) * io(clamp(g / .82, 0, 1)), cut = Math.min(head, tot * io(clamp((g - .1) / .9, 0, 1)));
+    const at = q => { if (q <= 0) return all[0]; let k = 1; while (k < all.length - 1 && sl[k] < q) k++; const f = (q - sl[k - 1]) / Math.max(1e-6, sl[k] - sl[k - 1]); return [all[k - 1][0] + (all[k][0] - all[k - 1][0]) * f, all[k - 1][1] + (all[k][1] - all[k - 1][1]) * f]; };
+    const P = [at(cut)], L = [cut]; for (let q = 0; q < all.length; q++) if (sl[q] > cut && sl[q] < head) { P.push(all[q]); L.push(sl[q]); } P.push(at(head)); L.push(head);
+    const n = P.length; if (n < 2 || head - cut < .5) return;
+    for (let q = 0; q < n - 1; q++) { const pr = P[Math.max(0, q - 1)], nx = P[q + 1], n2 = P[Math.min(n - 1, q + 2)], p0 = P[q], t0x = nx[0] - pr[0], t0y = nx[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = n2[0] - p0[0], t1y = n2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1;
+      const wAt = v => O.w * Math.sqrt(clamp((head - v) / 24, .1, 1)) * Math.sqrt(clamp((v - cut) / 40, .1, 1)), h0 = wAt(L[q]) / 2, h1 = wAt(L[q + 1]) / 2;
+      const ur = clamp((L[q] - srcL) / Math.max(1, tot - srcL), 0, 1); ctx.fillStyle = css(mixC(O.colA, O.colB, smooth(ur))); ctx.globalAlpha = O.a ?? .95;
+      ctx.beginPath(); ctx.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); ctx.lineTo(nx[0] + t1y / l1 * h1, nx[1] - t1x / l1 * h1); ctx.lineTo(nx[0] - t1y / l1 * h1, nx[1] + t1x / l1 * h1); ctx.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); ctx.closePath(); ctx.fill(); }
+    // a small bead leads the thread in
+    const hp = P[n - 1], ur = clamp((head - srcL) / Math.max(1, tot - srcL), 0, 1); ctx.globalAlpha = 1; ctx.fillStyle = css(mixC(O.colA, O.colB, smooth(ur))); ctx.beginPath(); ctx.arc(hp[0], hp[1], O.w * .55 + 1.6 * smooth(clamp((g - .55) / .3, 0, 1)), 0, 6.2832); ctx.fill();
     ctx.globalAlpha = 1;
-    if (k < 2) { const d = document.querySelector('[data-navk="' + (k ? 'freediving' : 'home') + '"] [data-navdot]'); if (d) { const u = clamp((g - .95) / .5, 0, 1); d.style.transform = 'scale(' + (1 + .2 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } }
   }
+  // each surface line, reeled in from its right-hand end
+  reelWave(ctx, k, st, sy, o, t, W) {
+    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28], T0 = [.45, .7, .9][k], DUR = [1.8, 1.85, 1.75][k], g = (lt - T0) / DUR;
+    const src = []; for (let x = -20; x <= W - 6; x += 10) src.push([x, sy + this.waveY(x - o.x, k, t)]);
+    const col = [[20, 20, 20], [0, 158, 224], [34, 86, 186]][k];
+    if (g <= 0) { this.brush(ctx, src, st[0], st[1], k * 200, true, false, css(col)); return; }
+    this.absorb(ctx, src, D, g, { w: st[0] * 1.4, a: Math.min(1, st[1] + .35), colA: col, colB: col, lift: 60 + 30 * k, sway: [10, 22, 16][k], ph: k * 1.3 });
+    this.navPulse(k ? 'freediving' : 'home', g);
+  }
+  // a menu dot breathes once as the tail of its line goes in
+  navPulse(key, g) { const d = document.querySelector('[data-navk="' + key + '"] [data-navdot]'); if (!d) return; const u = clamp((g - .88) / .3, 0, 1); d.style.transform = 'scale(' + (1 + .22 * Math.sin(Math.PI * u)).toFixed(3) + ')'; d.style.boxShadow = 'none'; }
   drawFG(W, H, t, intro, an, al, sway) {
     const cv = this.fgRef.current; if (!cv) return;
     const dpr = Math.min(2, devicePixelRatio || 1);
@@ -535,30 +538,21 @@ class Component extends DCLogic {
     this.sqDrain = 0;
     if (this.leaveT != null && this.navPos && this.navPos.c4 && this.buoyPos) {
       const lt = this.leaveT, B = this.buoyPos, F = flagAt(B), ez = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2, DUR = 1.5;
-      // each colour leaves as its own brush stroke: wet head, tapering tail, its own sway, lean and width rhythm
-      const orb = (A, D, t0, cA, cB, rA, rB, O = {}) => { const du = O.dur || DUR, g = (lt - t0) / du; if (g <= 0 || g > 1.25) return;
-        const C1 = [A[0] + (D[0] - A[0]) * .1 + (O.lean || 0), A[1] - 110], C2 = [D[0] - 70, D[1] + 80];
-        const at0 = u => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * A[0] + b * C1[0] + c * C2[0] + d * D[0], a * A[1] + b * C1[1] + c * C2[1] + d * D[1]]; };
-        const N = 72, R = [], sl = [0]; for (let q = 0; q <= N; q++) { const u = q / N, p = at0(u), p2 = at0(Math.min(1, u + .01)), tx = p2[0] - p[0], ty = p2[1] - p[1], tl = Math.hypot(tx, ty) || 1, off = (O.amp || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * (O.fq || 1) * u); R.push([p[0] - ty / tl * off, p[1] + tx / tl * off]); if (q) sl.push(sl[q - 1] + Math.hypot(R[q][0] - R[q - 1][0], R[q][1] - R[q - 1][1])); }
-        const tot = sl[N], hk = (1 - Math.cos(Math.PI * clamp(g, 0, 1))) / 2, head = tot * hk, TL = tot * (O.tail || .45) * smooth(clamp(g / .35, 0, 1)) * (1 - smooth(clamp((g - 1) / .25, 0, 1))) + (g < .35 ? head * (1 - smooth(g / .35)) : 0), cut = Math.max(0, head - TL);
-        const prof = O.prof || (u => 1 + 1.2 * Math.sin(Math.PI * u)), bw = O.w || 4, P = [], Wd = [], C = [];
-        for (let i = 0; i <= N; i++) { let sv = sl[i], p = R[i]; if (sv < cut) continue; if (sv > head) { if (!i) break; const f = (head - sl[i - 1]) / Math.max(.001, sv - sl[i - 1]); p = [R[i - 1][0] + (p[0] - R[i - 1][0]) * f, R[i - 1][1] + (p[1] - R[i - 1][1]) * f]; sv = head; }
-          const u = sv / tot, fw = clamp((sv - cut) / Math.max(1, head - cut), 0, 1); P.push(p); Wd.push(bw * prof(u) * Math.sqrt(clamp((head - sv) / 22, .1, 1)) * Math.sqrt(clamp(fw / .25, .08, 1))); C.push([mixC(cA, cB, smooth(u)), .15 + .85 * Math.pow(fw, .8)]); if (sl[i] > head) break; }
-        const n = P.length; if (n >= 2) { for (let i = 0; i < n - 1; i++) { const pr = P[Math.max(0, i - 1)], q = P[i + 1], q2 = P[Math.min(n - 1, i + 2)], p0 = P[i], t0x = q[0] - pr[0], t0y = q[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - p0[0], t1y = q2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1, h0 = Wd[i] / 2, h1 = Wd[i + 1] / 2;
-            WX.globalAlpha = .95 * (C[i][1] + C[i + 1][1]) / 2; WX.fillStyle = css(C[i][0]); WX.beginPath(); WX.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); WX.lineTo(q[0] + t1y / l1 * h1, q[1] - t1x / l1 * h1); WX.lineTo(q[0] - t1y / l1 * h1, q[1] + t1x / l1 * h1); WX.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); WX.closePath(); WX.fill(); }
-          const hp = P[n - 1], r = rA + (rB - rA) * smooth(clamp((g - .7) / .35, 0, 1)); WX.globalAlpha = 1; WX.fillStyle = css(C[n - 1][0]); WX.beginPath(); WX.arc(hp[0], hp[1], Math.min(r, 3 + r * smooth(clamp(g / .3, 0, 1))), 0, 6.2832); WX.fill(); }
-        WX.globalAlpha = 1; };
-      const breathe = (k, t0, du = DUR) => { const d = document.querySelector('[data-navk="' + k + '"] [data-navdot]'); if (!d) return; const u = clamp((lt - t0 - du + .12) / .9, 0, 1); d.style.transform = 'scale(' + (1 + .22 * Math.sin(Math.PI * u) * (1 - u * .3)).toFixed(3) + ')'; d.style.boxShadow = 'none'; };
-      const RC = this.redC || [232, 34, 44], tB = .1, tF = .35, tS = .6;
+      const RC = this.redC || [232, 34, 44], tB = .1, tF = .35, tS = .6, BS = B[2] || 1, DU = { b: 1.8, f: 1.6, s: 1.9 };
       this.buoyDrain = smooth(clamp((lt - tB) / .7, 0, 1)); this.flagDrain = smooth(clamp((lt - tF) / .7, 0, 1)); this.sqDrain = smooth(clamp((lt - tS) / .7, 0, 1));
-      orb([B[0], B[1]], this.navPos.c4, tB, [255, 118, 18], [255, 118, 18], 7, 5.5, { dur: 1.9, lean: -120, amp: 22, fq: 1, w: 4.6, tail: .5, prof: u => .7 + 1.6 * Math.pow(Math.sin(Math.PI * u), 1.4) }); breathe('c4', tB, 1.9);
-      if (this.navPos.sound) { orb(F, this.navPos.sound, tF, RC, RC, 5, 8, { dur: 1.6, lean: 70, amp: 12, fq: 2, w: 3.4, tail: .4, prof: u => .6 + 1.2 * Math.sin(2.5 * Math.PI * u) ** 2 }); if (this.sqPos) orb(this.sqPos, this.navPos.sound, tS, [244, 138, 172], RC, 6, 8, { dur: 2.0, lean: -50, amp: 30, fq: 1.5, w: 3.8, tail: .55, prof: u => .5 + 1.8 * Math.exp(-(((u - .4) / .2) ** 2)) }); breathe('sound', tS, 2.0); }
+      // buoy: off along the top of its float, left to right; flag: along its top edge; squid: up through its body
+      const buoySrc = Array.from({ length: 13 }, (_, q) => { const a = Math.PI + q / 12 * Math.PI; return [B[0] + Math.cos(a) * 22 * BS, B[1] + Math.sin(a) * 13 * BS]; });
+      const flagSrc = [[B[0], B[1] - 46 * BS], [B[0] + 11 * BS, B[1] - 46.5 * BS], [B[0] + 22 * BS, B[1] - 46 * BS]];
+      this.absorb(WX, buoySrc, this.navPos.c4, (lt - tB) / DU.b, { w: 3.4, colA: [255, 118, 18], colB: [255, 118, 18], lift: 40, sway: 18, ph: .4 }); this.navPulse('c4', (lt - tB) / DU.b);
+      if (this.navPos.sound) { this.absorb(WX, flagSrc, this.navPos.sound, (lt - tF) / DU.f, { w: 3, colA: RC, colB: RC, lift: 30, sway: 10, ph: 1.9 });
+        if (this.sqPos) { const [qx, qy] = this.sqPos; this.absorb(WX, [[qx, qy + 22], [qx, qy + 8], [qx, qy - 8], [qx, qy - 20]], this.navPos.sound, (lt - tS) / DU.s, { w: 3.4, colA: [244, 138, 172], colB: RC, lift: 50, sway: 24, ph: 3.1 }); }
+        this.navPulse('sound', Math.max((lt - tF) / DU.f, (lt - tS) / DU.s)); }
     }
     if (sy > -80 && sy < H + 80) {
       [[3.2, .9], [1.8, .55], [1.1, .3]].forEach((st, k) => {
         const rev = intro && !this.skipWaves ? smooth(clamp((T - k * .25) / 1.6, 0, 1)) : 1; if (rev <= 0) return;
         const xe = -20 + (W + 40) * rev; let pts = [];
-        if (this.leaveT != null && this.navPos) { this.danceWave(WX, k, st, sy, o, t, W); return; }
+        if (this.leaveT != null && this.navPos) { this.reelWave(WX, k, st, sy, o, t, W); return; }
         for (let x = -20; x <= xe; x += 10) pts.push([x, sy + this.waveY(x - o.x, k, t)]);
         pts.push([xe, sy + this.waveY(xe - o.x, k, t)]);
         this.brush(WX, pts, st[0], st[1], k * 200, true, rev < 1, k === 0 ? '#141414' : k === 1 ? 'rgb(0,158,224)' : 'rgb(34,86,186)');
@@ -599,7 +593,7 @@ class Component extends DCLogic {
             this.sqT = (this.sqT ?? 99) + (this.octA > .5 ? dtT : 0); const sk = this.sqT, hk = smooth(clamp((sk - .2) / 1.0, 0, 1)), u0 = smooth(clamp((sk - .85) / .7, 0, 1)), fillK = smooth(clamp((sk - .95) / .8, 0, 1));
             if (hk > 0 && u0 < 1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }
               if (this.sqSrc) { const A = this.sqSrc, B2 = [ox, oy], C1 = [A[0] - 40, A[1] + 170], C2 = [B2[0] + 170, B2[1] - 70], ap = []; for (let q = 0; q <= 48; q++) { const u = q / 48, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; ap.push([a * A[0] + b * C1[0] + c * C2[0] + d * B2[0], a * A[1] + b * C1[1] + c * C2[1] + d * B2[1]]); }
-                const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3.2, .95, 'rgb(232,34,44)', 1.2, hk < 1); } }
+                const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3.2, .95, this.redToPink(ctx, A, B2), 1.2, hk < 1); } }
             if (this.sqRot == null) this.sqRot = Math.PI; if (this.sqTo == null) this.sqTo = Math.PI; if (this.octV > 40) this.sqTo = Math.PI; else if (this.octV < -40) this.sqTo = 0; this.sqRot += (this.sqTo - this.sqRot) * (1 - Math.exp(-dtT * 6));
             // arrival: swims in pale from the bottom right, loops, a line from the red Sound dot pours in its pink (it smiles ^^), then it swims over to the line
             if (this.sqI == null && vis && (this.props.motion ?? true)) this.sqI = 0; if (this.sqI != null) this.sqI += dtT;
@@ -613,7 +607,7 @@ class Component extends DCLogic {
                 const ta = dirA(-Math.cos(ph), Math.sin(ph)), bl = smooth(clamp(k / .12, 0, 1)); dr = lerpA(0, ta, bl); dv = .9 * Math.min(1, k * 2.5); }
               if (I >= RD0 && I < RD1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }
                 if (this.sqSrc) { const k = I - RD0, hk = ez(clamp(k / .75, 0, 1)), u0 = ez(clamp((k - .55) / .75, 0, 1)), A = this.sqSrc, B2 = [dx, dy - 6], C1 = [A[0] - 30, A[1] + 140], C2 = [B2[0] + 130, B2[1] - 90], ap = [];
-                  for (let q = 0; q <= 48; q++) ap.push(bz3(A, C1, C2, B2, q / 48)); const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3, .95, 'rgb(232,34,44)', 1.2, hk < 1); } } }
+                  for (let q = 0; q <= 48; q++) ap.push(bz3(A, C1, C2, B2, q / 48)); const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3, .95, this.redToPink(ctx, A, B2), 1.2, hk < 1); } } }
             else if (I < GO1) { // carries straight on out of the loop, heading left, and glides in to the rope
               const Rl = Math.max(50, Math.min(170, W * .2, (H - M[1] - 70) / 2)), D = GO1 - GO0, v = Rl * 2 * Math.PI * 1.6 / (LP1 - LP0), hd = clamp(v * D / 6, 20, Math.abs(M[0] - ox) * .8), A = M, B = [ox, oy], C1 = [M[0] - hd, M[1]], C2 = [B[0] + 90, B[1] + 30];
               const k = clamp((I - GO0) / D, 0, 1), e = 1 - (1 - k) * (1 - k), p = bz3(A, C1, C2, B, e), q = bz3(A, C1, C2, B, Math.min(1, e + .02)); dx = p[0]; dy = p[1];

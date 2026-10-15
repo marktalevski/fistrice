@@ -15,13 +15,17 @@ const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionS
 // the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
 const PHI = (1 + Math.sqrt(5)) / 2;
 const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
-// a small wave: one golden spiral the whole way. It starts wide at the lower left (MINI_BACK turns before the crest, about φ^(4·MINI_BACK) ≈ 1.9 times wider),
-// sweeps up over the crest at radius r, and keeps tightening clockwise into its centre (dot), like the big curl
-const MINI_BACK = .34;
+// a small wave: water runs in flat from the left (x0, y0), rises up the wave's back and rolls over the crest into a golden spiral that tightens
+// clockwise into its centre (dot), like the big curl. The spiral takes over MINI_BACK turns before the top of the crest; the back is a smooth curve
+// that leaves the water level and meets the spiral exactly along its own direction, so there is no kink where the two join
+const MINI_BACK = .22;
 const miniC = (x0, y0, w, h, o = {}) => { const r = (o.rf ?? .5) * h; return [[x0 + w - r, y0 - h + r], r]; };
 const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, o), tn = o.turns ?? 1.05, out = [];
-  const a0 = -Math.PI / 2 - MINI_BACK * Math.PI * 2, r0 = r * Math.pow(PHI, 4 * MINI_BACK);
-  out.push([C[0] + Math.cos(a0) * r0, C[1] + Math.sin(a0) * r0]); for (const p of goldSpiral(C, r0, a0, MINI_BACK + tn, 44)) out.push(p); return out; };
+  const a0 = -Math.PI / 2 - MINI_BACK * Math.PI * 2, r0 = r * Math.pow(PHI, 4 * MINI_BACK), k = Math.log(PHI) / (Math.PI / 2);
+  const S = [C[0] + Math.cos(a0) * r0, C[1] + Math.sin(a0) * r0], tx = -k * Math.cos(a0) - Math.sin(a0), ty = -k * Math.sin(a0) + Math.cos(a0), tl = Math.hypot(tx, ty);
+  const B = [x0, y0], d = Math.hypot(S[0] - B[0], S[1] - B[1]), C1 = [B[0] + d * .55, B[1]], C2 = [S[0] - tx / tl * d * .35, S[1] - ty / tl * d * .35];
+  for (let q = 0; q <= 20; q++) { const u = q / 20, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, e = u ** 3; out.push([a * B[0] + b * C1[0] + c * C2[0] + e * S[0], a * B[1] + b * C1[1] + c * C2[1] + e * S[1]]); }
+  for (const p of goldSpiral(C, r0, a0, MINI_BACK + tn, 44)) out.push(p); return out; };
 const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
   [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];

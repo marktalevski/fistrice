@@ -231,7 +231,7 @@ function shapeOf(name, cx, cy, R) {
     B.forEach((b, k) => { blooms.push([cx + b[0] * R, cy + b[1] * R]);
       const pt = q => { const th = q / 40 * Math.PI * 2, r = .022 + .055 * Math.abs(Math.cos(2.5 * th)); return [b[0] + Math.cos(th) * r, b[1] + Math.sin(th) * r]; };
       if (k) { const p0 = lp[lp.length - 1], s0 = pt(0); lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(s0[0], s0[1], t); }
-      for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : 1); } });
+      for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], t); } });
     // after the last blossom, red carries on as a little twig out to the Sound dot
     [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, 1));
     colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
@@ -630,6 +630,48 @@ class Component extends DCLogic {
     if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
     return true; }
   // x: 0 at the start of the visible stroke, 1 at its tail
+  // spring's cherry blossoms. The red line travels through each one unseen and it opens as the line arrives: five rounded petals with the
+  // notch cherry petals have at the tip, near-white at the edge deepening to pink at the base, a rose centre and fine stamens with pale gold tips.
+  // They fade with red when another dot is hovered, and close up again when the symbol changes
+  paintBlossoms(ctx, gone) {
+    const now = performance.now(), dt = Math.min(.1, (now - (this.bloomNow || now)) / 1000); this.bloomNow = now;
+    const run = this.redRun, on = this.shapeName === 'spring' && run && this.blooms && this.blooms.length, R = this.geo.R;
+    if (on) {
+      if (this.bloomFor !== run.P) { // where along the red line each blossom sits
+        const pts = run.P.pts, cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        this.bloomAt = this.blooms.map(b => { let bi = 0, bd = 1e18; for (let i = 0; i < pts.length; i++) { const d = (pts[i][0] - b[0]) ** 2 + (pts[i][1] - b[1]) ** 2; if (d < bd) { bd = d; bi = i; } } return cum[bi]; });
+        this.bloomFor = run.P; }
+      this.bloomOpen = this.blooms.map((b, k) => smooth(clamp((run.h - this.bloomAt[k] + R * .05) / (R * .55), 0, 1)));
+      this.bloomShow = { pts: this.blooms, R }; this.bloomFade = 1;
+    } else if (this.bloomShow) { this.bloomFade = Math.max(0, (this.bloomFade || 0) - dt / .5); if (this.bloomFade <= 0) { this.bloomShow = null; return; } }
+    if (!this.bloomShow) return;
+    const { pts, R: R0 } = this.bloomShow, al = (1 - gone) * this.fadeAt(1, .5) * this.bloomFade, rB = R0 * .11;
+    if (al <= .01) return;
+    ctx.save();
+    pts.forEach((b, k) => {
+      const p = this.bloomOpen[k] || 0; if (p <= .001) return;
+      const sc = rB * ((1 - Math.pow(1 - p, 3)) + .07 * Math.sin(Math.PI * p)) * (.9 + .12 * ((k * 7) % 5) / 4), rot = k * 1.71 + (1 - p) * .7;
+      ctx.globalAlpha = al * Math.min(1, p * 2.2);
+      const gr = ctx.createRadialGradient(b[0], b[1], 0, b[0], b[1], sc);
+      gr.addColorStop(0, 'rgb(219,84,130)'); gr.addColorStop(.3, 'rgb(242,160,190)'); gr.addColorStop(.7, 'rgb(251,218,229)'); gr.addColorStop(1, 'rgb(255,243,246)');
+      for (let i = 0; i < 5; i++) {
+        const th = rot + i * Math.PI * 2 / 5, ps = sc * (.94 + .1 * Math.sin(k * 3.1 + i * 2.3)), c = Math.cos(th), sn = Math.sin(th), P = (x, y) => [b[0] + (x * c - y * sn) * ps, b[1] + (x * sn + y * c) * ps];
+        ctx.beginPath(); ctx.moveTo(...P(0, 0));
+        ctx.bezierCurveTo(...P(.22, -.46), ...P(.78, -.56), ...P(.98, -.18)); ctx.lineTo(...P(.83, 0)); ctx.lineTo(...P(.98, .18));
+        ctx.bezierCurveTo(...P(.78, .56), ...P(.22, .46), ...P(0, 0)); ctx.closePath();
+        ctx.fillStyle = gr; ctx.fill(); ctx.strokeStyle = 'rgba(206,104,146,.6)'; ctx.lineWidth = .9; ctx.stroke();
+      }
+      // the centre and its stamens
+      const sp = smooth(clamp((p - .45) / .55, 0, 1));
+      if (sp > 0) {
+        ctx.strokeStyle = 'rgba(178,40,86,.85)'; ctx.lineWidth = .7; ctx.fillStyle = 'rgb(236,196,104)';
+        for (let i = 0; i < 9; i++) { const th = rot + .3 + i * Math.PI * 2 / 9, L2 = sc * (.36 + .1 * Math.sin(i * 2.7 + k)) * sp, ex = b[0] + Math.cos(th) * L2, ey = b[1] + Math.sin(th) * L2;
+          ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(ex, ey); ctx.stroke(); ctx.beginPath(); ctx.arc(ex, ey, 1.25, 0, 6.2832); ctx.fill(); }
+        ctx.fillStyle = 'rgb(186,44,92)'; ctx.beginPath(); ctx.arc(b[0], b[1], sc * .13 * sp, 0, 6.2832); ctx.fill();
+      }
+    });
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
   fadeAt(li, x) {
     const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
     const p = easeIO(clamp(c / FADE.sweep, 0, 1)); if (p <= 0) return 1;
@@ -705,6 +747,7 @@ class Component extends DCLogic {
       if (!isOld && L === LINES[1] && this.shapeName === 'spring') topPid = pid;
       const newL = P.len - P.entry, ek = tr ? easeIO(k) : 0, bodyL = tr ? P.oldLen + (newL - P.oldLen) * smooth(k) : 0;
       const h = tr ? P.oldLen + (P.len - P.oldLen) * ek : P.len * easeIO(k), tEnd = (P.d ?? L.d) + dur, fin = isOld || tr ? 1 : smooth(clamp((T - tEnd) / 1.2, 0, 1));
+      if (!isOld && L === LINES[1]) this.redRun = { P, h };
       const cut = isOld ? P.entry + (P.len - P.entry) * oldCut : tr ? h - bodyL - 1 : -1e9; P.cut0 = tr ? Math.max(0, P.s.findIndex(v => v >= cut)) : P.arc0 - 1;
       const pts = [], ws = [], as = [], zs = [], ss = [], dry = [];
       for (let i = 0; i < P.pts.length; i++) {
@@ -809,12 +852,8 @@ class Component extends DCLogic {
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }
     const groups = new Map();
-    // spring's blossoms are painted like real cherry blossom: pale, near-white pink at the petal tips, soft pink through the middle and a deep rose
-    // centre, by how far each piece of the red line is from its blossom's heart (the twig stays Sound's red). Each band is its own paint group
-    const bloomR = this.blooms && this.blooms.length && topPid != null ? this.geo.R : 0, BLOSSOM = ['rgb(206,34,72)', 'rgb(240,128,162)', 'rgb(251,206,220)'];
     for (const Q of quads) { let k = Q.pid ?? 'u', col = Q.col, top = 0;
-      if (k === topPid) { top = 10; if (bloomR) { const m = Q.q[2] || Q.q[0], cxq = (Q.q[0][0] + m[0]) / 2, cyq = (Q.q[0][1] + m[1]) / 2; let d = 1e9; for (const b of this.blooms) d = Math.min(d, Math.hypot(b[0] - cxq, b[1] - cyq)); d /= bloomR;
-        const band = d < .036 ? 0 : d < .058 ? 1 : d < .11 ? 2 : -1; if (band >= 0) { k = topPid + ':' + band; col = BLOSSOM[band]; top = 10 + (2 - band) * .1; } } }
+      if (k === topPid) top = 10;
       let g = groups.get(k); if (!g) { g = { col, ink: !!Q.ink, top, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
     const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top || a.zs / a.n) - (b.ink ? -10 : b.top || b.zs / b.n));
     // each line: an opacity mask built with max-blending (overlaps keep the strongest value, slight overlaps hide joins), then page = page*(1-m) + colour*m — exact translucency, no levels, no seams
@@ -843,6 +882,7 @@ class Component extends DCLogic {
     }
     sctx.globalCompositeOperation = 'source-over';
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.drawImage(scv, 0, 0); ctx.restore();
+    this.paintBlossoms(ctx, gone);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);

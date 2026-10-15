@@ -15,9 +15,11 @@ const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionS
 // the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
 const PHI = (1 + Math.sqrt(5)) / 2;
 const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
-// a small wave, drawn from Mark's sketch, in its own units (crest top at 0,0, the wave 1 tall): a long flat run-in along the water with a
-// slight dip, an S-shaped rise up the back to the crest, then a round golden-spiral curl (radius MINI_R) into the centre dot
-const MINI_BACK = [[-2.4, 1.0], [-2.1, 1.02], [-1.8, 1.04], [-1.45, .92], [-1.05, .64], [-.65, .3], [-.3, .07], [0, 0]], MINI_R = .34;
+// the big black wave's line: its back (from the water up to the top of its curl) and its golden-spiral curl, in unit coordinates.
+// The wave symbol draws it, and every small wave is an exact scaled copy of it
+const WAVE_BACK = [[-1.9, .74], [-1.45, .7], [-1.0, .6], [-.6, .36], [-.3, -.02], [-.05, -.42], [.22, -.68], [.5, -.76], [.72, -.72]], WAVE_C = [.72, -.38], WAVE_R = .34, WAVE_TURNS = 1.0;
+// the same line in a small wave's own units: crest top at 0,0 and the wave 1 tall
+const WAVE_H = WAVE_BACK[0][1] - (WAVE_C[1] - WAVE_R), MINI_BACK = WAVE_BACK.map(p => [(p[0] - WAVE_C[0]) / WAVE_H, (p[1] - WAVE_C[1] + WAVE_R) / WAVE_H]), MINI_R = WAVE_R / WAVE_H;
 // how much bigger than its WAVES box a small wave is drawn, so its curl reads clearly round the dot
 const MINI_GROW = 1.9;
 // scale s and crest top T so the wave starts at (x0, y0) on the water and fits width w and height h
@@ -25,9 +27,9 @@ const miniFit = (x0, y0, w, h) => { const b = MINI_BACK[0], s = Math.min(w / (-b
 const miniC = (x0, y0, w, h) => { const [s, T] = miniFit(x0, y0, w, h); return [[T[0], T[1] + MINI_R * s], MINI_R * s, s]; };
 const miniWave = (x0, y0, w, h, o = {}) => { const [s, T] = miniFit(x0, y0, w, h), [C, r] = miniC(x0, y0, w, h), out = [];
   cat(MINI_BACK.map(p => [T[0] + p[0] * s, T[1] + p[1] * s]), 6, (x, y) => out.push([x, y]));
-  for (const p of goldSpiral(C, r, -Math.PI / 2, o.turns ?? .9, 44)) out.push(p); return out; };
+  for (const p of goldSpiral(C, r, -Math.PI / 2, WAVE_TURNS, 44)) out.push(p); return out; };
 // [line, start x, start y (on the water), width, height, options] in unit coordinates; li 3 (blue) rides the big wave instead
-const WAVES = [[1, -2.85, 1.34, .6, 1, {}], [3, -1.6, .66, 1.6, 1.0, {}], [2, 1.3, 1.85, .75, 1, {}],
+const WAVES = [[1, -2.85, 1.55, .6, 1, {}], [3, -1.6, .66, 1.6, 1.0, {}], [2, 1.3, 1.85, .75, 1, {}],
   [4, -1.55, 1.85, .72, 1, {}], [5, .05, 1.45, .66, 1, {}], [6, 1.3, .35, .58, 1, {}]];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
@@ -144,9 +146,9 @@ function shapeOf(name, cx, cy, R) {
   }
   else if (name === 'wave') {
     const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
-    const back = catW([[-1.9, .74], [-1.45, .7], [-1.0, .6], [-.6, .36], [-.3, -.02], [-.05, -.42], [.22, -.68], [.5, -.76], [.72, -.72]], 12, .7, 1.1), cur = [], c = [.72, -.38];
+    const back = catW(WAVE_BACK, 12, .7, 1.1), cur = [], c = WAVE_C;
     // the curl is a golden spiral round the heart of the wave
-    for (const p of goldSpiral(c, .34, -Math.PI / 2, 1.0, 70, u => 1.05 - .4 * u)) cur.push(p);
+    for (const p of goldSpiral(c, WAVE_R, -Math.PI / 2, WAVE_TURNS, 70, u => 1.05 - .4 * u)) cur.push(p);
     const face = catW([[.56, .06], [.66, .34], [.9, .58], [1.3, .7], [1.9, .74]], 12, .95, .6);
     strokes([back, cur, hc(cur[cur.length - 1], face[0]), face]);
     st = [-.25, 1.25];

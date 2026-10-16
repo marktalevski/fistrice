@@ -278,7 +278,8 @@ class Component extends DCLogic {
       ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx, by, br - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
       ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.globalAlpha = (1 - fo) * (lit ? 1 : hov ? .85 : .55); if (lit) glow(col, 12); ctx.beginPath(); ctx.arc(bx, by, br - 3, 0, TAU); ctx.stroke(); noGlow();
       ctx.fillStyle = lit ? col : '#d9dde0'; ctx.globalAlpha = 1 - fo; icon(bx, by); };
-    btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { if (playing) { ctx.fillRect(bx - 5, by - 6, 3.5, 12); ctx.fillRect(bx + 1.5, by - 6, 3.5, 12); } else { ctx.beginPath(); ctx.moveTo(bx - 4, by - 7); ctx.lineTo(bx + 7, by); ctx.lineTo(bx - 4, by + 7); ctx.closePath(); ctx.fill(); } });
+    // the same size as the knobs; its icon scales with it
+    btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { const q = G.play[2] / 18; if (playing) { ctx.fillRect(bx - 5 * q, by - 6 * q, 3.5 * q, 12 * q); ctx.fillRect(bx + 1.5 * q, by - 6 * q, 3.5 * q, 12 * q); } else { ctx.beginPath(); ctx.moveTo(bx - 4 * q, by - 7 * q); ctx.lineTo(bx + 7 * q, by); ctx.lineTo(bx - 4 * q, by + 7 * q); ctx.closePath(); ctx.fill(); } });
     // a piece of black glass with a fine edge (and scanlines in the cyber style)
     const glass = ([gx, gy, gw, gh], body) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(gx, gy, gw, gh, 5); ctx.fill(); ctx.save(); rr(gx, gy, gw, gh, 5); ctx.clip(); if (body) body(gx, gy, gw, gh);
       if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = gy + 1; q < gy + gh; q += 2) ctx.fillRect(gx, q, gw, 1); } ctx.restore(); ctx.globalAlpha = 1 - fo;

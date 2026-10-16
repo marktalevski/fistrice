@@ -222,7 +222,7 @@ class Component extends DCLogic {
       document.querySelectorAll('nav[aria-label="Pages"] > [data-navk]').forEach((el, i) => { const lab = el.querySelector(':scope > span:last-child'), dot = el.querySelector('[data-navdot]'); if (!lab) return;
         const k = clamp((this.leaveT - SWIRL_DUR * .85 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
         if (dot && k > 0) { const u = clamp((k - .55) / .45, 0, 1); dot.style.transform = 'scale(' + (1 + .18 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } });
-      if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; location.href = BASE + '?from=dive'; } }
+      if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; (window.__leave || (h => { location.href = h; }))(BASE + '?from=dive'); } }
     if ((this.fromHome || this.fromSound) && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - (this.fromSound ? 3 : 1.3)) / .9, 0, 1)); if (this.fromSound && k >= 1) document.querySelectorAll('[data-navdot]').forEach(d => { d.style.opacity = '1'; }); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
     if (!this.state.introDone) { this.introT += dt; if (this.introT >= this.introEnd) this.setState({ introDone: true }); }
     this.p += (this.target - this.p) * (1 - Math.exp(-dt * 5.5));
@@ -238,7 +238,7 @@ class Component extends DCLogic {
       if (L.k === 'sound') document.querySelectorAll('nav[aria-label="Pages"] [data-navk] > span:not([data-navdot])').forEach(sp => { sp.style.opacity = (1 - k).toFixed(3); });
       if (L.t > .55 && !this.left) { this.left = true;
         if (L.k === 'sound') try { const o = {}; document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); o[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; }); o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
-        location.href = L.href; } }
+        (window.__leave || (h => { location.href = h; }))(L.href); } }
     if (this.state.introDone && this.count) {
       this.unl = this.unl || {}; this.gBlooms = this.gBlooms || [];
       const fNow = clamp((this.p + 1) / this.count, 0, 1);

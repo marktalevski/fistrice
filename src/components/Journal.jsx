@@ -34,7 +34,7 @@ class Component extends DCLogic {
   tick = now => {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now; this.t += dt;
-    if (this.out) { this.out.t += dt; if (this.out.t > .55 && !this.left) { this.left = true; location.href = this.out.href; } }
+    if (this.out) { this.out.t += dt; if (this.out.t > .55 && !this.left) { this.left = true; (window.__leave || (h => { location.href = h; }))(this.out.href); } }
     this.draw();
   };
   // a brush stroke pours out of this page's nav dot and settles as the title's underline

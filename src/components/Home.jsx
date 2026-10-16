@@ -676,10 +676,10 @@ class Component extends DCLogic {
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now;
     this.T += dt; this.hovT += (this.hov - this.hovT) * (1 - Math.exp(-dt * 8)); for (const k of ['sound', 'journal']) this.hovPgT[k] = (this.hovPgT[k] || 0) + ((this.hovPg[k] || 0) - (this.hovPgT[k] || 0)) * (1 - Math.exp(-dt * 8));
     this.fadeTick(dt); this.dtF = Math.max(0, dt);
-    // leaving for Freediving: keep a picture of this last frame, which that page shows while it loads so there's no blank moment in between
-    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? (/\/sound\//.test(this.dest) ? 1.3 : 2.05) : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} // Sound picks the menu dots up where they are and drops them onto its beat pads
+    // leaving: the last frame is kept (window.__leave) and shown by the next page while it loads, so there's no blank moment in between
+    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? (/\/sound\//.test(this.dest) ? 1.3 : 2.05) : 4.05) && !this.left) { this.left = true; // Sound picks the menu dots up where they are and drops them onto its beat pads
       if (/\/sound\//.test(this.dest || '')) try { const o = {}; ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].forEach(k => { const f = this.navFrom && this.navFrom[k]; o[k] = f ? f.p : sndDrop(k, innerWidth, innerHeight); }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
-      location.href = this.dest || BASE + 'freediving/?from=home'; } }
+      (window.__leave || (h => { location.href = h; }))(this.dest || BASE + 'freediving/?from=home'); } }
     this.draw();
   };
 

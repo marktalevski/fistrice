@@ -15,6 +15,20 @@ const { title, noindex } = Astro.props;
       // The pages animate their way out before navigating. When Back restores one from the back-forward cache
       // it would resume with that exit already finished (a blank page), so start it fresh instead.
       addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+      // Every page is a canvas that draws nothing until its script has started, so between two pages there would be a blank moment. So a
+      // page leaves through __leave: it keeps a picture of its last frame (its canvases, and its menu dots), and the next page shows that
+      // picture straight away, until it has drawn its own first frames (see the script at the top of the body)
+      window.__leave = href => {
+        try { const W = innerWidth, H = innerHeight, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+          x.fillStyle = getComputedStyle(document.body).backgroundColor || '#f5f3ee'; x.fillRect(0, 0, W, H);
+          document.querySelectorAll('canvas').forEach(cv => { const r = cv.getBoundingClientRect(), st = getComputedStyle(cv); if (!r.width || !r.height || st.display === 'none' || st.visibility === 'hidden') return;
+            x.globalAlpha = +st.opacity; if (x.globalAlpha > 0) try { x.drawImage(cv, r.left, r.top, r.width, r.height); } catch (e) {} });
+          x.globalAlpha = 1; document.querySelectorAll('[data-navdot]').forEach(d => { const r = d.getBoundingClientRect(), st = getComputedStyle(d); if (r.width < 3 || +st.opacity === 0 || st.visibility === 'hidden') return;
+            x.fillStyle = st.backgroundColor; x.beginPath(); x.arc(r.left + r.width / 2, r.top + r.height / 2, r.width / 2, 0, 6.2832); x.fill(); });
+          sessionStorage.setItem('page-cover', JSON.stringify({ t: Date.now(), src: c.toDataURL('image/jpeg', .9) }));
+        } catch (e) {}
+        location.href = href;
+      };
       // Labels are set in Papyrus where it's installed (macOS, iOS, Windows with Office). Elsewhere they go back
       // to the original Newsreader styles, not a plain substitute.
       try {
@@ -28,6 +42,19 @@ const { title, noindex } = Astro.props;
     </style>
   </head>
   <body>
+    <script is:inline>
+      // arriving from another page: its last frame, over everything, until this page has drawn (a few frames after its canvas appears)
+      try {
+        const j = JSON.parse(sessionStorage.getItem('page-cover') || 'null'); sessionStorage.removeItem('page-cover');
+        if (j && Date.now() - j.t < 10000) {
+          const i = new Image(); i.id = 'page-cover'; i.alt = ''; i.src = j.src; i.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:2147483000;pointer-events:none;transition:opacity .15s';
+          document.body.appendChild(i);
+          const t0 = performance.now(), off = () => { i.style.opacity = '0'; setTimeout(() => i.remove(), 200); };
+          let seen = 0; const chk = () => { if (document.querySelector('canvas')) seen++; if (seen > 3 || performance.now() - t0 > 5000) off(); else requestAnimationFrame(chk); };
+          requestAnimationFrame(chk);
+        }
+      } catch (e) {}
+    </script>
     <slot />
   </body>
 </html>

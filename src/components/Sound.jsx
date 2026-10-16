@@ -266,7 +266,7 @@ class Component extends DCLogic {
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now; this.t += dt;
     if (this.arr && (this.t > 4.5 || this.out)) this.arr = null;
     if (this.out) { this.out.t += dt; const lim = this.out.k === 'home' || this.out.k === 'dive' ? 1.25 : .55;
-      if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home' || this.out.k === 'dive') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} location.href = this.out.href; } }
+      if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home' || this.out.k === 'dive') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} (window.__leave || (h => { location.href = h; }))(this.out.href); } }
     this.mx += ((this.mxT || 0) - this.mx) * Math.min(1, dt * 3);
     // the volume fader sets the master gain; squared, so the fader moves through loudness the way the ear hears it (half way down is half as loud)
     if (this.vol) this.vol.gain.setTargetAtTime(Math.pow(this.volume ?? 1, 2), this.ac.currentTime, .05);

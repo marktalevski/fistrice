@@ -289,9 +289,9 @@ class Component extends DCLogic {
       ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
     // while a piece plays the edge becomes an RGB strip (after Corsair's lighting): a rainbow running round it, quicker and brighter as the
-    // music gets louder, with a soft halo that swells on the loud parts. It fades back to the plain edge on pause
-    { const c = this.cur, on = c && !c.paused ? 1 : 0; this.rgbK = (this.rgbK || 0) + (on - (this.rgbK || 0)) * Math.min(1, dt * 3);
-      const lv = clamp(this.live || 0, 0, 1); this.rgbLv = (this.rgbLv || 0) + (lv - (this.rgbLv || 0)) * Math.min(1, dt * 10); this.rgbH = ((this.rgbH || 0) + dt * (50 + 220 * this.rgbLv)) % 360;
+    // music gets louder, with a soft halo that swells on the loud parts. On pause it holds still where it is; it fades back to the plain edge once nothing is loaded
+    { const c = this.cur, on = c ? 1 : 0, run = c && !c.paused; this.rgbK = (this.rgbK || 0) + (on - (this.rgbK || 0)) * Math.min(1, dt * 3);
+      const lv = run ? clamp(this.live || 0, 0, 1) : 0; this.rgbLv = (this.rgbLv || 0) + (lv - (this.rgbLv || 0)) * Math.min(1, dt * 10); if (run) this.rgbH = ((this.rgbH || 0) + dt * (50 + 220 * this.rgbLv)) % 360;
       if (this.rgbK > .01) { const K = this.rgbK, L = this.rgbLv;
         // the edge as a polyline: up the left side, round the corner, along the top, round, and down the right
         if (!this.rgbP || this.rgbP.W !== W || this.rgbP.H !== H) { const P = [], r = 18, a = G.x0 + .5, b = G.x1 - .5, top = G.y0 + .5, add = (x, y) => P.push([x, y]);

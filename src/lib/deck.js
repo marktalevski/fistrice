@@ -22,8 +22,9 @@ export function deckGeo(W, H) {
   const gx = mx1 + 14 + Math.round((Rw - (4 * s + 3 * gap)) / 2), gy = y0 + 14 + Math.round((hV - 30 - kc - 10 - (2 * s + gap)) / 2);
   const cell = n => [gx + (n % 4) * (s + gap), gy + Math.floor(n / 4) * (s + gap), s, s];
   const pads = [0, 1, 2, 3].map(cell), cpads = [4, 5, 6].map(cell), spare = cell(7);
-  const pr = Math.round(kc * .25), play = [mx1 - 28, H - 18 - pr, pr], vol = { x: mx1 - 28, y0: y0 + 34, y1: play[1] - pr - 24 };
-  const kgx = mx1 + 14 + (Rw - 6 * kc) / 2, ky = H - 14 - kc / 2, knobs = [0, 1, 2, 3, 4, 5].map(i => [kgx + (i + .5) * kc, ky, kc * .25]);
+  const pr = Math.round(kc * .3), play = [mx1 - 28, H - 18 - pr, pr], vol = { x: mx1 - 28, y0: y0 + 34, y1: play[1] - pr - 24 };
+  // the knob row sits centred in the space between the pads and the bottom edge
+  const kgx = mx1 + 14 + (Rw - 6 * kc) / 2, ky = Math.round((gy + 2 * s + gap + H - 12) / 2), knobs = [0, 1, 2, 3, 4, 5].map(i => [kgx + (i + .5) * kc, ky, kc * .27]);
   return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, knobs, kc, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8 };
 }
 // where each menu dot lands: the centre of its beat pad

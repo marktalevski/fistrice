@@ -113,6 +113,9 @@ class Component extends DCLogic {
     const mv = ev => { const dv = Math.round((ev.clientX - x0) / 14); if (dv) moved = true; if (moved) this.setKnob(i, v0 + dv); };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); this.knobHeld = null; if (!moved) this.setKnob(i, v0 + 1); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+  knobMove = i => e => { const G = deckGeo(innerWidth, innerHeight), [kx, ky, kr] = G.knobs[i], dx = e.clientX - kx, dy = e.clientY - (ky + (this.deckSY || 0)), d = Math.hypot(dx, dy), ang = Math.atan2(dx, -dy) * 180 / Math.PI;
+    const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
+    const cur = q == null ? 'ew-resize' : 'pointer'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
   // play / pause; with nothing chosen yet it starts the album's first piece
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
@@ -292,12 +295,14 @@ class Component extends DCLogic {
     { const comboK = this.comboT != null ? Math.max(0, 1 - (t - this.comboT) / 1.2) : 0;
       if (!this.knobA) this.knobA = this.knobV.map(() => 0);
       G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], tgt = -150 + v * 300 / 9; this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 18);
-        const hv = this.knobHov === i || this.knobHeld === i, nr = kr * 1.62;
+        const hv = this.knobHov === i || this.knobHeld === i, nr = kr + clamp(kr * .42, 5.5, 8), nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
         ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; ctx.beginPath(); ctx.arc(kx, ky + 1.5, kr + 3, 0, TAU); ctx.fill();
-        ctx.font = '500 ' + clamp(kr * .42, 5.5, 7.5).toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        for (let q = 0; q <= 9; q++) { const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0;
-          ctx.globalAlpha = (1 - fo) * (lit ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? 'rgba(0,229,255,' + (.4 + .6 * comboK) + ')' : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
-          ctx.fillText(String(q), kx + Math.sin(a) * nr, ky - Math.cos(a) * nr); noGlow(); }
+        const fzk = clamp(kr * .48, 5.5, 8); ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (let q = 0; q <= 9; q++) { const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0, nx = kx + Math.sin(a) * nr, ny = ky - Math.cos(a) * nr;
+          // the number under the pointer gets a small ring, so it reads as something to press
+          if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,229,255,.16)'; ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .95, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
+          ctx.globalAlpha = (1 - fo) * (lit || q === nh ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? 'rgba(0,229,255,' + (.4 + .6 * comboK) + ')' : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
+          if (q === nh && !on) ctx.fillStyle = '#ffffff'; ctx.fillText(String(q), nx, ny); noGlow(); }
         ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, ky - kr, 0, ky + kr); kg.addColorStop(0, hv ? '#4c535b' : '#40464d'); kg.addColorStop(1, hv ? '#24282d' : '#1d2024');
         ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(kx, ky, kr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
         ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(kx, ky, kr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
@@ -555,7 +560,7 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
-        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; } })),
+        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
@@ -633,7 +638,7 @@ function View(v) {
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
         {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}
+        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>

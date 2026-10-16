@@ -6,8 +6,12 @@
 export const KIRBY_W = 22, KIRBY_H = 20;
 export const KIRBY_IDLES = ['idle', 'sleep', 'yawn'];
 // the dance's moves, and how many beats each lasts (a trio is a sway with two clones beside him, drawn by the deck)
-export const KIRBY_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2 };
-export const KIRBY_REACTS = ['wave', 'jump', 'inhale', 'puff', 'happy', 'spin', 'sleep', 'yawn'];
+export const KIRBY_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2,
+  squish: 4, clap: 4, robot: 4, twist: 4, armwave: 4, bob: 4, float: 4, backflip: 2, stomp: 4, disco: 4 };
+// which moves suit slow music and which fast (the rest suit any): slow music favours the first, fast the second
+export const KIRBY_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish'];
+export const KIRBY_FAST = ['hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
+export const KIRBY_REACTS = ['wave', 'jump', 'inhale', 'puff', 'happy', 'spin', 'yawn'];
 const C = { o: '#3d1533', b: '#ff9ccd', s: '#e46aa6', h: '#ffd3e8', c: '#ff4f86', f: '#e3204c', fs: '#a3123a', e: '#150f24', eb: '#3158ff', w: '#ffffff', m: '#7d0f31', t: '#ff6f8f', z: '#cfd6ff' };
 const STAR = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]];
 const ZED = [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]];
@@ -45,6 +49,27 @@ export function kirby(mode, t, o = {}) {
       by -= h; ry *= 1 - .14 * sq; rx *= 1 + .1 * sq; by += sq * .8; aL = aR = h > .5 ? 1.25 : -.5; eyes = h > .5 ? 'happy' : 'open'; mouth = h > .5 ? 'big' : 'smile'; }
     else if (mv === 'breakdance') { ry *= .8; rx *= 1.08; by += 1.3; flip = Math.floor(mp * 8) % 2 === 1; fL = [0, -2.2 * Math.abs(Math.sin(mp * Math.PI * 2))]; fR = [0, -2.2 * Math.abs(Math.cos(mp * Math.PI * 2))]; aL = aR = .05; eyes = 'shut'; mouth = 'big'; }
     else if (mv === 'pose') { const k = Math.min(1, mp * 2); aL = -.4 + 1.75 * k; aR = -.3; eyes = 'happy'; mouth = 'big'; edx = -1; by -= Math.sin(Math.min(1, mp) * Math.PI) * 1.5; if (mp > .5) add(STAR, 2, 2, ink); }
+    // squish: squashes and stretches like jelly on each beat
+    else if (mv === 'squish') { const k = Math.sin(mp * Math.PI * 2); ry *= 1 + .14 * k; rx *= 1 - .1 * k; by -= k * .7; aL = aR = k > 0 ? .9 : -.5; eyes = k > .3 ? 'happy' : eyes; mouth = k > 0 ? 'big' : 'smile'; }
+    // clap: claps over his head on every beat, a little hop with each
+    else if (mv === 'clap') { const k = up > .5 ? 1 : 0; aL = aR = k ? 1.4 : .6; by -= up * .8; eyes = 'happy'; mouth = 'big'; if (k && f > .45 && f < .6) add(STAR, 10, 0, ink); }
+    // robot: stiff, in steps: arms snap between poses on the half beat, the body ticks side to side, no bounce
+    else if (mv === 'robot') { const h = Math.floor(mp * 2) % 4; bx += [-1, 0, 1, 0][h]; aL = [1.3, -.4, .3, 1.3][h]; aR = [-.4, 1.3, .3, -.4][h]; eyes = 'open'; mouth = 'none'; edx = [-1, 0, 1, 0][h]; }
+    // twist: low, feet swapping as he turns this way and that
+    else if (mv === 'twist') { const k = Math.sin(mp * Math.PI * 2); ry *= .92; by += .6; flip = k < 0; fL = [k * 1.4, 0]; fR = [-k * 1.4, 0]; aL = .3 + .4 * k; aR = .3 - .4 * k; eyes = 'happy'; mouth = 'smile'; }
+    // armwave: the arms rise one after the other, like a stadium wave, slow and smooth
+    else if (mv === 'armwave') { const k = mp * Math.PI; aL = .5 + .9 * Math.sin(k); aR = .5 + .9 * Math.sin(k - 1.3); by -= .4 * Math.sin(k * 2); edx = Math.sin(k) > 0 ? -1 : 1; mouth = 'smile'; }
+    // bob: a head-bob to the beat, eyes shut, in the groove
+    else if (mv === 'bob') { const d = f < .25 ? f / .25 : 1 - (f - .25) / .75; by += d * 1.1; ry *= 1 - .06 * d; eyes = 'shut'; mouth = 'smile'; aL = aR = -.3 + .2 * d; }
+    // float: puffs up and drifts in the air, arms paddling slowly
+    else if (mv === 'float') { rx = 7.1; ry = 6.8; by = 9.6 + .9 * Math.sin(mp * Math.PI); aL = aR = .4 + .5 * Math.sin(mp * Math.PI * 2); fL = fR = [0, -1]; mouth = 'puff'; }
+    // backflip: a crouch, a big jump turning over at the top, and a squashed landing
+    else if (mv === 'backflip') { const c = mp / 2; let h = 0, sq = 0; if (c < .12) sq = c / .12; else if (c < .82) { const u = (c - .12) / .7; h = Math.sin(u * Math.PI) * 4.8; o.flipY = u > .3 && u < .7; } else sq = 1 - (c - .82) / .18;
+      by -= h; ry *= 1 - .14 * sq; rx *= 1 + .1 * sq; by += sq * .8; aL = aR = h > .5 ? 1.25 : -.5; eyes = h > .5 ? 'shut' : 'open'; mouth = h > .5 ? 'big' : 'smile'; }
+    // stomp: heavy stomps, one foot then the other, a shake on each landing
+    else if (mv === 'stomp') { const sd = beat % 2 ? 1 : -1, lift = up * 2; if (sd < 0) fL = [0, -lift]; else fR = [0, -lift]; bx += land * (Math.random() - .5) * .9; ry *= 1 - .08 * land; aL = aR = .1; eyes = 'open'; mouth = land > .3 ? 'big' : 'smile'; }
+    // disco: one arm pointing up across, the other down, swapping every two beats, hips bouncing
+    else if (mv === 'disco') { const sd = Math.floor(mp / 2) % 2 ? 1 : -1; if (sd > 0) { aR = 1.45; aL = -.6; } else { aL = 1.45; aR = -.6; } bx += sd * .7; by -= up * .5; edx = sd; eyes = 'open'; mouth = 'smile'; }
   } else if (mode === 'wave') {
     const w = Math.sin(tau * 9); aR = 1.15 + .35 * w; aL = -.4; eyes = blink ? 'shut' : 'open'; mouth = 'smile'; edx = 1; by += .2 * Math.sin(tau * 3);
   } else if (mode === 'jump') {
@@ -101,5 +126,6 @@ export function kirby(mode, t, o = {}) {
   else if (mouth === 'puff') { put(fx0 - 1, my, C.m); }
   let cells = out;
   if (flip) cells = cells.map(([x, y, c]) => [Math.round(2 * bx) - 1 - x, y, c]);
+  if (o.flipY) cells = cells.map(([x, y, c]) => [x, Math.round(2 * by) - 1 - y, c]);
   return cells.concat(fx).filter(([x, y]) => x >= 0 && y >= 0 && x < KIRBY_W && y < KIRBY_H);
 }

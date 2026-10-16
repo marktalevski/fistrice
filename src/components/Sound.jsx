@@ -2,7 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
-import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS, KIRBY_MOVES } from '../lib/kirby.js';
+import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS, KIRBY_MOVES, KIRBY_SLOW, KIRBY_FAST } from '../lib/kirby.js';
 import { deckGeo, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
@@ -142,10 +142,10 @@ class Component extends DCLogic {
     const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
     const cur = this.knobHeld === i ? 'grabbing' : 'grab'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
-  // Kirby on the screen: resting while nothing plays, dancing while a piece does. A pad under the pointer sets him off on a little turn,
-  // picked at random (never the same twice running); a resting one (sleep, yawn) he keeps to afterwards if nothing is playing
-  padOn(i) { if (this.padHov !== i) { let f; do f = KIRBY_REACTS[Math.floor(Math.random() * KIRBY_REACTS.length)]; while (f === this.kReact || f === this.kIdle); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
-  padOff(i) { if (this.padHov !== i) return; this.padHov = null; if (KIRBY_IDLES.includes(this.kReact) && !(this.cur && !this.cur.paused)) this.kIdle = this.kReact; }
+  // Kirby on the screen: asleep while nothing plays, dancing while a piece does. A pad under the pointer sets him off on a little turn,
+  // picked at random (never the same twice running), and then he drops off again
+  padOn(i) { if (this.padHov !== i) { let f; do f = KIRBY_REACTS[Math.floor(Math.random() * KIRBY_REACTS.length)]; while (f === this.kReact); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
+  padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
   // the lit edge's colour (the playhead takes it too); null when
   // the edge is plain
@@ -155,6 +155,18 @@ class Component extends DCLogic {
   // dragged. Esc, F, or the corner key that shows when the mouse moves bring the controller back
   goFull = () => { this.focus = true; this.fMove = performance.now(); this.fAt = performance.now(); const d = document.documentElement; try { const p = d.requestFullscreen && d.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
   leaveFull = () => { this.focus = false; try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {} };
+  // the music's tempo, for Kirby's dance: listens for beats in the bass (an onset is the low end jumping well above its recent level),
+  // takes the median gap between the last dozen, folds it into 70..150 beats a minute, and eases toward it. Quiet or beatless music
+  // (no onsets for a few seconds) settles slowly toward 72, so he sways gently
+  kTempo(dt) { const an = this.an, c = this.cur; if (this.kBpm == null) this.kBpm = 100; if (!an || !c || c.paused) return this.kBpm;
+    if (!this.kF || this.kF.length !== an.frequencyBinCount) this.kF = new Uint8Array(an.frequencyBinCount); an.getByteFrequencyData(this.kF);
+    let e = 0; for (let q = 1; q <= 5; q++) e += this.kF[q]; e /= 5 * 255; const now = this.t;
+    this.kEm = this.kEm == null ? e : this.kEm + (e - this.kEm) * Math.min(1, dt * 1.5);
+    if (e > .08 && e > this.kEm * 1.3 && e - (this.kEp || 0) > .02 && now - (this.kOn || 0) > .28) { if (this.kOn) { const g = now - this.kOn; if (g < 2) { this.kGaps = (this.kGaps || []).concat(g).slice(-12); } } this.kOn = now; }
+    this.kEp = e;
+    let tgt = this.kBpm; if (this.kGaps && this.kGaps.length >= 4) { const sg = [...this.kGaps].sort((a, b) => a - b), g = sg[sg.length >> 1]; let b = 60 / g; while (b < 70) b *= 2; while (b > 150) b /= 2; tgt = b; }
+    if (now - (this.kOn || 0) > 3) { tgt = 72; if (now - (this.kOn || 0) > 6) this.kGaps = []; }
+    this.kBpm += (tgt - this.kBpm) * Math.min(1, dt * .8); return this.kBpm; }
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
   cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
@@ -422,13 +434,16 @@ class Component extends DCLogic {
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // Kirby, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. His notes and
       // stars take the edge's ink while it is lit
-      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : this.kIdle || 'idle', kp = 2, kw = KIRBY_W * kp, ky = sy + 50 - KIRBY_H * kp - 2;
+      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = KIRBY_W * kp, ky = sy + 50 - KIRBY_H * kp - 2;
         // the free stretch of the strip he dances along: from just past the text to the right edge
         const xMax = sx + sw - 10 - kw, xMin = Math.min((this.kTxtR || sx + 200) + 8, xMax); if (this.kX == null) this.kX = xMax; this.kX = clamp(this.kX, xMin, xMax);
         // the dance: a run of moves picked at random (never one twice running), each a few beats long; a slide glides him somewhere new,
         // and every so often he strikes a pose. The beat only runs while a piece plays
-        let dO = {}; if (mode === 'dance') { const bpm = 112; this.kB = (this.kB || 0) + dt * bpm / 60;
+        let dO = {}; if (mode === 'dance') { const bpm = this.kTempo(dt); this.kB = (this.kB || 0) + dt * bpm / 60;
           if (!this.kMv || this.kB >= KIRBY_MOVES[this.kMv]) { this.kB = 0; this.kN = (this.kN || 0) + 1; const pool = Object.keys(KIRBY_MOVES).filter(m => m !== this.kMv && m !== 'pose' && (m !== 'trio' || xMax - xMin > kw * 2.2)); if (this.kMv !== 'slide') pool.push('slide', 'slide');
+            // slow music: more of the slow moves (and fewer fast ones); fast music the other way round
+            const slow = clamp((105 - bpm) / 30, 0, 1), fast = clamp((bpm - 115) / 25, 0, 1);
+            [...pool].forEach(m => { const w = KIRBY_SLOW.includes(m) ? 1 + 3 * slow : KIRBY_FAST.includes(m) ? 1 + 2 * fast - .8 * slow : 1; for (let q = 1; q < Math.round(w); q++) pool.push(m); if (w < .5) pool.splice(pool.indexOf(m), 1); });
             this.kMv = this.kN % 7 === 0 ? 'pose' : pool[Math.floor(Math.random() * pool.length)];
             // a slide glides him well across; hops, sways, shimmies and jump-spins carry him a little way; the rest stay put
             this.kX0 = this.kX; let x1 = this.kX; if (this.kMv === 'slide') { let n = 0; while (n++ < 20 && Math.abs(x1 - this.kX) < (xMax - xMin) * .3) x1 = xMin + Math.random() * (xMax - xMin); }

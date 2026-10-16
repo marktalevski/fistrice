@@ -31,7 +31,9 @@ class Component extends DCLogic {
     import('../lib/site-data.js').then(m => { this.store = m; return m.load(); }).then(data => this.setState({ data }));
     this.introT = (this.props.intro ?? true) && (this.props.motion ?? true) ? 0 : 99;
     if (this.introT === 0 && /from=home/.test(location.search)) { this.introT = 1; this.fromHome = true; }
-    this.tideIntro = !!this.fromHome; this.tide0 = 2.0; if (this.fromHome) this.skipWaves = true;
+    // the page comes in in order: the surface lines draw (already there when arriving from Home), the water rises up to them, then the rope goes
+    // down as the entries come in, and the squid arrives last
+    this.tideIntro = true; this.tide0 = this.fromHome ? 2.0 : 2.15; this.tideEnd = this.tide0 + 1.5; this.introEnd = this.tideEnd + 1.15; if (this.fromHome) this.skipWaves = true;
     this.onStorage = e => { if (this.store && e.key === this.store.KEY) this.store.load().then(data => this.setState({ data })); };
     this.onWheel = e => this.wheel(e);
     this.onKey = e => this.key(e);
@@ -173,7 +175,7 @@ class Component extends DCLogic {
     this.els = els.filter(Boolean);
   }
 
-  skipIntro() { if (!this.state.introDone) this.introT = Math.max(this.introT, 3.2); }
+  skipIntro() { if (!this.state.introDone) this.introT = Math.max(this.introT, this.introEnd); }
   wheel(e) {
     const sc = e.target.closest && e.target.closest('[data-scroll]');
     if (sc) { const dy = e.deltaY; if ((dy > 0 && sc.scrollTop + sc.clientHeight < sc.scrollHeight - 1) || (dy < 0 && sc.scrollTop > 0)) return; }
@@ -220,7 +222,7 @@ class Component extends DCLogic {
         if (dot && k > 0) { const u = clamp((k - .55) / .45, 0, 1); dot.style.transform = 'scale(' + (1 + .18 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } });
       if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; location.href = BASE + '?from=dive'; } }
     if (this.fromHome && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - 1.3) / .9, 0, 1)); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
-    if (!this.state.introDone) { this.introT += dt; if (this.introT >= (this.tideIntro ? this.tide0 + 1.8 : 3.8)) this.setState({ introDone: true }); }
+    if (!this.state.introDone) { this.introT += dt; if (this.introT >= this.introEnd) this.setState({ introDone: true }); }
     this.p += (this.target - this.p) * (1 - Math.exp(-dt * 5.5));
     if (Math.abs(this.target - this.p) < .0002) this.p = this.target;
     if (this.state.exp != null && Math.abs(this.target - this.state.exp) > .6) this.setState({ exp: null });
@@ -293,7 +295,7 @@ class Component extends DCLogic {
     this.along = along; this.anchor = anchor;
     this.bg = css(PAPER); this.ink = this.inkBlend(Math.max(0, pp + 1) * (this.props.metersPerEntry ?? 3));
     root.style.color = this.ink;
-    const ui = this.state.introDone ? 1 : clamp((this.introT - (this.tideIntro ? this.tide0 + 1 : 3)) / .7, 0, 1);
+    const ui = this.state.introDone ? 1 : clamp((this.introT - this.tideEnd - .25) / .6, 0, 1);
     world.style.opacity = ui.toFixed(3);
     world.style.top = (this.tideY || 0).toFixed(1) + 'px';
     if (this.chromeRef.current) this.chromeRef.current.style.opacity = ui.toFixed(3);
@@ -478,7 +480,7 @@ class Component extends DCLogic {
       if ((ur > 0 || uy > 0) && sy > -40) { const g3 = ctx.createLinearGradient(0, sy - 220, 0, sy + 10); const c = mixC(HUES.r, HUES.b, uy * .5);
         g3.addColorStop(0, `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},0)`); g3.addColorStop(1, `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${.3 * Math.max(ur, uy)})`);
         ctx.fillStyle = g3; ctx.fillRect(0, sy - 220, W, 232); } }
-    const wA = intro ? smooth(clamp((T - 1) / 1.6, 0, 1)) : 1;
+    const wA = intro && !this.tideIntro ? smooth(clamp((T - 1) / 1.6, 0, 1)) : 1;
     if (wA > 0 && sy < H + 40) {
       const wb = intro ? sy + (H - sy + 60) * wA : H + 60;
       ctx.save(); if (this.tideY) ctx.translate(0, this.tideY); ctx.beginPath();
@@ -598,7 +600,7 @@ class Component extends DCLogic {
     ctx.save(); if (this.tideY && this.leaveT != null) ctx.translate(0, this.tideY);
     const bob = Math.sin(t * 1.3) * 2, BS = clamp(W / 900, .75, 1), BY = sy + this.waveY(0, 0, t) - 2 + bob, LS = BY + 12 * BS;
     if (intro) {
-      const d = smooth(clamp((T - 1.9) / 1.3, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - 1.6) / .4, 0, 1));
+      const d = smooth(clamp((T - this.tideEnd) / 1.0, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - 1.6) / .4, 0, 1));
       if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W, .9, LS - o.y, false, d < 1, '#141414'); }
       if (drop > 0) { this.buoyPos = [o.x, BY - (1 - drop) * 60, BS * drop]; this.drawBuoy(ctx, o.x, BY - (1 - drop) * 60, BS * drop, t); }
     } else {

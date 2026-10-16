@@ -198,11 +198,11 @@ class Component extends DCLogic {
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
   // ---- the deck: a DJ controller running off the bottom of the screen (geometry in lib/deck.js). Its hit areas are real elements over the drawing
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
-    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), jog2: R.querySelector('[data-deck="jog2"]'), cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
     const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; };
-    this.jogCs = {}; [['jog', G.jog], ['jog2', G.jog2]].forEach(([k, [jx, jy, jr]]) => { put(this.dk[k], jx - jr, jy - jr, jr * 2, jr); this.jogCs[k] = [jx, jy + SY]; });
+    this.jogCs = {}; [['jog', G.jog]].forEach(([k, [jx, jy, jr]]) => { put(this.dk[k], jx - jr, jy - jr, jr * 2, jr); this.jogCs[k] = [jx, jy + SY]; });
     [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
-    this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); });
+    this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = G.cpads[i]; put(el, p[0], p[1], p[2], p[3]); });
     this.dk.fad.forEach((el, i) => put(el, G.faders[i] - G.sp / 2 + 2, G.fy0 - 6, G.sp - 4, G.fy1 - G.fy0 + 12)); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
     const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
@@ -228,7 +228,7 @@ class Component extends DCLogic {
       ctx.save(); rr(G.x0, G.y0, G.w, H - G.y0, [18, 18, 0, 0]); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.04)'; for (let gy = G.y0 + 8; gy < H; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
     ctx.globalAlpha = 1 - fo;
-    // the jog wheels: only their top halves show above the edge. They turn with the record while a piece plays and under the hand while dragged;
+    // the jog wheel: only its top half shows above the edge. They turn with the record while a piece plays and under the hand while dragged;
     // the lit ring round each is how far the piece has got
     if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
     const jogAt = ([jx, jy, jr]) => {
@@ -244,7 +244,7 @@ class Component extends DCLogic {
       // the centre: a small display ring in the piece's colour
       ctx.fillStyle = '#16191c'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.strokeStyle = c ? kc : '#3a4047'; ctx.lineWidth = 3; if (c) glow(kc, 10); ctx.beginPath(); ctx.arc(jx, jy, jr * .24, 0, TAU); ctx.stroke(); noGlow();
       if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } };
-    jogAt(G.jog); jogAt(G.jog2);
+    jogAt(G.jog);
     // cue and play / pause, in the left deck's corner
     const btn = ([bx, by, br], col, lit, hov, icon) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = hov ? '#2a2f34' : '#1f2327'; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.globalAlpha = (1 - fo) * (lit ? 1 : hov ? .85 : .5); if (lit) glow(col, 12); ctx.beginPath(); ctx.arc(bx, by, br - 1, 0, TAU); ctx.stroke(); noGlow();
@@ -282,11 +282,19 @@ class Component extends DCLogic {
       // the whole piece in miniature: played part bright, a marker where you are
       const oy = sy + sh - 9, ow = sw - 16; for (let px = 0; px < ow; px += 2) { const e = sliver(env, px / ow * dur, dur), hh = Math.max(.6, e * 4.5); ctx.globalAlpha = (1 - fo) * (c && px / ow <= u ? .95 : .35); ctx.fillStyle = wcol(e); ctx.fillRect(sx + 8 + px, oy - hh, 1.4, hh * 2); }
       ctx.globalAlpha = 1 - fo; if (c) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 8 + ow * u - .5, oy - 6, 1, 12); } });
-    // the album screen across the top of the right deck: which album, how many pieces, how long
-    glass(G.ascr, (sx, sy, sw, sh) => { const n2 = this.albums.length, tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); thumb(sx + 5, sy + 5, sh - 10);
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM ' + pad2(this.state.album + 1) + ' / ' + pad2(n2), sx + sh + 4, sy + 11);
-      ctx.font = '400 10px ' + mich; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 5); ctx.fillText(al.title.toUpperCase(), sx + sh + 4, sy + 24); noGlow();
-      ctx.textAlign = 'right'; ctx.font = '400 8px ' + mono; ctx.fillStyle = PM; ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 8, sy + 11); ctx.fillText('SCROLL ▲▼', sx + sw - 8, sy + 24); });
+    // the browse screen on the right deck: the album, then its pieces as a list with the one playing lit and its progress under it
+    glass(G.ascr, (sx, sy, sw, sh) => { const n2 = this.albums.length, tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0), hh = 30; thumb(sx + 6, sy + 5, hh - 10);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM ' + pad2(this.state.album + 1) + ' / ' + pad2(n2), sx + hh + 2, sy + 10);
+      ctx.font = '400 9.5px ' + mich; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 5); ctx.fillText(al.title.toUpperCase(), sx + hh + 2, sy + 21); noGlow();
+      ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 8, sy + 10); ctx.fillText('SCROLL ▲▼', sx + sw - 8, sy + 21);
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 6, sy + hh, sw - 12, 1);
+      const rowH = clamp((sh - hh - 6) / Math.max(1, al.tracks.length), 13, 20);
+      al.tracks.forEach((tr, k) => { const ry = sy + hh + 4 + k * rowH, on = c && c.tr.id === tr.id, mid = ry + rowH / 2; if (ry + rowH > sy + sh) return;
+        if (on) { ctx.fillStyle = cy ? 'rgba(0,229,255,.12)' : 'rgba(255,255,255,.08)'; ctx.fillRect(sx + 4, ry, sw - 8, rowH - 1); ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(sx + 4, ry + rowH - 2, (sw - 8) * u, 1); }
+        ctx.textAlign = 'left'; ctx.font = '400 8px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), sx + 8, mid);
+        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(sx + 30, mid, 2.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = on ? '#f2f2f0' : '#c3c8cc'; ctx.save(); ctx.beginPath(); ctx.rect(sx + 38, ry, sw - 90, rowH); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), sx + 38, mid); ctx.restore();
+        ctx.textAlign = 'right'; ctx.fillStyle = PM; ctx.fillText(fmtDur(tr.dur), sx + sw - 8, mid); }); });
     // the page pads: a row of hot-cue pads across the top of the left deck, always labelled, lit in their page's colour; Sound's stays lit
     ctx.font = (G.pads[0][2] < 76 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     G.pads.forEach(([px, py, pw, ph], i) => { const lit = Math.max(i === 2 ? 1 : 0, clamp(this.S[i].k, 0, 1)), col = cols[i];
@@ -294,7 +302,17 @@ class Component extends DCLogic {
       ctx.globalAlpha = (1 - fo) * (.14 + .76 * lit); ctx.fillStyle = col; if (lit > .3) glow(col, 14 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 3); ctx.fill(); noGlow();
       ctx.globalAlpha = 1 - fo; ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 4); ctx.stroke();
       ctx.fillStyle = lit > .5 ? '#0c0c0c' : LAB[i]; ctx.fillText(names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
-    // pointing at a pad: the page's little pixel face shows on the main screen's waveform
+    // three more pads on the right for the pages still to come: orange, green and purple. Dim until there is a page behind them
+    ctx.font = (G.cpads[0][2] < 76 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    G.cpads.forEach(([px, py, pw, ph], i) => { const k = clamp(this.S[4 + i].k, 0, 1), col = cols[4 + i];
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#26292e'; rr(px, py, pw, ph, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(px + 3, py + 2, pw - 6, 1);
+      ctx.globalAlpha = (1 - fo) * (.1 + .3 * k); ctx.fillStyle = col; rr(px + 2, py + 2, pw - 4, ph - 4, 3); ctx.fill();
+      ctx.globalAlpha = (1 - fo) * (.55 + .45 * k); ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 4); ctx.stroke();
+      ctx.fillStyle = col; ctx.fillText('SOON', px + pw / 2, py + ph / 2 + .5); ctx.globalAlpha = 1 - fo; });
+    // pointing at a pad: the page's little pixel face shows on the main screen's waveform (the pads still to come just say so)
+    { const cp = this.padHov != null && this.padHov >= 4 ? this.padHov : -1, ck = cp >= 0 ? clamp(this.S[cp].k, 0, 1) : 0;
+      if (ck > .02) { const [sx, sy, sw, sh] = G.scr, wh = Math.round(sh * .36); ctx.globalAlpha = (1 - fo) * ck * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - 90, sy + 4, 180, wh, 3); ctx.fill();
+        ctx.globalAlpha = (1 - fo) * ck; ctx.fillStyle = cols[cp]; ctx.font = '400 10px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('A PAGE · COMING SOON', sx + sw / 2, sy + 4 + wh / 2); ctx.globalAlpha = 1 - fo; } }
     { const hp = this.padHov != null && this.padHov < 4 ? this.padHov : -1, hk = hp >= 0 ? clamp(this.S[hp].k, 0, 1) : 0;
       if (hk > .02) { const [sx, sy, sw, sh] = G.scr, wh = Math.round(sh * .36), fp = 2.6, fw = 12 * fp + 12 + 110; ctx.globalAlpha = (1 - fo) * hk * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - fw / 2 - 8, sy + 4, fw + 16, wh, 3); ctx.fill();
         ctx.globalAlpha = (1 - fo) * hk; ctx.fillStyle = LAB[hp]; const fx = sx + sw / 2 - fw / 2, fy = sy + 4 + (wh - 10 * fp) / 2; FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5));
@@ -504,7 +522,8 @@ class Component extends DCLogic {
       rootRef: this.rootRef,
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
-        btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; }, fader: [0, 1, 2, 3, 4, 5, 6].map(i => this.faderDown(i)) },
+        btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
+        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, fader: [0, 1, 2, 3, 4, 5, 6].map(i => this.faderDown(i)) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
   }
@@ -655,7 +674,7 @@ function View(v) {
       </div>
       <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:999px 999px 0 0;pointer-events:auto;cursor:grab;touch-action:none")} />
-        <div data-deck="jog2" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:999px 999px 0 0;pointer-events:auto;cursor:grab;touch-action:none")} />
+        {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.fader || []).map((fd, i) => <div key={i} data-fader={i} onPointerDown={fd} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />)}

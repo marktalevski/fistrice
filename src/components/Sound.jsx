@@ -97,6 +97,9 @@ class Component extends DCLogic {
       if (cc.paused) cc.off = this.jog.pos; else if (now - this.jog.at > 70) { this.jog.at = now; const j = this.jog; this.jog = null; this.play(cc.tr, j.pos); this.jog = j; } };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+  // track search: the previous / next piece of the album (previous restarts a piece more than 3 s in, as on a CD deck)
+  skip = d => () => { const ai = this.state.album, al = this.albums[ai], c = this.cur, here = c && c.tr.ai === ai; let k = here ? c.tr.ti + d : d > 0 ? 0 : al.tracks.length - 1;
+    if (here && d < 0 && this.posOf() > 3) k = c.tr.ti; this.play(al.tracks[clamp(k, 0, al.tracks.length - 1)]); };
   // play / pause; with nothing chosen yet it starts the album's first piece
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
@@ -201,11 +204,12 @@ class Component extends DCLogic {
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
   // ---- the deck: a DJ controller running off the bottom of the screen (geometry in lib/deck.js). Its hit areas are real elements over the drawing
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
-    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), prev: R.querySelector('[data-deck="prev"]'), next: R.querySelector('[data-deck="next"]'), rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
     const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; if (st.display === 'none') st.display = ''; };
     this.jogCs = {}; const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr); this.jogCs.jog = [jx, jy + SY];
     [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = G.cpads[i]; put(el, p[0], p[1], p[2], p[3]); });
+    [['prev', G.prev], ['next', G.next]].forEach(([k, b]) => put(this.dk[k], b[0], b[1], b[2], b[3]));
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
@@ -258,8 +262,26 @@ class Component extends DCLogic {
       ctx.fillStyle = lit ? col : '#d9dde0'; ctx.globalAlpha = 1 - fo; icon(bx, by); };
     btn(G.cue, 'rgb(255,170,40)', !!c && c.paused, this.btnHov === 'cue', (bx, by) => { ctx.font = '600 8.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CUE', bx, by + .5); });
     btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { if (playing) { ctx.fillRect(bx - 5, by - 6, 3.5, 12); ctx.fillRect(bx + 1.5, by - 6, 3.5, 12); } else { ctx.beginPath(); ctx.moveTo(bx - 4, by - 7); ctx.lineTo(bx + 7, by); ctx.lineTo(bx - 4, by + 7); ctx.closePath(); ctx.fill(); } });
-    // the album clock's bed (the flip counter and its names are real elements laid on it)
-    { const [kx, ky, kw, kh] = G.clock; ctx.fillStyle = '#060708'; rr(kx - 4, ky - 3, kw + 8, kh + 8, 9); ctx.fill(); }
+    // a piece of black glass with a fine edge (and scanlines in the cyber style)
+    const glass = ([gx, gy, gw, gh], body) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(gx, gy, gw, gh, 5); ctx.fill(); ctx.save(); rr(gx, gy, gw, gh, 5); ctx.clip(); if (body) body(gx, gy, gw, gh);
+      if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = gy + 1; q < gy + gh; q += 2) ctx.fillRect(gx, q, gw, 1); } ctx.restore(); ctx.globalAlpha = 1 - fo;
+      ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(gx + .5, gy + .5, gw - 1, gh - 1, 4.5); ctx.stroke(); };
+    // the album clock's tall display: the flip counter (a real element) sits in the middle of it and the album names roll through it
+    glass(G.clockScr, (gx, gy, gw, gh) => { ctx.fillStyle = 'rgba(0,229,255,.05)'; ctx.fillRect(gx, gy, gw, gh); ctx.font = '400 6.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM', gx + gw / 2, gy + 9); });
+    { const [kx, ky, kw, kh] = G.clock; ctx.fillStyle = '#060708'; rr(kx - 3, ky - 2, kw + 6, kh + 6, 8); ctx.fill(); }
+    // the deck display above the jog: which piece of how many, its kind, and the time left, large
+    glass(G.dscr, (gx, gy, gw, gh) => { const n2 = al.tracks.length, here = c && c.tr.ai === this.state.album; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.font = '400 7px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('DECK 1', gx + 10, gy + 11);
+      ctx.font = '400 9px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; ctx.fillText('PIECE ' + (here ? pad2(c.tr.ti + 1) : '--') + ' / ' + pad2(n2), gx + 10, gy + 27);
+      if (c) { ctx.fillStyle = KINDS[c.tr.kind].cs; ctx.beginPath(); ctx.arc(gx + 104, gy + 27, 3, 0, TAU); ctx.fill(); ctx.font = '400 8px ' + mono; ctx.fillText(KINDS[c.tr.kind].label.toUpperCase(), gx + 111, gy + 27.5); }
+      ctx.textAlign = 'right'; ctx.font = '400 7px ' + mono; ctx.fillStyle = PM; ctx.fillText('REMAIN', gx + gw - 10, gy + 11);
+      ctx.font = '400 15px ' + mich; ctx.fillStyle = '#f2f2f0'; glow(NEON_C, 4); ctx.fillText(c ? '-' + fmtDur(Math.max(0, c.tr.dur - pos)) : '--:--', gx + gw - 10, gy + 27); noGlow(); });
+    // track search: two raised keys, previous and next piece
+    [['prev', G.prev, '◀◀  TRACK'], ['next', G.next, 'TRACK  ▶▶']].forEach(([k, [bx2, by2, bw2, bh2], lab]) => { const hv = this.btnHov === k; ctx.globalAlpha = 1 - fo;
+      ctx.fillStyle = '#060708'; rr(bx2 - 2, by2 - 1, bw2 + 4, bh2 + 5, 7); ctx.fill();
+      ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, by2, 0, by2 + bh2); kg.addColorStop(0, hv ? '#454b53' : '#3a3f46'); kg.addColorStop(1, hv ? '#2a2e33' : '#23262b');
+      ctx.fillStyle = kg; rr(bx2, by2, bw2, bh2, 6); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(bx2 + 6, by2 + 1.5, bw2 - 12, 1);
+      ctx.font = '500 8px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = hv ? (cy ? NEON_C : '#ffffff') : '#c8cdd1'; ctx.fillText(lab, bx2 + bw2 / 2, by2 + bh2 / 2 + .5); });
     // the album's photo, cropped square, for the screen
     const thumb = (x, y, sz) => { const P = this.photos && al.img && this.photos[al.img]; ctx.fillStyle = '#1b1e22'; ctx.fillRect(x, y, sz, sz);
       if (P && P.c) { const iw = P.c.width, ih = P.c.height, side = Math.min(iw, ih) * .7; ctx.globalAlpha = (1 - fo) * .95; ctx.drawImage(P.c, (iw - side) * (al.imgX ?? 1) * .9, (ih - side) * .3, side, side, x, y, sz, sz); ctx.globalAlpha = 1 - fo; }
@@ -297,10 +319,10 @@ class Component extends DCLogic {
     { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo + (hi - lo) * .15, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
       ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);
       ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(V.x - 3, V.y0, 6, V.y1 - V.y0, 3); ctx.fill(); ctx.globalAlpha = (1 - fo) * .35; ctx.fillStyle = PM; for (let q = 0; q <= 6; q++) ctx.fillRect(V.x - 11, lo + (hi - lo) * q / 6, q % 3 ? 2 : 4, 1);
-      ctx.globalAlpha = (1 - fo) * .85; ctx.fillStyle = cols[2]; glow(cols[2], 6); ctx.fillRect(V.x - 1, this.volY, 2, V.y1 - this.volY); noGlow();
+      const VC = NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.fillStyle = VC; glow(VC, 6); ctx.fillRect(V.x - 1, this.volY, 2, V.y1 - this.volY); noGlow();
       const cg = ctx.createLinearGradient(0, this.volY - 10, 0, this.volY + 10); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
       ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(V.x - 10, this.volY - 10, 20, 20); noGlow(); ctx.shadowOffsetY = 0;
-      ctx.fillStyle = cols[2]; glow(cols[2], 8); ctx.fillRect(V.x - 9, this.volY - 1, 18, 2); noGlow();
+      ctx.fillStyle = VC; glow(VC, 8); ctx.fillRect(V.x - 9, this.volY - 1, 18, 2); noGlow();
       this.volume = clamp(1 - (this.volHold - lo) / (hi - lo), 0, 1); }
     // the beat pads, square, all the same rubbery grey, a shade lighter than the deck so they stand off it, each outlined and labelled in its
     // page's colour: Sound's glows (this page), the others glow under the pointer, the three to come are dimmer, the spare is blank. Each one
@@ -504,7 +526,7 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
-        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown,
+        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, prev: this.skip(-1), next: this.skip(1),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
@@ -541,7 +563,7 @@ function View(v) {
           {(v.wheelItems || []).map((ab, $index) => (
             <React.Fragment key={$index}>
               {"\n            "}
-              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:3px 6px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:#c3c8cc;will-change:transform, opacity")}>
+              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:3px 6px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:#7fe9f7;text-shadow:0 0 6px rgba(0,229,255,.6);will-change:transform, opacity")}>
                 {ab?.title}
               </button>
               {"\n          "}
@@ -583,6 +605,8 @@ function View(v) {
         {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
+        <button data-deck="prev" type="button" aria-label="Previous piece" onClick={v.deck?.prev} onMouseEnter={v.deck?.btnOn?.('prev')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:5px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
+        <button data-deck="next" type="button" aria-label="Next piece" onClick={v.deck?.next} onMouseEnter={v.deck?.btnOn?.('next')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:5px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>

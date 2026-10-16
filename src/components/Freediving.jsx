@@ -201,7 +201,7 @@ class Component extends DCLogic {
   go(i) { this.target = i; }
   navHov = null; waveRef = React.createRef();
   goHome = e => { e.preventDefault(); if (this.leaveT != null) return; const o = {}; try { document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); o[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; }); o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} const far = this.p > -.9; this.goSurface(); this.navPos = o; try { let mb = 0; document.querySelectorAll('nav[aria-label="Pages"] [data-navk]').forEach(el => { const r = el.getBoundingClientRect(); mb = Math.max(mb, r.bottom); }); this.navBot = mb; } catch (x) {} setTimeout(() => { this.leaveT = 0; }, far ? 1300 : 0); };
-  goPage = k => e => { if (e) e.preventDefault(); if (this.leaveT != null || this.pgLeave) return; this.pgLeave = { href: k === 'sound' ? BASE + 'sound/' : BASE + 'journal/', t: 0, k }; };
+  goPage = k => e => { if (e) e.preventDefault(); if (this.leaveT != null || this.pgLeave) return; this.pgLeave = { href: k === 'sound' ? BASE + 'sound/?from=page' : BASE + 'journal/', t: 0, k }; };
   goSurface = () => { this.target = -1; this.setState({ exp: null }); };
 
   tick = now => {
@@ -230,7 +230,11 @@ class Component extends DCLogic {
     if (this.pgLeave) { const L = this.pgLeave; L.t += dt; const k = smooth(clamp(L.t / .45, 0, 1));
       [this.canvasRef, this.waveRef, this.fgRef].forEach(r => { if (r.current) r.current.style.opacity = (1 - k).toFixed(3); }); [this.worldRef, this.chromeRef].forEach(r => { if (r.current) r.current.style.opacity = ((+r.current.style.opacity || 0) * (1 - k)).toFixed(3); });
       const d = document.querySelector('[data-navk="' + L.k + '"] [data-navdot]'); if (d) d.style.transform = 'scale(' + (1 + .6 * Math.sin(Math.PI * clamp(L.t / .55, 0, 1))).toFixed(3) + ')';
-      if (L.t > .55 && !this.left) { this.left = true; location.href = L.href; } }
+      // for Sound: the menu's names fade and only the dots stay; Sound takes them over from exactly where they sit
+      if (L.k === 'sound') document.querySelectorAll('nav[aria-label="Pages"] [data-navk] > span:not([data-navdot])').forEach(sp => { sp.style.opacity = (1 - k).toFixed(3); });
+      if (L.t > .55 && !this.left) { this.left = true;
+        if (L.k === 'sound') try { const o = {}; document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); o[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; }); o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
+        location.href = L.href; } }
     if (this.state.introDone && this.count) {
       this.unl = this.unl || {}; this.gBlooms = this.gBlooms || [];
       const fNow = clamp((this.p + 1) / this.count, 0, 1);

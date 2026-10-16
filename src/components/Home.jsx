@@ -573,7 +573,7 @@ class Component extends DCLogic {
     if (this.tapReveal(pg)) return;
     this.exits = []; this.navFrom = {};
     ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].forEach(k => { const h = this.heads && this.heads[k]; if (h) this.navFrom[k] = { p: h.p.slice(), col: h.col }; });
-    this.dest = pg === 'sound' ? BASE + 'sound/' : BASE + 'journal/'; this.go = 0;
+    this.dest = pg === 'sound' ? BASE + 'sound/?from=page' : BASE + 'journal/'; this.go = 0;
   };
   goSound = this.goPage('sound'); goJournal = this.goPage('journal');
   sndOn = () => { this.hovPg.sound = 1; }; sndOff = () => { this.hovPg.sound = 0; }; jrnOn = () => { this.hovPg.journal = 1; }; jrnOff = () => { this.hovPg.journal = 0; };
@@ -654,7 +654,9 @@ class Component extends DCLogic {
     this.T += dt; this.hovT += (this.hov - this.hovT) * (1 - Math.exp(-dt * 8)); for (const k of ['sound', 'journal']) this.hovPgT[k] = (this.hovPgT[k] || 0) + ((this.hovPg[k] || 0) - (this.hovPgT[k] || 0)) * (1 - Math.exp(-dt * 8));
     this.fadeTick(dt); this.dtF = Math.max(0, dt);
     // leaving for Freediving: keep a picture of this last frame, which that page shows while it loads so there's no blank moment in between
-    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} location.href = this.dest || BASE + 'freediving/?from=home'; } }
+    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} // Sound picks the menu dots up where they landed and flies them in as its faders
+      if (/\/sound\//.test(this.dest || '')) try { const o = {}; Object.entries({ ink: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }).forEach(([k, v]) => { o[k] = [innerWidth - 316 + v, 28]; }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
+      location.href = this.dest || BASE + 'freediving/?from=home'; } }
     this.draw();
   };
 

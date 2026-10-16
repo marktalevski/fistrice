@@ -20,63 +20,171 @@ a{color:inherit}a:hover{color:inherit;opacity:.6}nav a:hover{opacity:1}
 @keyframes tlR{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 [data-scroll]::-webkit-scrollbar{width:3px}[data-scroll]::-webkit-scrollbar-thumb{background:currentColor}
 </style>
+<script>
+try { const s = /from=home/.test(location.search) && sessionStorage.getItem('dive-cover'); sessionStorage.removeItem('dive-cover'); if (s) { const i = new Image(); i.id = 'arrive-cover'; i.alt = ''; i.src = s; i.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:50;pointer-events:none'; document.body.appendChild(i); } } catch (e) {}
+</script>
 </helmet>
-<div ref="{{ rootRef }}" style="position:fixed;inset:0;overflow:hidden;color:#141414;background:#f5f3ee;font-family:'Newsreader', Georgia, serif;-webkit-font-smoothing:antialiased;touch-action:none;user-select:none">
-  <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  <canvas ref="{{ waveRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+    <div ref="{{ rootRef }}" style="position:fixed;inset:0;overflow:hidden;color:#141414;background:#f5f3ee;font-family:'Newsreader', Georgia, serif;-webkit-font-smoothing:antialiased;touch-action:none;user-select:none">
+      
+  
+      <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+      
+  
+      <canvas ref="{{ waveRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+      
 
-  <div ref="{{ worldRef }}" style="position:absolute;left:0;top:0;width:0;height:0;opacity:0;will-change:transform">
-    <sc-for list="{{ items }}" as="item" hint-placeholder-count="0">
-      <div data-entry="1" data-i="{{ item.i }}" data-id="{{ item.id }}" style="position:absolute;left:0;top:0">
-        <div data-dot="1" onClick="{{ item.go }}" style="position:absolute;left:-14px;top:-14px;width:28px;height:28px;display:grid;place-items:center;cursor:pointer">
-          <div data-dotc="1" style="width:9px;height:9px;border-radius:50%;background:currentColor"></div>
-        </div>
-        <div data-block="1" style="position:absolute;left:30px;top:-15px;width:300px">
-          <div data-label="1" onClick="{{ item.go }}" style="cursor:pointer;display:flex;flex-direction:column;gap:6px;width:max-content;max-width:300px">
-            <div style="font-size:24px;line-height:1.2;letter-spacing:-0.01em;text-wrap:pretty">{{ item.title }}</div>
-            <div style="font-family:'JetBrains Mono', monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">{{ item.meta }}</div>
-          </div>
-          <sc-if value="{{ item.isFocus }}" hint-placeholder-val="{{ false }}">
-            <div data-conn="1" style="position:absolute;top:14px;left:300px;width:48px;height:1px;background:currentColor;transform-origin:left center;animation:tlFade .4s both"></div>
-            <div data-scroll="1" style="position:absolute;left:348px;top:2px;width:var(--colwr, 600px);display:flex;flex-direction:column;gap:18px;max-height:var(--cardmaxv, 62vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 12px 0 28px;border-left:1px solid currentColor;box-sizing:border-box;user-select:text;animation:tlR .5s cubic-bezier(.2,.7,.2,1) both">
-              <sc-if value="{{ item.hasImage }}" hint-placeholder-val="{{ false }}"><div role="img" style="width:100%;aspect-ratio:3 / 2;max-height:440px;background-image:{{ item.imageBg }};background-size:cover;background-position:center;filter:grayscale(1)"></div></sc-if>
-              <sc-if value="{{ item.hasShort }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:22px;line-height:1.4;text-wrap:pretty;max-width:40ch">{{ item.short }}</p></sc-if>
-              <sc-for list="{{ item.paras }}" as="para" hint-placeholder-count="0"><p style="margin:0;font-size:17.5px;line-height:1.65;text-wrap:pretty;max-width:62ch">{{ para }}</p></sc-for>
-              <sc-if value="{{ item.hasTags }}" hint-placeholder-val="{{ false }}">
-                <div style="display:flex;flex-wrap:wrap;gap:6px">
-                  <sc-for list="{{ item.tags }}" as="tag" hint-placeholder-count="0"><span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.05em;padding:3px 9px;border:1px solid currentColor;border-radius:999px">{{ tag }}</span></sc-for>
-                </div>
-              </sc-if>
-              <sc-if value="{{ item.hasLink }}" hint-placeholder-val="{{ false }}"><a href="{{ item.link }}" target="_blank" rel="noopener" style="align-self:flex-start;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.04em;text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:2px">{{ item.linkLabel }} ↗</a></sc-if>
-            </div>
-          </sc-if>
-        </div>
-      </div>
-    </sc-for>
-  </div>
+  
+      <div ref="{{ worldRef }}" style="position:absolute;left:0;top:0;width:0;height:0;opacity:0;will-change:transform">
+        
+    
+        <sc-for list="{{ items }}" as="item" hint-placeholder-count="0">
+          
+            
+      
+            <div data-entry="1" data-i="{{ item.i }}" data-id="{{ item.id }}" style="position:absolute;left:0;top:0">
+              
+        
+              <div data-dot="1" onClick="{{ item.go }}" style="position:absolute;left:-14px;top:-14px;width:28px;height:28px;display:grid;place-items:center;cursor:pointer">
+                
+          
+                <div data-dotc="1" style="width:9px;height:9px;border-radius:50%;background:currentColor"></div> </div>
+              
+        
+              <div data-block="1" style="position:absolute;left:30px;top:-15px;width:300px">
+                
+          
+                <div data-label="1" onClick="{{ item.go }}" style="cursor:pointer;display:flex;flex-direction:column;gap:6px;width:max-content;max-width:300px">
+                  
+            
+                  <div style="font-size:24px;line-height:1.2;letter-spacing:-0.01em;text-wrap:pretty">{{ item.title }}</div>
+                  
+            
+                  <div style="font-family:'JetBrains Mono', monospace;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">{{ item.meta }}</div> </div>
+                
+          
+                <sc-if value="{{ item.isFocus }}" hint-placeholder-val="{{ false }}">
+                  
+                    
+            
+                    <div data-conn="1" style="position:absolute;top:14px;left:300px;width:48px;height:1px;background:currentColor;transform-origin:left center;animation:tlFade .4s both"></div>
+                    
+            
+                    <div data-scroll="1" style="position:absolute;left:348px;top:2px;width:var(--colwr, 600px);display:flex;flex-direction:column;gap:18px;max-height:var(--cardmaxv, 62vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 12px 0 28px;border-left:1px solid currentColor;box-sizing:border-box;user-select:text;animation:tlR .5s cubic-bezier(.2,.7,.2,1) both">
+                      
+              
+                      <sc-if value="{{ item.hasImage }}" hint-placeholder-val="{{ false }}">
+                        
+                          <div role="img" style="width:100%;aspect-ratio:3 / 2;max-height:440px;background-image:{{ item.imageBg }};background-size:cover;background-position:center;filter:grayscale(1)"></div> </sc-if>
+                      
+              
+                      <sc-if value="{{ item.hasShort }}" hint-placeholder-val="{{ false }}">
+                        
+                          <p style="margin:0;font-size:22px;line-height:1.4;text-wrap:pretty;max-width:40ch">{{ item.short }}</p> </sc-if>
+                      
+              
+                      <sc-for list="{{ item.paras }}" as="para" hint-placeholder-count="0">
+                        
+                          <p style="margin:0;font-size:17.5px;line-height:1.65;text-wrap:pretty;max-width:62ch">{{ para }}</p> </sc-for>
+                      
+              
+                      <sc-if value="{{ item.hasTags }}" hint-placeholder-val="{{ false }}">
+                        
+                          
+                
+                          <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            
+                  
+                            <sc-for list="{{ item.tags }}" as="tag" hint-placeholder-count="0">
+                              
+                                <span style="font-family:'JetBrains Mono', monospace;font-size:11px;letter-spacing:.05em;padding:3px 9px;border:1px solid currentColor;border-radius:999px">{{ tag }}</span> </sc-for> </div> </sc-if>
+                      
+              
+                      <sc-if value="{{ item.hasLink }}" hint-placeholder-val="{{ false }}">
+                        
+                          <a href="{{ item.link }}" target="_blank" rel="noopener" style="align-self:flex-start;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.04em;text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:2px">
+                            {{ item.linkLabel }} ↗
+                          </a> </sc-if> </div> </sc-if> </div> </div> </sc-for> </div>
+      
 
-  <canvas ref="{{ fgRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+  
+      <canvas ref="{{ fgRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+      
 
-  <nav aria-label="Pages" style="position:absolute;right:12px;top:12px;display:flex;flex-direction:row;align-items:flex-start;z-index:5">
-    <a href="Home%20-%20Brush%20Lines%20v2.dc.html?from=dive" onClick="{{ goHome }}" aria-label="Home" data-navk="home" onMouseEnter="{{ nav.home.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.home.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1"><span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(20,20,20);flex:none"></span><span style="position:relative;display:block;width:100%;height:116px"><span lang="en" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:'Newsreader', Georgia, serif;font-weight:600;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(20,20,20) 0%, rgb(20,20,20) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.home.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.home.en }};transform:translateX(-50%) translateY({{ nav.home.enY }});filter:blur({{ nav.home.enB }})">Home</span><span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(20,20,20) 0%, rgb(20,20,20) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.home.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.home.ko }};transform:translateX(-50%) translateY({{ nav.home.koY }});filter:blur({{ nav.home.koB }})">홈</span></span></a>
-    <button type="button" onClick="{{ goSurface }}" aria-current="page" aria-label="Freediving, current page, back to the surface" data-navk="freediving" onMouseEnter="{{ nav.freediving.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.freediving.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1"><span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(24,88,224);flex:none"></span><span style="position:relative;display:block;width:100%;height:116px"><span lang="en" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:'Newsreader', Georgia, serif;font-weight:600;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(24,88,224) 0%, rgb(24,88,224) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.freediving.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.freediving.en }};transform:translateX(-50%) translateY({{ nav.freediving.enY }});filter:blur({{ nav.freediving.enB }})">Freediving</span><span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(24,88,224) 0%, rgb(24,88,224) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.freediving.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.freediving.ko }};transform:translateX(-50%) translateY({{ nav.freediving.koY }});filter:blur({{ nav.freediving.koB }})">프리다이빙</span></span></button>
-    <a href="Sound.dc.html" onClick="{{ nav.sound.go }}" aria-label="Sound" data-navk="sound" onMouseEnter="{{ nav.sound.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.sound.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1"><span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(232,34,44);flex:none"></span><span style="position:relative;display:block;width:100%;height:116px"><span lang="en" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:'Newsreader', Georgia, serif;font-weight:600;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(232,34,44) 0%, rgb(232,34,44) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.sound.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.sound.en }};transform:translateX(-50%) translateY({{ nav.sound.enY }});filter:blur({{ nav.sound.enB }})">Sound</span><span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(232,34,44) 0%, rgb(232,34,44) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.sound.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.sound.ko }};transform:translateX(-50%) translateY({{ nav.sound.koY }});filter:blur({{ nav.sound.koB }})">소리</span></span></a>
-    <a href="Journal.dc.html" onClick="{{ nav.journal.go }}" aria-label="Journal" data-navk="journal" onMouseEnter="{{ nav.journal.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.journal.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1"><span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(255,196,0);flex:none"></span><span style="position:relative;display:block;width:100%;height:116px"><span lang="en" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:'Newsreader', Georgia, serif;font-weight:600;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(255,196,0) 0%, rgb(255,196,0) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.journal.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.journal.en }};transform:translateX(-50%) translateY({{ nav.journal.enY }});filter:blur({{ nav.journal.enB }})">Journal</span><span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(255,196,0) 0%, rgb(255,196,0) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.journal.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.journal.ko }};transform:translateX(-50%) translateY({{ nav.journal.koY }});filter:blur({{ nav.journal.koB }})">일기</span></span></a>
-    <span aria-hidden="true" style="display:flex;flex-direction:row;align-items:flex-start">
-      <span data-navk="c4" style="width:32px;height:32px;display:grid;place-items:center"><span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(255,118,18)"></span></span>
-      <span data-navk="c5" style="width:32px;height:32px;display:grid;place-items:center"><span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(22,168,82)"></span></span>
-      <span data-navk="c6" style="width:32px;height:32px;display:grid;place-items:center"><span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(138,64,214)"></span></span>
-    </span>
-  </nav>
-  <div ref="{{ chromeRef }}" style="position:absolute;inset:0;pointer-events:none;opacity:0">
-    <div style="position:absolute;right:120px;bottom:22px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-family:'JetBrains Mono', monospace">
-      <div ref="{{ depthRef }}" style="font-size:28px;font-weight:300;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">0.0 m</div>
-      <div style="font-size:12px;letter-spacing:.08em">{{ counter }}</div>
+  
+      <nav aria-label="Pages" style="position:absolute;right:12px;top:12px;display:flex;flex-direction:row;align-items:flex-start;z-index:5">
+        
+    
+        <a href="Home%20-%20Brush%20Lines%20v2.dc.html?from=dive" onClick="{{ goHome }}" aria-label="Home" data-navk="home" onMouseEnter="{{ nav.home.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.home.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1">
+          <span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(20,20,20);flex:none"></span>
+          <span style="position:relative;display:block;width:100%;height:116px">
+            <span lang="en" data-lab="nav" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(20,20,20) 0%, rgb(20,20,20) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.home.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.home.en }};transform:translateX(-50%) translateY({{ nav.home.enY }});filter:blur({{ nav.home.enB }})">Home</span>
+            <span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(20,20,20) 0%, rgb(20,20,20) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.home.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.home.ko }};transform:translateX(-50%) translateY({{ nav.home.koY }});filter:blur({{ nav.home.koB }})">홈</span>
+          </span>
+        </a>
+        
+    
+        <button type="button" onClick="{{ goSurface }}" aria-current="page" aria-label="Freediving, current page, back to the surface" data-navk="freediving" onMouseEnter="{{ nav.freediving.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.freediving.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1">
+          <span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(24,88,224);flex:none"></span>
+          <span style="position:relative;display:block;width:100%;height:116px">
+            <span lang="en" data-lab="nav" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(24,88,224) 0%, rgb(24,88,224) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.freediving.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.freediving.en }};transform:translateX(-50%) translateY({{ nav.freediving.enY }});filter:blur({{ nav.freediving.enB }})">Freediving</span>
+            <span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(24,88,224) 0%, rgb(24,88,224) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.freediving.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.freediving.ko }};transform:translateX(-50%) translateY({{ nav.freediving.koY }});filter:blur({{ nav.freediving.koB }})">프리다이빙</span>
+          </span>
+        </button>
+        
+    
+        <a href="Sound.dc.html" onClick="{{ nav.sound.go }}" aria-label="Sound" data-navk="sound" onMouseEnter="{{ nav.sound.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.sound.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1">
+          <span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(232,34,44);flex:none"></span>
+          <span style="position:relative;display:block;width:100%;height:116px">
+            <span lang="en" data-lab="nav" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(232,34,44) 0%, rgb(232,34,44) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.sound.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.sound.en }};transform:translateX(-50%) translateY({{ nav.sound.enY }});filter:blur({{ nav.sound.enB }})">Sound</span>
+            <span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(232,34,44) 0%, rgb(232,34,44) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.sound.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.sound.ko }};transform:translateX(-50%) translateY({{ nav.sound.koY }});filter:blur({{ nav.sound.koB }})">소리</span>
+          </span>
+        </a>
+        
+    
+        <a href="Journal.dc.html" onClick="{{ nav.journal.go }}" aria-label="Journal" data-navk="journal" onMouseEnter="{{ nav.journal.on }}" onMouseLeave="{{ navOff }}" onFocus="{{ nav.journal.on }}" onBlur="{{ navOff }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:52px;height:156px;padding:8px 0 0;box-sizing:border-box;border:0;background:none;color:inherit;text-decoration:none;cursor:pointer;font-family:'Newsreader', Georgia, serif;font-size:13px;line-height:1">
+          <span data-navdot="1" style="width:16px;height:16px;border-radius:50%;background:rgb(255,196,0);flex:none"></span>
+          <span style="position:relative;display:block;width:100%;height:116px">
+            <span lang="en" data-lab="nav" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:sideways;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:19px;letter-spacing:.02em;background-image:linear-gradient(to bottom, rgb(255,196,0) 0%, rgb(255,196,0) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.journal.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.journal.en }};transform:translateX(-50%) translateY({{ nav.journal.enY }});filter:blur({{ nav.journal.enB }})">Journal</span>
+            <span lang="ko" aria-hidden="true" style="position:absolute;left:50%;top:0;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-family:'Noto Serif KR', serif;font-weight:600;font-size:19px;letter-spacing:.08em;background-image:linear-gradient(to bottom, rgb(255,196,0) 0%, rgb(255,196,0) 20%, currentColor 60%, currentColor 100%);background-size:100% 300%;background-repeat:no-repeat;background-position:0 {{ nav.journal.bp }};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1), filter .55s ease, background-position 1.1s cubic-bezier(.3,.6,.2,1);opacity:{{ nav.journal.ko }};transform:translateX(-50%) translateY({{ nav.journal.koY }});filter:blur({{ nav.journal.koB }})">일기</span>
+          </span>
+        </a>
+        
+    
+        <span aria-hidden="true" style="display:flex;flex-direction:row;align-items:flex-start">
+          
+      
+          <span data-navk="c4" style="width:32px;height:32px;display:grid;place-items:center">
+            <span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(255,118,18)"></span>
+          </span>
+          
+      
+          <span data-navk="c5" style="width:32px;height:32px;display:grid;place-items:center">
+            <span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(22,168,82)"></span>
+          </span>
+          
+      
+          <span data-navk="c6" style="width:32px;height:32px;display:grid;place-items:center">
+            <span data-navdot="1" style="width:11px;height:11px;border-radius:50%;background:rgb(138,64,214)"></span>
+          </span> </span> </nav>
+      
+  
+      <div ref="{{ chromeRef }}" style="position:absolute;inset:0;pointer-events:none;opacity:0">
+        
+    
+        <div style="position:absolute;right:120px;bottom:22px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-family:'JetBrains Mono', monospace">
+          
+      
+          <div ref="{{ depthRef }}" style="font-size:28px;font-weight:300;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">0.0 m</div>
+          
+      
+          <div style="font-size:12px;letter-spacing:.08em">{{ counter }}</div> </div> </div>
     </div>
-  </div>
-</div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;gris&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;intro&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;darken&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;metersPerEntry&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:3,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;}}">
+// the rope down from the buoy, wide enough for its twist to show
+const ROPE_W = 3.6;
+// leaving for Home: how long each colour takes to gather at the centre, circle there with the others and go up into its dot (s)
+const SWIRL_DUR = 3.6;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = x => x * x * (3 - 2 * x);
 const fmt = iso => { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
@@ -117,7 +225,8 @@ class Component extends DCLogic {
     addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchmove', this.onTM, { passive: false });
     const r = rng(11);
     const gc = document.createElement('canvas'); gc.width = gc.height = 220;
-    { const x = gc.getContext('2d'), im = x.createImageData(220, 220); for (let i = 0; i < im.data.length; i += 4) { const v = 255 - Math.pow(r(), 3) * 40; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); }
+    // the same paper grain as Home (seed 5), so the texture doesn't jump when arriving from there; r still steps past it so everything else stays put
+    { const g5 = rng(5), x = gc.getContext('2d'), im = x.createImageData(220, 220); for (let i = 0; i < im.data.length; i += 4) { r(); const v = 255 - Math.pow(g5(), 3) * 40; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); }
     this.grainC = gc;
     this.bubbles = Array.from({ length: 10 }, () => ({ x: -22 + r() * 14, y: r(), r: 1.5 + r() * 3, v: .02 + r() * .03, ph: r() * 6.28 }));
     const C = { verm: '#d4452a', gold: '#e2a93b', white: '#f2efe6' };
@@ -147,6 +256,8 @@ class Component extends DCLogic {
     removeEventListener('pointerdown', this.onPD); removeEventListener('touchstart', this.onTS); removeEventListener('touchmove', this.onTM);
   }
 
+  // the line that colours the squid: Sound's red where it leaves the dot, turning to the squid's pink (244,138,172) as it arrives
+  redToPink(ctx, A, B) { const gr = ctx.createLinearGradient(A[0], A[1], B[0], B[1]); gr.addColorStop(0, 'rgb(232,34,44)'); gr.addColorStop(.35, 'rgb(232,34,44)'); gr.addColorStop(1, 'rgb(244,138,172)'); return gr; }
   // flight stroke (matches Home's travelling lines): fading tail, swelling body, tapered head, head dot
   brushFly(ctx, pts, w, a, col, swell = 1.4, dot = true) {
     const n = pts.length; if (n < 2) return;
@@ -177,6 +288,21 @@ class Component extends DCLogic {
     for (let i = 1; i < n; i++) ctx.lineTo(Lp[i][0], Lp[i][1]);
     for (let i = n - 1; i >= 0; i--) ctx.lineTo(Rp[i][0], Rp[i][1]);
     ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  }
+
+  // the rope's lay: thin slanted gaps between its strands, where the water shows through, so it reads as twisted rope rather than a line.
+  // They sit inside the rope's own width (which swells and thins like the brush), and after the drop-in they spread down from the buoy
+  ropeTwist(ctx, o, a0, a1, LS) {
+    if (this.twistT0 == null) this.twistT0 = this.rt || 0;
+    const reach = ((this.rt || 0) - this.twistT0 - .15) * 650, P = 5.5, SL = 1.3; if (reach <= 0) return;
+    ctx.lineWidth = .9; ctx.lineCap = 'round';
+    for (let y = a0 + ((P - ((a0 - o.y) % P)) % P); y < a1; y += P) {
+      const k = smooth(clamp((reach - (y - LS)) / 90, 0, 1)); if (k <= 0) break;
+      const wy = y - o.y, hw = ROPE_W * (.84 + .16 * Math.sin(wy * .045) + .1 * Math.sin(wy * .011 + 2)) / 2 - .45, x = o.x + Math.sin(wy * .02) * .7;
+      ctx.globalAlpha = .6 * k; ctx.strokeStyle = css(this.waterAt(this.yToM(wy)));
+      ctx.beginPath(); ctx.moveTo(x - hw, y + hw * SL); ctx.lineTo(x + hw, y - hw * SL); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   }
 
   cu(k) { const r = { r: [.02, .24], g: [.16, .44], b: [.36, .66], y: [.58, .88] }[k], f = this.cf || 0; return smooth(clamp((f - r[0]) / (r[1] - r[0]), 0, 1)); }
@@ -253,7 +379,7 @@ class Component extends DCLogic {
   go(i) { this.target = i; }
   navHov = null; waveRef = React.createRef();
   goHome = e => { e.preventDefault(); if (this.leaveT != null) return; const o = {}; try { document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); o[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; }); o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} const far = this.p > -.9; this.goSurface(); this.navPos = o; try { let mb = 0; document.querySelectorAll('nav[aria-label="Pages"] [data-navk]').forEach(el => { const r = el.getBoundingClientRect(); mb = Math.max(mb, r.bottom); }); this.navBot = mb; } catch (x) {} setTimeout(() => { this.leaveT = 0; }, far ? 1300 : 0); };
-  goPage = k => e => { if (e) e.preventDefault(); if (this.leaveT != null || this.pgLeave) return; this.pgLeave = { href: k === 'sound' ? 'Sound.dc.html' : 'Journal.dc.html', t: 0, k }; };
+  goPage = k => e => { if (e) e.preventDefault(); if (this.leaveT != null || this.pgLeave) return; this.pgLeave = { href: k === 'sound' ? 'Sound.dc.html?from=page' : 'Journal.dc.html', t: 0, k }; };
   goSurface = () => { this.target = -1; this.setState({ exp: null }); };
 
   tick = now => {
@@ -268,9 +394,9 @@ class Component extends DCLogic {
     if (this.leaveT != null) { this.leaveT += dt;
       // once the colour is in, each label is drawn up into its dot: rising, narrowing, softening
       document.querySelectorAll('nav[aria-label="Pages"] > [data-navk]').forEach((el, i) => { const lab = el.querySelector(':scope > span:last-child'), dot = el.querySelector('[data-navdot]'); if (!lab) return;
-        const k = clamp((this.leaveT - 2.45 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
+        const k = clamp((this.leaveT - SWIRL_DUR * .85 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
         if (dot && k > 0) { const u = clamp((k - .55) / .45, 0, 1); dot.style.transform = 'scale(' + (1 + .18 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } });
-      if (this.leaveT > 3.55 && !this.left) { this.left = true; location.href = 'Home%20-%20Brush%20Lines%20v2.dc.html?from=dive'; } }
+      if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; location.href = 'Home%20-%20Brush%20Lines%20v2.dc.html?from=dive'; } }
     if (this.fromHome && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - 1.3) / .9, 0, 1)); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
     if (!this.state.introDone) { this.introT += dt; if (this.introT >= (this.tideIntro ? this.tide0 + 1.8 : 3.8)) this.setState({ introDone: true }); }
     this.p += (this.target - this.p) * (1 - Math.exp(-dt * 5.5));
@@ -282,7 +408,11 @@ class Component extends DCLogic {
     if (this.pgLeave) { const L = this.pgLeave; L.t += dt; const k = smooth(clamp(L.t / .45, 0, 1));
       [this.canvasRef, this.waveRef, this.fgRef].forEach(r => { if (r.current) r.current.style.opacity = (1 - k).toFixed(3); }); [this.worldRef, this.chromeRef].forEach(r => { if (r.current) r.current.style.opacity = ((+r.current.style.opacity || 0) * (1 - k)).toFixed(3); });
       const d = document.querySelector('[data-navk="' + L.k + '"] [data-navdot]'); if (d) d.style.transform = 'scale(' + (1 + .6 * Math.sin(Math.PI * clamp(L.t / .55, 0, 1))).toFixed(3) + ')';
-      if (L.t > .55 && !this.left) { this.left = true; location.href = L.href; } }
+      // for Sound: the menu's names fade and only the dots stay; Sound takes them over from exactly where they sit
+      if (L.k === 'sound') document.querySelectorAll('nav[aria-label="Pages"] [data-navk] > span:not([data-navdot])').forEach(sp => { sp.style.opacity = (1 - k).toFixed(3); });
+      if (L.t > .55 && !this.left) { this.left = true;
+        if (L.k === 'sound') try { const o = {}; document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); o[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; }); o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
+        location.href = L.href; } }
     if (this.state.introDone && this.count) {
       this.unl = this.unl || {}; this.gBlooms = this.gBlooms || [];
       const fNow = clamp((this.p + 1) / this.count, 0, 1);
@@ -296,6 +426,7 @@ class Component extends DCLogic {
     }
     if (this.props.motion ?? true) this.t += dt;
     this.draw(this.t);
+    if (!this.coverOff) { this.coverOff = true; const c = document.getElementById('arrive-cover'); if (c) c.remove(); }
   };
 
   layout(dt) {
@@ -385,42 +516,55 @@ class Component extends DCLogic {
   }
   // leaving for Home: each surface line lifts off in turn and dances its own figure up to its menu dot
   // black: one grand calligraphic swoop, bold in the middle · light blue: a single slow, open loop that swells as it turns · deep blue: a weaving ribbon that twists thin-thick
-  danceWave(ctx, k, st, sy, o, t, W) {
-    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28];
-    const T0 = [.45, .7, .9][k], DUR = [1.9, 1.95, 1.75][k], g = (lt - T0) / DUR; if (g > 1.25) return;
-    const navL = Math.min(...Object.values(NP).map(p => p[0])) - 34, xl = clamp(navL - [380, 260, 160][k], W * .2, W - 90);
-    const cK = 1 - smooth(clamp((lt - T0 + .5) / .5, 0, 1)), pts = [];
-    for (let x = -20; x <= W - 6; x += 10) { const xx = x <= xl ? x : xl + (x - xl) * cK; if (x > xl && pts.length && xx - pts[pts.length - 1][0] < 2) continue; pts.push([xx, sy + this.waveY(xx - o.x, k, t)]); }
-    const col = ['#141414', 'rgb(0,158,224)', 'rgb(34,86,186)'][k];
-    if (cK > .01 || g <= 0) { this.brush(ctx, pts, st[0], st[1], k * 200, true, false, col); return; }
-    const S0 = pts[pts.length - 1], dx = D[0] - S0[0], dy = D[1] - S0[1];
-    const cr = (P, n) => { const out = []; for (let i = 0; i < P.length - 1; i++) { const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)]; for (let q = 1; q <= n; q++) { const u = q / n, u2 = u * u, u3 = u2 * u; out.push([0, 1].map(j => .5 * (2 * p1[j] + (-p0[j] + p2[j]) * u + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * u2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * u3))); } } return out; };
-    let route;
-    if (k === 0) route = cr([S0, [S0[0] + dx * .22, S0[1] + 34], [S0[0] + dx * .56, S0[1] + dy * .42], [D[0] - 54, D[1] + 52], D], 14);
-    else if (k === 1) { const r = clamp(Math.abs(dy) * .3, 30, 62), C = [S0[0] + dx * .5, S0[1] + dy * .42], wp = [S0, [C[0] - r * 1.5, C[1] + r * .95]];
-      for (let q = 0; q <= 8; q++) { const th = Math.PI / 2 - 2 * Math.PI * q / 8; wp.push([C[0] + Math.cos(th) * r, C[1] + Math.sin(th) * r]); }
-      wp.push([C[0] + r * 1.6, C[1] + r * .2], [D[0] - 28, D[1] + 50], D); route = cr(wp, 8); }
-    else { const C1 = [S0[0] + dx * .4, S0[1] + 24], C2 = [D[0] - 40, D[1] + 90]; route = [];
-      for (let q = 1; q <= 60; q++) { const u = q / 60, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, p = [a * S0[0] + b * C1[0] + c * C2[0] + d * D[0], a * S0[1] + b * C1[1] + c * C2[1] + d * D[1]];
-        const ta = [3 * (1 - u) ** 2 * (C1[0] - S0[0]) + 6 * (1 - u) * u * (C2[0] - C1[0]) + 3 * u * u * (D[0] - C2[0]), 3 * (1 - u) ** 2 * (C1[1] - S0[1]) + 6 * (1 - u) * u * (C2[1] - C1[1]) + 3 * u * u * (D[1] - C2[1])], tl = Math.hypot(ta[0], ta[1]) || 1, off = 26 * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * 2.2 * u);
-        route.push([p[0] - ta[1] / tl * off, p[1] + ta[0] / tl * off]); } }
-    const all = pts.concat(route), nS = pts.length, sl = [0]; for (let i = 1; i < all.length; i++) sl.push(sl[i - 1] + Math.hypot(all[i][0] - all[i - 1][0], all[i][1] - all[i - 1][1]));
-    const tot = sl[sl.length - 1], surfL = sl[nS - 1], rL = Math.max(1, tot - surfL), hk = (1 - Math.cos(Math.PI * clamp(g, 0, 1))) / 2, head = surfL + rL * hk;
-    const TL0 = rL * [.55, .5, .62][k], ga = smooth(clamp(g / .5, 0, 1)), TL = (head + (TL0 - head) * ga) * (1 - smooth(clamp((g - 1) / .25, 0, 1))), cut = Math.max(0, head - TL);
-    const prof = [u => 1 + 1.5 * Math.pow(Math.sin(Math.PI * u), 1.2), u => .8 + 1.7 * Math.exp(-(((u - .5) / .17) ** 2)), u => .55 + 1.5 * Math.sin(3 * Math.PI * u) ** 2][k], bR = [3.4, 2.4, 2.2][k];
-    const P = [], Wd = [], A = [];
-    for (let i = 0; i < all.length; i++) { const sv = sl[i]; if (sv < cut) continue; let p = all[i], s2 = sv; if (sv > head) { if (!i) break; const f = (head - sl[i - 1]) / Math.max(.001, sv - sl[i - 1]); p = [all[i - 1][0] + (p[0] - all[i - 1][0]) * f, all[i - 1][1] + (p[1] - all[i - 1][1]) * f]; s2 = head; }
-      const u = clamp((s2 - surfL) / rL, 0, 1), bl = smooth(clamp(u / .08, 0, 1)); let w = st[0] * (1 - bl) + bR * prof(u) * bl;
-      w *= Math.sqrt(clamp((head - s2) / 26, .08, 1)) * Math.sqrt(clamp((s2 - cut) / 34, .12, 1));
-      const aB = s2 <= surfL ? st[1] : Math.min(1, st[1] + .45), fw = smooth(clamp((s2 - cut) / Math.max(1, head - cut), 0, 1));
-      P.push(p); Wd.push(w); A.push(aB * (1 - ga * .8 * (1 - fw))); if (sv > head) break; }
-    const n = P.length; if (n >= 2) { ctx.fillStyle = col;
-      for (let i = 0; i < n - 1; i++) { const pr = P[Math.max(0, i - 1)], q = P[i + 1], q2 = P[Math.min(n - 1, i + 2)], p0 = P[i], t0x = q[0] - pr[0], t0y = q[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - p0[0], t1y = q2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1, h0 = Wd[i] / 2, h1 = Wd[i + 1] / 2;
-        ctx.globalAlpha = (A[i] + A[i + 1]) / 2; ctx.beginPath(); ctx.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); ctx.lineTo(q[0] + t1y / l1 * h1, q[1] - t1x / l1 * h1); ctx.lineTo(q[0] - t1y / l1 * h1, q[1] + t1x / l1 * h1); ctx.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); ctx.closePath(); ctx.fill(); }
-      const hp = P[n - 1], r = 2.6 + 5.4 * smooth(clamp((g - .7) / .35, 0, 1)); ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(hp[0], hp[1], r, 0, 6.2832); ctx.fill(); }
+  // leaving for Home, every line is reeled into its menu dot like a thread: it stays where it is while its leading end lifts off and glides up
+  // into the dot, and the rest follows along the same path, always forwards, until the tail goes in. src: the line as it lies (ending where it
+  // lifts off), D: the dot, g: 0..1 through the move. O: w (width), a (opacity), colA/colB (colour leaving / arriving), lift (how far the end
+  // carries on before turning up), sway (px of side-to-side drift on the way), ph (phase of that drift)
+  absorb(ctx, src, D, g, O) {
+    if (g <= 0 || g >= 1 || src.length < 2) return;
+    const S = src[src.length - 1], P0 = src[Math.max(0, src.length - 4)], tl = Math.hypot(S[0] - P0[0], S[1] - P0[1]) || 1, T = [(S[0] - P0[0]) / tl, (S[1] - P0[1]) / tl], lift = O.lift ?? 90;
+    const route = [], ringAt = [], bez = (A, B, C, E, n, sway) => { for (let q = 1; q <= n; q++) { const u = q / n, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3, sw = (sway || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * u + (O.ph || 0));
+      route.push([a * A[0] + b * B[0] + c * C[0] + d * E[0] + sw, a * A[1] + b * B[1] + c * C[1] + d * E[1]]); } };
+    if (O.ring) {
+      // into the middle of the screen, round it clockwise on its own ring (drawing in a little as it goes, like water down a drain) with
+      // the other colours on theirs, and out of the ring at the point where it is already heading for its dot
+      const M = [innerWidth / 2, innerHeight * .48], r0 = O.ring, rAt = u => r0 * (1 - .28 * u), TAU = Math.PI * 2;
+      const a0 = Math.atan2(S[1] - M[1], S[0] - M[0]) + .5, aOut = Math.atan2(D[1] - M[1], D[0] - M[0]) - Math.PI / 2, sweep = TAU * 1.2 + (((aOut - a0 - TAU * 1.2) % TAU) + TAU) % TAU;
+      const on = u => { const a = a0 + sweep * u, r = rAt(u); return [M[0] + Math.cos(a) * r, M[1] + Math.sin(a) * r]; }, tan = u => { const a = a0 + sweep * u; return [-Math.sin(a), Math.cos(a)]; };
+      const E = on(0), tE = tan(0), d1 = Math.hypot(E[0] - S[0], E[1] - S[1]);
+      bez(S, [S[0] + T[0] * lift, S[1] + T[1] * lift - lift * .5], [E[0] - tE[0] * d1 * .45, E[1] - tE[1] * d1 * .45], E, 40, O.sway);
+      ringAt.push(route.length); const N = Math.ceil(sweep / TAU * 64); for (let q = 1; q <= N; q++) route.push(on(q / N)); ringAt.push(route.length);
+      const X = on(1), tX = tan(1), d2 = Math.hypot(D[0] - X[0], D[1] - X[1]);
+      bez(X, [X[0] + tX[0] * d2 * .4, X[1] + tX[1] * d2 * .4], [D[0] - 30, D[1] + Math.min(d2 * .3, 110)], D, 40, 0);
+    } else { // the plain route rises in an arc: up and a little onwards first, then curving over and in to the dot from below-left
+      const dist = Math.hypot(D[0] - S[0], D[1] - S[1]); bez(S, [S[0] + T[0] * lift + dist * .12, S[1] + T[1] * lift - Math.min(dist * .42, 190)], [D[0] - dist * .3, D[1] + dist * .18], D, 48, O.sway); }
+    const all = src.concat(route), nS = src.length, sl = [0]; for (let q = 1; q < all.length; q++) sl.push(sl[q - 1] + Math.hypot(all[q][0] - all[q - 1][0], all[q][1] - all[q - 1][1]));
+    const tot = sl[sl.length - 1], srcL = sl[nS - 1], io = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2;
+    // the head eases off the end of the line and into the dot; the tail sets off a little later and catches it up exactly at the dot
+    const ge = io(clamp(g / .82, 0, 1)), Lin = ringAt.length ? sl[nS - 1 + ringAt[0]] : 0, Lout = ringAt.length ? sl[nS - 1 + ringAt[1]] : 0;
+    const head = !ringAt.length ? srcL + (tot - srcL) * ge : ge < .3 ? srcL + (Lin - srcL) * ge / .3 : ge < .74 ? Lin + (Lout - Lin) * (ge - .3) / .44 : Lout + (tot - Lout) * (ge - .74) / .26, cut = Math.min(head, tot * io(clamp((g - .1) / .9, 0, 1)));
+    const at = q => { if (q <= 0) return all[0]; let k = 1; while (k < all.length - 1 && sl[k] < q) k++; const f = (q - sl[k - 1]) / Math.max(1e-6, sl[k] - sl[k - 1]); return [all[k - 1][0] + (all[k][0] - all[k - 1][0]) * f, all[k - 1][1] + (all[k][1] - all[k - 1][1]) * f]; };
+    const P = [at(cut)], L = [cut]; for (let q = 0; q < all.length; q++) if (sl[q] > cut && sl[q] < head) { P.push(all[q]); L.push(sl[q]); } P.push(at(head)); L.push(head);
+    const n = P.length; if (n < 2 || head - cut < .5) return;
+    for (let q = 0; q < n - 1; q++) { const pr = P[Math.max(0, q - 1)], nx = P[q + 1], n2 = P[Math.min(n - 1, q + 2)], p0 = P[q], t0x = nx[0] - pr[0], t0y = nx[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = n2[0] - p0[0], t1y = n2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1;
+      const wAt = v => O.w * Math.sqrt(clamp((head - v) / 24, .1, 1)) * Math.sqrt(clamp((v - cut) / 40, .1, 1)), h0 = wAt(L[q]) / 2, h1 = wAt(L[q + 1]) / 2;
+      const ur = clamp((L[q] - srcL) / Math.max(1, tot - srcL), 0, 1); ctx.fillStyle = css(mixC(O.colA, O.colB, smooth(ur))); ctx.globalAlpha = O.a ?? .95;
+      ctx.beginPath(); ctx.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); ctx.lineTo(nx[0] + t1y / l1 * h1, nx[1] - t1x / l1 * h1); ctx.lineTo(nx[0] - t1y / l1 * h1, nx[1] + t1x / l1 * h1); ctx.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); ctx.closePath(); ctx.fill(); }
+    // a small bead leads the thread in
+    const hp = P[n - 1], ur = clamp((head - srcL) / Math.max(1, tot - srcL), 0, 1); ctx.globalAlpha = 1; ctx.fillStyle = css(mixC(O.colA, O.colB, smooth(ur))); ctx.beginPath(); ctx.arc(hp[0], hp[1], O.w * .55 + 1.6 * smooth(clamp((g - .55) / .3, 0, 1)), 0, 6.2832); ctx.fill();
     ctx.globalAlpha = 1;
-    if (k < 2) { const d = document.querySelector('[data-navk="' + (k ? 'freediving' : 'home') + '"] [data-navdot]'); if (d) { const u = clamp((g - .95) / .5, 0, 1); d.style.transform = 'scale(' + (1 + .2 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } }
   }
+  // each surface line, reeled in from its right-hand end
+  reelWave(ctx, k, st, sy, o, t, W) {
+    const lt = this.leaveT, NP = this.navPos, D = NP[k === 0 ? 'home' : 'freediving'] || [W - 40, 28], T0 = [.3, .42, .54][k], DUR = SWIRL_DUR, g = (lt - T0) / DUR;
+    const src = []; for (let x = -20; x <= W - 6; x += 10) src.push([x, sy + this.waveY(x - o.x, k, t)]);
+    const col = [[20, 20, 20], [0, 158, 224], [34, 86, 186]][k];
+    if (g <= 0) { this.brush(ctx, src, st[0], st[1], k * 200, true, false, css(col)); return; }
+    this.absorb(ctx, src, D, g, { w: st[0] * 1.4, a: Math.min(1, st[1] + .35), colA: col, colB: col, lift: 60 + 30 * k, sway: [10, 22, 16][k], ph: k * 1.3, ring: [92, 128, 110][k] });
+    this.navPulse(k ? 'freediving' : 'home', g);
+  }
+  // a menu dot breathes once as the tail of its line goes in
+  navPulse(key, g) { const d = document.querySelector('[data-navk="' + key + '"] [data-navdot]'); if (!d) return; const u = clamp((g - .88) / .3, 0, 1); d.style.transform = 'scale(' + (1 + .22 * Math.sin(Math.PI * u)).toFixed(3) + ')'; d.style.boxShadow = 'none'; }
   drawFG(W, H, t, intro, an, al, sway) {
     const cv = this.fgRef.current; if (!cv) return;
     const dpr = Math.min(2, devicePixelRatio || 1);
@@ -607,30 +751,21 @@ class Component extends DCLogic {
     this.sqDrain = 0;
     if (this.leaveT != null && this.navPos && this.navPos.c4 && this.buoyPos) {
       const lt = this.leaveT, B = this.buoyPos, F = flagAt(B), ez = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2, DUR = 1.5;
-      // each colour leaves as its own brush stroke: wet head, tapering tail, its own sway, lean and width rhythm
-      const orb = (A, D, t0, cA, cB, rA, rB, O = {}) => { const du = O.dur || DUR, g = (lt - t0) / du; if (g <= 0 || g > 1.25) return;
-        const C1 = [A[0] + (D[0] - A[0]) * .1 + (O.lean || 0), A[1] - 110], C2 = [D[0] - 70, D[1] + 80];
-        const at0 = u => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * A[0] + b * C1[0] + c * C2[0] + d * D[0], a * A[1] + b * C1[1] + c * C2[1] + d * D[1]]; };
-        const N = 72, R = [], sl = [0]; for (let q = 0; q <= N; q++) { const u = q / N, p = at0(u), p2 = at0(Math.min(1, u + .01)), tx = p2[0] - p[0], ty = p2[1] - p[1], tl = Math.hypot(tx, ty) || 1, off = (O.amp || 0) * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * (O.fq || 1) * u); R.push([p[0] - ty / tl * off, p[1] + tx / tl * off]); if (q) sl.push(sl[q - 1] + Math.hypot(R[q][0] - R[q - 1][0], R[q][1] - R[q - 1][1])); }
-        const tot = sl[N], hk = (1 - Math.cos(Math.PI * clamp(g, 0, 1))) / 2, head = tot * hk, TL = tot * (O.tail || .45) * smooth(clamp(g / .35, 0, 1)) * (1 - smooth(clamp((g - 1) / .25, 0, 1))) + (g < .35 ? head * (1 - smooth(g / .35)) : 0), cut = Math.max(0, head - TL);
-        const prof = O.prof || (u => 1 + 1.2 * Math.sin(Math.PI * u)), bw = O.w || 4, P = [], Wd = [], C = [];
-        for (let i = 0; i <= N; i++) { let sv = sl[i], p = R[i]; if (sv < cut) continue; if (sv > head) { if (!i) break; const f = (head - sl[i - 1]) / Math.max(.001, sv - sl[i - 1]); p = [R[i - 1][0] + (p[0] - R[i - 1][0]) * f, R[i - 1][1] + (p[1] - R[i - 1][1]) * f]; sv = head; }
-          const u = sv / tot, fw = clamp((sv - cut) / Math.max(1, head - cut), 0, 1); P.push(p); Wd.push(bw * prof(u) * Math.sqrt(clamp((head - sv) / 22, .1, 1)) * Math.sqrt(clamp(fw / .25, .08, 1))); C.push([mixC(cA, cB, smooth(u)), .15 + .85 * Math.pow(fw, .8)]); if (sl[i] > head) break; }
-        const n = P.length; if (n >= 2) { for (let i = 0; i < n - 1; i++) { const pr = P[Math.max(0, i - 1)], q = P[i + 1], q2 = P[Math.min(n - 1, i + 2)], p0 = P[i], t0x = q[0] - pr[0], t0y = q[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - p0[0], t1y = q2[1] - p0[1], l1 = Math.hypot(t1x, t1y) || 1, h0 = Wd[i] / 2, h1 = Wd[i + 1] / 2;
-            WX.globalAlpha = .95 * (C[i][1] + C[i + 1][1]) / 2; WX.fillStyle = css(C[i][0]); WX.beginPath(); WX.moveTo(p0[0] + t0y / l0 * h0, p0[1] - t0x / l0 * h0); WX.lineTo(q[0] + t1y / l1 * h1, q[1] - t1x / l1 * h1); WX.lineTo(q[0] - t1y / l1 * h1, q[1] + t1x / l1 * h1); WX.lineTo(p0[0] - t0y / l0 * h0, p0[1] + t0x / l0 * h0); WX.closePath(); WX.fill(); }
-          const hp = P[n - 1], r = rA + (rB - rA) * smooth(clamp((g - .7) / .35, 0, 1)); WX.globalAlpha = 1; WX.fillStyle = css(C[n - 1][0]); WX.beginPath(); WX.arc(hp[0], hp[1], Math.min(r, 3 + r * smooth(clamp(g / .3, 0, 1))), 0, 6.2832); WX.fill(); }
-        WX.globalAlpha = 1; };
-      const breathe = (k, t0, du = DUR) => { const d = document.querySelector('[data-navk="' + k + '"] [data-navdot]'); if (!d) return; const u = clamp((lt - t0 - du + .12) / .9, 0, 1); d.style.transform = 'scale(' + (1 + .22 * Math.sin(Math.PI * u) * (1 - u * .3)).toFixed(3) + ')'; d.style.boxShadow = 'none'; };
-      const RC = this.redC || [232, 34, 44], tB = .1, tF = .35, tS = .6;
+      const RC = this.redC || [232, 34, 44], tB = .1, tF = .2, tS = .4, BS = B[2] || 1, DU = { b: SWIRL_DUR, f: SWIRL_DUR, s: SWIRL_DUR };
       this.buoyDrain = smooth(clamp((lt - tB) / .7, 0, 1)); this.flagDrain = smooth(clamp((lt - tF) / .7, 0, 1)); this.sqDrain = smooth(clamp((lt - tS) / .7, 0, 1));
-      orb([B[0], B[1]], this.navPos.c4, tB, [255, 118, 18], [255, 118, 18], 7, 5.5, { dur: 1.9, lean: -120, amp: 22, fq: 1, w: 4.6, tail: .5, prof: u => .7 + 1.6 * Math.pow(Math.sin(Math.PI * u), 1.4) }); breathe('c4', tB, 1.9);
-      if (this.navPos.sound) { orb(F, this.navPos.sound, tF, RC, RC, 5, 8, { dur: 1.6, lean: 70, amp: 12, fq: 2, w: 3.4, tail: .4, prof: u => .6 + 1.2 * Math.sin(2.5 * Math.PI * u) ** 2 }); if (this.sqPos) orb(this.sqPos, this.navPos.sound, tS, [244, 138, 172], RC, 6, 8, { dur: 2.0, lean: -50, amp: 30, fq: 1.5, w: 3.8, tail: .55, prof: u => .5 + 1.8 * Math.exp(-(((u - .4) / .2) ** 2)) }); breathe('sound', tS, 2.0); }
+      // buoy: off along the top of its float, left to right; flag: along its top edge; squid: up through its body
+      const buoySrc = Array.from({ length: 13 }, (_, q) => { const a = Math.PI + q / 12 * Math.PI; return [B[0] + Math.cos(a) * 22 * BS, B[1] + Math.sin(a) * 13 * BS]; });
+      const flagSrc = [[B[0], B[1] - 46 * BS], [B[0] + 11 * BS, B[1] - 46.5 * BS], [B[0] + 22 * BS, B[1] - 46 * BS]];
+      this.absorb(WX, buoySrc, this.navPos.c4, (lt - tB) / DU.b, { w: 3.4, colA: [255, 118, 18], colB: [255, 118, 18], lift: 40, sway: 18, ph: .4, ring: 74 }); this.navPulse('c4', (lt - tB) / DU.b);
+      if (this.navPos.sound) { this.absorb(WX, flagSrc, this.navPos.sound, (lt - tF) / DU.f, { w: 3, colA: RC, colB: RC, lift: 30, sway: 10, ph: 1.9, ring: 56 });
+        if (this.sqPos) { const [qx, qy] = this.sqPos; this.absorb(WX, [[qx, qy + 22], [qx, qy + 8], [qx, qy - 8], [qx, qy - 20]], this.navPos.sound, (lt - tS) / DU.s, { w: 3.4, colA: [244, 138, 172], colB: RC, lift: 50, sway: 24, ph: 3.1, ring: 146 }); }
+        this.navPulse('sound', Math.max((lt - tF) / DU.f, (lt - tS) / DU.s)); }
     }
     if (sy > -80 && sy < H + 80) {
       [[3.2, .9], [1.8, .55], [1.1, .3]].forEach((st, k) => {
         const rev = intro && !this.skipWaves ? smooth(clamp((T - k * .25) / 1.6, 0, 1)) : 1; if (rev <= 0) return;
         const xe = -20 + (W + 40) * rev; let pts = [];
-        if (this.leaveT != null && this.navPos) { this.danceWave(WX, k, st, sy, o, t, W); return; }
+        if (this.leaveT != null && this.navPos) { this.reelWave(WX, k, st, sy, o, t, W); return; }
         for (let x = -20; x <= xe; x += 10) pts.push([x, sy + this.waveY(x - o.x, k, t)]);
         pts.push([xe, sy + this.waveY(xe - o.x, k, t)]);
         this.brush(WX, pts, st[0], st[1], k * 200, true, rev < 1, k === 0 ? '#141414' : k === 1 ? 'rgb(0,158,224)' : 'rgb(34,86,186)');
@@ -642,16 +777,15 @@ class Component extends DCLogic {
     const bob = Math.sin(t * 1.3) * 2, BS = clamp(W / 900, .75, 1), BY = sy + this.waveY(0, 0, t) - 2 + bob, LS = BY + 12 * BS;
     if (intro) {
       const d = smooth(clamp((T - 1.9) / 1.3, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - 1.6) / .4, 0, 1));
-      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin(y * .02) * .7, y]); pts.push([o.x, end]); this.brush(ctx, pts, 2.8, .9, 0, true, d < 1, '#141414'); }
+      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W, .9, LS - o.y, false, d < 1, '#141414'); }
       if (drop > 0) { this.buoyPos = [o.x, BY - (1 - drop) * 60, BS * drop]; this.drawBuoy(ctx, o.x, BY - (1 - drop) * 60, BS * drop, t); }
     } else {
       const a0 = Math.max(LS, -20), a1 = Math.min(o.y + this.lineEnd, H + 20);
-      if (a1 > a0) { for (let ya = a0; ya < a1; ya += 18) { const yb = Math.min(a1, ya + 19), pts = []; for (let y = ya; y <= yb; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((yb - o.y) * .02) * .7, yb]); this.brush(ctx, pts, 2.8, .9, ya - o.y, false, false, this.ropeInk((ya + yb) / 2 - o.y)); } }
-      if (a1 > a0) {
-        ctx.lineWidth = 1; ctx.globalAlpha = .5;
-        for (let y = a0 + ((9 - ((a0 - o.y) % 9)) % 9); y < a1; y += 9) { ctx.strokeStyle = this.ropeInk(y - o.y); ctx.beginPath(); ctx.moveTo(o.x - 2.2, y - 2); ctx.lineTo(o.x + 2.2, y + 2); ctx.stroke(); }
-        ctx.globalAlpha = 1;
-      }
+      // one stroke, its ink changing with depth through a gradient (drawn in pieces, every join showed as a dark band across the rope)
+      if (a1 > a0) { const pts = [], gr = ctx.createLinearGradient(0, a0, 0, a1); for (let y = a0; y < a1; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((a1 - o.y) * .02) * .7, a1]);
+        for (let y = a0; y < a1 + 18; y += 18) { const yy = Math.min(y, a1); gr.addColorStop((yy - a0) / (a1 - a0), this.ropeInk(yy - o.y)); }
+        this.brush(ctx, pts, ROPE_W, .9, a0 - o.y, false, false, gr); }
+      if (a1 > a0) this.ropeTwist(ctx, o, a0, a1, LS);
       { const pz = this.pos, nowT = performance.now(), dtT = Math.min(.05, (nowT - (this.tailT || nowT)) / 1000); this.tailT = nowT;
         const head = Math.max(0, al), dA = head - (this.prevAl ?? head); this.prevAl = head; const kk = 1 - Math.exp(-dtT * 3.5);
         if (Math.abs(dA) > .3) { const nd = dA > 0 ? 1 : -1; if (nd !== this.ropeDir) { this.ropeDir = nd; this.tailW = head; } }
@@ -671,7 +805,7 @@ class Component extends DCLogic {
             this.sqT = (this.sqT ?? 99) + (this.octA > .5 ? dtT : 0); const sk = this.sqT, hk = smooth(clamp((sk - .2) / 1.0, 0, 1)), u0 = smooth(clamp((sk - .85) / .7, 0, 1)), fillK = smooth(clamp((sk - .95) / .8, 0, 1));
             if (hk > 0 && u0 < 1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }
               if (this.sqSrc) { const A = this.sqSrc, B2 = [ox, oy], C1 = [A[0] - 40, A[1] + 170], C2 = [B2[0] + 170, B2[1] - 70], ap = []; for (let q = 0; q <= 48; q++) { const u = q / 48, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; ap.push([a * A[0] + b * C1[0] + c * C2[0] + d * B2[0], a * A[1] + b * C1[1] + c * C2[1] + d * B2[1]]); }
-                const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3.2, .95, 'rgb(232,34,44)', 1.2, hk < 1); } }
+                const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3.2, .95, this.redToPink(ctx, A, B2), 1.2, hk < 1); } }
             if (this.sqRot == null) this.sqRot = Math.PI; if (this.sqTo == null) this.sqTo = Math.PI; if (this.octV > 40) this.sqTo = Math.PI; else if (this.octV < -40) this.sqTo = 0; this.sqRot += (this.sqTo - this.sqRot) * (1 - Math.exp(-dtT * 6));
             // arrival: swims in pale from the bottom right, loops, a line from the red Sound dot pours in its pink (it smiles ^^), then it swims over to the line
             if (this.sqI == null && vis && (this.props.motion ?? true)) this.sqI = 0; if (this.sqI != null) this.sqI += dtT;
@@ -685,7 +819,7 @@ class Component extends DCLogic {
                 const ta = dirA(-Math.cos(ph), Math.sin(ph)), bl = smooth(clamp(k / .12, 0, 1)); dr = lerpA(0, ta, bl); dv = .9 * Math.min(1, k * 2.5); }
               if (I >= RD0 && I < RD1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }
                 if (this.sqSrc) { const k = I - RD0, hk = ez(clamp(k / .75, 0, 1)), u0 = ez(clamp((k - .55) / .75, 0, 1)), A = this.sqSrc, B2 = [dx, dy - 6], C1 = [A[0] - 30, A[1] + 140], C2 = [B2[0] + 130, B2[1] - 90], ap = [];
-                  for (let q = 0; q <= 48; q++) ap.push(bz3(A, C1, C2, B2, q / 48)); const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3, .95, 'rgb(232,34,44)', 1.2, hk < 1); } } }
+                  for (let q = 0; q <= 48; q++) ap.push(bz3(A, C1, C2, B2, q / 48)); const pts = ap.slice(Math.floor(u0 * 48), Math.ceil(hk * 48) + 1); if (pts.length >= 2) this.brushFly(ctx, pts, 3, .95, this.redToPink(ctx, A, B2), 1.2, hk < 1); } } }
             else if (I < GO1) { // carries straight on out of the loop, heading left, and glides in to the rope
               const Rl = Math.max(50, Math.min(170, W * .2, (H - M[1] - 70) / 2)), D = GO1 - GO0, v = Rl * 2 * Math.PI * 1.6 / (LP1 - LP0), hd = clamp(v * D / 6, 20, Math.abs(M[0] - ox) * .8), A = M, B = [ox, oy], C1 = [M[0] - hd, M[1]], C2 = [B[0] + 90, B[1] + 30];
               const k = clamp((I - GO0) / D, 0, 1), e = 1 - (1 - k) * (1 - k), p = bz3(A, C1, C2, B, e), q = bz3(A, C1, C2, B, Math.min(1, e + .02)); dx = p[0]; dy = p[1];
@@ -714,7 +848,9 @@ class Component extends DCLogic {
       ctx.restore();
     }
     if (!this.grainP) this.grainP = ctx.createPattern(this.grainC, 'repeat');
-    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .4; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H);
+    // arriving from Home, start at Home's grain strength and deepen to this page's as the water rises
+    const grainA = this.fromHome && intro ? .35 + .05 * smooth(clamp((T - this.tide0) / 1.8, 0, 1)) : .4;
+    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = grainA; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
 

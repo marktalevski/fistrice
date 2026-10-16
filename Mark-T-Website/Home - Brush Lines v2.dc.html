@@ -16,22 +16,47 @@ html,body{margin:0;height:100%;overflow:hidden;background:#f5f3ee}
 a{color:#141414}a:hover{color:#141414;opacity:.6}
 </style>
 </helmet>
-<div style="position:fixed;inset:0;overflow:hidden;color:#141414;background:#f5f3ee;font-family:'Newsreader', Georgia, serif;-webkit-font-smoothing:antialiased;user-select:none">
-  <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-  <button ref="{{ btnRef }}" onClick="{{ goDive }}" onMouseEnter="{{ hoverOn }}" onMouseLeave="{{ hoverOff }}" aria-label="Freediving" style="position:absolute;left:50%;top:50%;transform:translate(-50%, -14px);display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 18px;min-height:44px;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0">
-    <span style="width:18px;height:18px"></span>
-    <span style="font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em">Freediving</span>
-  </button>
-  <button ref="{{ inkRef }}" onClick="{{ shuffle }}" onMouseEnter="{{ inkOn }}" onMouseLeave="{{ inkOff }}" aria-label="Shuffle symbol" title="Shuffle" style="position:absolute;left:-100px;top:-100px;width:44px;height:44px;transform:translate(-50%, -50%);border:0;padding:0;background:none;cursor:pointer;border-radius:50%;pointer-events:none"></button>
-  <button ref="{{ sndRef }}" onClick="{{ goSound }}" onMouseEnter="{{ sndOn }}" onMouseLeave="{{ sndOff }}" aria-label="Sound" style="position:absolute;left:0;top:0;transform:translate(-50%, -14px);display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 18px;min-height:44px;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0;pointer-events:none">
-    <span style="width:18px;height:18px"></span>
-    <span style="font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em">Sound</span>
-  </button>
-  <button ref="{{ jrnRef }}" onClick="{{ goJournal }}" onMouseEnter="{{ jrnOn }}" onMouseLeave="{{ jrnOff }}" aria-label="Journal" style="position:absolute;left:0;top:0;transform:translate(-50%, -14px);display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 18px;min-height:44px;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0;pointer-events:none">
-    <span style="width:18px;height:18px"></span>
-    <span style="font-style:italic;font-weight:300;font-size:24px;letter-spacing:-0.01em">Journal</span>
-  </button>
-</div>
+    <div style="position:fixed;inset:0;overflow:hidden;color:#141414;background:#f5f3ee;font-family:'Newsreader', Georgia, serif;-webkit-font-smoothing:antialiased;user-select:none">
+      
+  
+      <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
+      
+  
+      <button ref="{{ btnRef }}" onClick="{{ goDive }}" onMouseEnter="{{ hoverOn }}" onMouseLeave="{{ hoverOff }}" onFocus="{{ hoverOn }}" onBlur="{{ hoverOff }}" aria-label="Freediving" style="position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);display:block;width:48px;height:48px;padding:0;border-radius:50%;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0">
+        
+    
+        <span style="display:none"></span>
+        
+    
+        <span data-lab="home" style="position:absolute;pointer-events:none;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0">
+          <span style="display:inline-block;white-space:pre;transform-origin:50% 60%">F</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">r</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">e</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">e</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">d</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">i</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">v</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">i</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">n</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">g</span>
+        </span> </button>
+      
+  
+      <button ref="{{ inkRef }}" onClick="{{ shuffle }}" onMouseEnter="{{ inkOn }}" onMouseLeave="{{ inkOff }}" aria-label="Shuffle symbol" title="Shuffle" style="position:absolute;left:-100px;top:-100px;width:44px;height:44px;transform:translate(-50%, -50%);border:0;padding:0;background:none;cursor:pointer;border-radius:50%;pointer-events:none"></button>
+      
+  
+      <button ref="{{ sndRef }}" onClick="{{ goSound }}" onMouseEnter="{{ sndOn }}" onMouseLeave="{{ sndOff }}" onFocus="{{ sndOn }}" onBlur="{{ sndOff }}" aria-label="Sound" style="position:absolute;left:0;top:0;transform:translate(-50%, -50%);display:block;width:48px;height:48px;padding:0;border-radius:50%;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0;pointer-events:none">
+        
+    
+        <span style="display:none"></span>
+        
+    
+        <span data-lab="home" style="position:absolute;pointer-events:none;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0">
+          <span style="display:inline-block;white-space:pre;transform-origin:50% 60%">S</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">o</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">u</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">n</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">d</span>
+        </span> </button>
+      
+  
+      <button ref="{{ jrnRef }}" onClick="{{ goJournal }}" onMouseEnter="{{ jrnOn }}" onMouseLeave="{{ jrnOff }}" onFocus="{{ jrnOn }}" onBlur="{{ jrnOff }}" aria-label="Journal" style="position:absolute;left:0;top:0;transform:translate(-50%, -50%);display:block;width:48px;height:48px;padding:0;border-radius:50%;border:0;background:none;cursor:pointer;color:#141414;font-family:'Newsreader', Georgia, serif;opacity:0;pointer-events:none">
+        
+    
+        <span style="display:none"></span>
+        
+    
+        <span data-lab="home" style="position:absolute;pointer-events:none;white-space:nowrap;font-family:Papyrus, 'Papyrus-Regular', 'Newsreader', Georgia, serif;font-weight:400;font-size:24px;letter-spacing:0;opacity:0">
+          <span style="display:inline-block;white-space:pre;transform-origin:50% 60%">J</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">o</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">u</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">r</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">n</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">a</span><span style="display:inline-block;white-space:pre;transform-origin:50% 60%">l</span>
+        </span> </button>
+    </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;shape&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;random&quot;,&quot;options&quot;:[&quot;random&quot;,&quot;enso&quot;,&quot;spiral&quot;,&quot;triforce&quot;,&quot;triskele&quot;,&quot;wave&quot;,&quot;maple&quot;,&quot;octopus&quot;,&quot;hangul&quot;,&quot;spring&quot;,&quot;mountain&quot;,&quot;vinyl&quot;,&quot;camera&quot;,&quot;book&quot;,&quot;onsen&quot;,&quot;lotus&quot;,&quot;coffee&quot;,&quot;headphones&quot;,&quot;plane&quot;,&quot;gameboy&quot;,&quot;longfins&quot;,&quot;egg&quot;,&quot;samurai&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -42,16 +67,49 @@ const INK = [20, 20, 20], BLUE = [24, 88, 224];
 const pickShape = (exclude) => { let seen = {}; try { seen = JSON.parse(sessionStorage.getItem('shape-seen') || '{}'); } catch (e) {}
   const opts = SHAPES.filter(x => x !== exclude), w = opts.map(x => 1 / Math.pow(1 + (seen[x] || 0), 2)), tot = w.reduce((a, b) => a + b, 0); let r = Math.random() * tot, k = 0; while (k < opts.length - 1 && (r -= w[k]) > 0) k++;
   const pick = opts[k]; seen[pick] = (seen[pick] || 0) + 1; try { sessionStorage.setItem('shape-seen', JSON.stringify(seen)); sessionStorage.setItem('home-shape', pick); } catch (e) {} return pick; };
-// a small breaking wave: low run-in, rise over the crest to a pointed lip that throws forward, then a quick hook back under into the barrel (dot)
-// a small breaking wave: low run-in, rise to the top of its crest, then a clockwise spiral that tightens to its centre (dot), like the blue curl
-const miniC = (x0, y0, w, h, o = {}) => { const r = (o.rf ?? .5) * h; return [[x0 + w - r, y0 - h + r], r]; };
-const miniWave = (x0, y0, w, h, o = {}) => { const [C, r] = miniC(x0, y0, w, h, o), tn = o.turns ?? 1.05, out = [];
-  cat([[x0, y0], [x0 + .45 * (C[0] - x0), y0 - .06 * h], [C[0] - 1.05 * r, C[1] + .25 * r], [C[0] - .55 * r, C[1] - .85 * r], [C[0], C[1] - r]], 8, (x, y) => out.push([x, y]));
-  for (let q = 1; q <= 44; q++) { const u = q / 44, a = -Math.PI / 2 + u * Math.PI * 2 * tn, rr = r * (1 - .62 * u); out.push([C[0] + Math.cos(a) * rr, C[1] + Math.sin(a) * rr]); } return out; };
-const WAVES = [[1, -2.5, 1.0, .72, .46, { rf: .5, turns: 1.1 }], [3, -1.6, .66, 1.6, 1.0, {}], [2, .72, 1.6, .98, .58, { rf: .48, turns: .95 }],
-  [4, -1.6, 1.66, .86, .5, { rf: .5, turns: 1.2 }], [5, -.5, 1.28, 1.05, .44, { rf: .52, turns: 1.0 }], [6, 1.3, .46, .62, .4, { rf: .5, turns: 1.15 }]];
+// golden spiral: from the top of a circle of radius r0 round c (angle a0), turning clockwise, the radius shrinks by φ every quarter turn,
+// the curve of a golden rectangle's nested squares. n points per turn, w(u) the brush weight along it
+const PHI = (1 + Math.sqrt(5)) / 2;
+const goldSpiral = (c, r0, a0, turns, n, w) => { const m = Math.max(2, Math.round(n * turns)); return Array.from({ length: m }, (_, q) => { const u = (q + 1) / m, t = u * turns * Math.PI * 2, r = r0 * Math.pow(PHI, -t / (Math.PI / 2)); const p = [c[0] + Math.cos(a0 + t) * r, c[1] + Math.sin(a0 + t) * r]; return w ? [p[0], p[1], w(u)] : p; }); };
+// the big black wave's line: its back (from the water up to the top of its curl) and its golden-spiral curl, in unit coordinates.
+// The wave symbol draws it, and every small wave is an exact scaled copy of it
+const WAVE_BACK = [[-1.9, .74], [-1.45, .7], [-1.0, .6], [-.6, .36], [-.3, -.02], [-.05, -.42], [.22, -.68], [.5, -.76], [.72, -.72]], WAVE_C = [.72, -.38], WAVE_R = .34, WAVE_TURNS = 1.0;
+// the same line in a small wave's own units: crest top at 0,0 and the wave 1 tall
+const WAVE_H = WAVE_BACK[0][1] - (WAVE_C[1] - WAVE_R), MINI_BACK = WAVE_BACK.map(p => [(p[0] - WAVE_C[0]) / WAVE_H, (p[1] - WAVE_C[1] + WAVE_R) / WAVE_H]), MINI_R = WAVE_R / WAVE_H;
+// how much bigger than its WAVES box a small wave is drawn, so its curl reads clearly round the dot
+const MINI_GROW = 1.9;
+// scale s and crest top T so the wave starts at (x0, y0) on the water and fits width w and height h
+const miniFit = (x0, y0, w, h) => { const b = MINI_BACK[0], s = Math.min(w / (-b[0] + MINI_R), h / b[1]) * MINI_GROW; return [s, [x0 - b[0] * s, y0 - b[1] * s]]; };
+const miniC = (x0, y0, w, h) => { const [s, T] = miniFit(x0, y0, w, h); return [[T[0], T[1] + MINI_R * s], MINI_R * s, s]; };
+const miniWave = (x0, y0, w, h, o = {}) => { const [s, T] = miniFit(x0, y0, w, h), [C, r] = miniC(x0, y0, w, h), out = [];
+  cat(MINI_BACK.map(p => [T[0] + p[0] * s, T[1] + p[1] * s]), 6, (x, y) => out.push([x, y]));
+  for (const p of goldSpiral(C, r, -Math.PI / 2, WAVE_TURNS, 44)) out.push(p); return out; };
+// [line, start x, start y (on the water), width, height, options] in unit coordinates; li 3 (blue) rides the big wave instead
+// the small waves sit in one row under the big one, evenly spaced and alternately high and low (blue rides the big wave)
+const WAVES = [[3, -1.6, .66, 1.6, 1.0, {}], ...[1, 4, 5, 2, 6].map((li, k) => [li, -2.25 + k * .85, k % 2 ? 1.74 : 1.52, .6, 1, {}])];
 const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
 // page: which section this colour leads to (blue → freediving)
+// hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.
+// seconds for the wash to cross a stroke, opacity reached, width of the wet edge (share of the stroke), how much that edge wanders
+const FADE = { sweep: 1.1, to: .25, soft: .9, wander: .07 };
+// section labels stay hidden until their dot is hovered, then come out of it and go back in with the same motion: total seconds, seconds per
+// letter, size and blur while inside the dot, and the dot's pulse (seconds, px) as the last letter goes in
+const LABEL = { time: .4, letter: .22, shrink: .2, blur: 1.5, pulse: .3, pulseR: 3 };
+// the ink line draws at its natural pace up to this many seconds of travel, then speeds up, so long symbols (vinyl, coffee) are ready as soon as short ones
+const INK_RUN = 4.2;
+// the hangul stamp's square, in unit coordinates, clockwise from the top left corner and back to it
+const SEAL = { x: 1.0, y: 1.02 };
+const SEAL_SQ = (() => { const X = SEAL.x, Y = SEAL.y, e = .05; return [[-X, -Y], [-X + e, -Y], [0, -Y], [X - e, -Y], [X, -Y], [X, -Y + e], [X, 0], [X, Y - e], [X, Y], [X - e, Y], [0, Y], [-X + e, Y], [-X, Y], [-X, Y - e], [-X, 0], [-X, -Y + e], [-X, -Y + .01]]; })();
+// the egg white's wobbly outline: angle a (clockwise on screen, 0 at the right), k scales it about the centre (below 1 runs inside it)
+const EGG_WOB = a => 1 + .06 * Math.sin(a * 3 + .6) + .07 * Math.sin(a * 5 + 2.1) + .025 * Math.sin(a * 9 + .4);
+const eggWhite = (a, k) => { const rr = EGG_WOB(a) * k; return [Math.cos(a) * 1.3 * rr, .02 + Math.sin(a) * .86 * rr]; };
+const eggArc = (a0, a1, k, n = 40) => Array.from({ length: n + 1 }, (_, q) => eggWhite(a0 + (a1 - a0) * q / n, k));
+// a point in a fin's own frame (the longfins symbol: fin centred at sx, tilted by rot) placed on the symbol
+const finPt = (sx, rot, [x, y]) => [sx + x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)];
+// a wisp of steam rising from y0 to y1 at x, swaying more as it rises
+const wisp = (x, y0, y1, amp, ph) => Array.from({ length: 13 }, (_, q) => { const u = q / 12; return [x + amp * Math.sin(u * Math.PI * 2.2 + ph) * (.35 + .65 * u), y0 + (y1 - y0) * u]; });
+// the plane's wind: a wavy stream blowing back off a wingtip (sd -1 port, 1 starboard), in the plane's tilted frame
+const planeWind = (sd, ph) => Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = sd * (1.27 + .13 * u + .05 * Math.sin(u * Math.PI * 3 + ph) * u), y = .33 + .8 * u; return [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2]; });
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -61,6 +119,17 @@ const LINES = [
   { col: [22, 168, 82], w: 9, d: .85, spd: .97, u: .66 },
   { col: [138, 64, 214], w: 9, d: .95, spd: 1.02, u: .82 }
 ];
+// book: [line, dot x, row (0 top edge of the page, 1 bottom edge), other end x] in unit coordinates
+const BOOK_NOTES = [[1, -1.17, .25, -.37], [3, -1.16, .5, -.42], [5, -1.17, .75, -.36], [6, 1.16, .25, .29], [2, 1.15, .5, .32], [4, 1.14, .75, .41]];
+// height of a note row on the book: the pages' top and bottom edges sag the same way (through the spine, middle and outer corner), so a row
+// arcs like they do. Exact for the three points the edges are drawn through, smooth in between
+const bookRowY = (x, f) => { const ax = Math.abs(x), lag = (a, b, c) => a * (ax - .6) * (ax - 1.35) / ((0 - .6) * (0 - 1.35)) + b * ax * (ax - 1.35) / (.6 * (.6 - 1.35)) + c * ax * (ax - .6) / (1.35 * (1.35 - .6));
+  return lag(-.48, -.7, -.6) * (1 - f) + lag(.72, .55, .62) * f; };
+// extra clearance (px) for the small orange, green and purple dots beyond the drawing on symbols where coloured lines ride the outside
+// (vinyl: the red, yellow and blue band round the record), so they stand clear of it instead of touching it
+const RING_EXTRA = { vinyl: 30 };
+// spacing (px) a symbol's own coloured paths are resampled at before one round of smoothing; about 2.5 px between points once smoothed
+const CP_STEP = 5;
 const cat = (ctrl, n, push) => { for (let i = 0; i < ctrl.length - 1; i++) { const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)]; for (let j = 0; j < n; j++) { const t = j / n, t2 = t * t, t3 = t2 * t; push(.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3), .5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)); } } const l = ctrl[ctrl.length - 1]; push(l[0], l[1]); };
 
 const chaikin = (p, n) => { for (let k = 0; k < n; k++) { const o = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const a = p[i], b = p[i + 1]; const aw = a[2] ?? 1, bw = b[2] ?? 1; o.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25, aw * .75 + bw * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75, aw * .25 + bw * .75]); } o.push(p[p.length - 1]); p = o; } return p; };
@@ -86,10 +155,11 @@ const loopify = (P, R) => {
   return out;
 };
 const smooth1 = (a, r) => a.map((v, i) => { let t = 0, c = 0; for (let j = Math.max(0, i - r); j <= Math.min(a.length - 1, i + r); j++) { t += a[j]; c++; } return t / c; });
+const lerpPt = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
 const easeIO = k => .5 - .5 * Math.cos(Math.PI * k);
 // blue rides the big wave: up its back just inside the black line, over the crest, and curls into the heart of the curl
 const blueRide = (() => { const o = []; cat([[-1.05, .7], [-.62, .48], [-.3, .1], [-.06, -.3], [.2, -.57], [.48, -.66], [.72, -.63]], 10, (x, y) => o.push([x, y]));
-  const c = [.72, -.38]; for (let q = 1; q <= 40; q++) { const u = q / 40, a = -Math.PI / 2 + u * Math.PI * 2 * .92, r = .25 * (1 - .55 * u); o.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]); } return o; })();
+  for (const p of goldSpiral([.72, -.38], .25, -Math.PI / 2, .92, 44)) o.push(p); return o; })();
 const catW = (ctrl, n, w0, w1) => { const o = []; cat(ctrl, n, (x, y) => o.push([x, y])); return o.map((p, i) => [p[0], p[1], w0 + (w1 - w0) * i / Math.max(1, o.length - 1)]); };
 function shapeOf(name, cx, cy, R) {
   const blooms = [], colorPaths = {}, P = [], push = (x, y, w = 1) => P.push([cx + x * R, cy + y * R, w]), extra = [];
@@ -145,8 +215,9 @@ function shapeOf(name, cx, cy, R) {
   }
   else if (name === 'wave') {
     const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
-    const back = catW([[-1.9, .74], [-1.45, .7], [-1.0, .6], [-.6, .36], [-.3, -.02], [-.05, -.42], [.22, -.68], [.5, -.76], [.72, -.72]], 12, .7, 1.1), cur = [], c = [.72, -.38];
-    for (let q = 1; q <= 70; q++) { const u = q / 70, a = -Math.PI / 2 + u * TAU * 1.0, r = .34 * (1 - u * .62); cur.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r, 1.05 - .4 * u]); }
+    const back = catW(WAVE_BACK, 12, .7, 1.1), cur = [], c = WAVE_C;
+    // the curl is a golden spiral round the heart of the wave
+    for (const p of goldSpiral(c, WAVE_R, -Math.PI / 2, WAVE_TURNS, 70, u => 1.05 - .4 * u)) cur.push(p);
     const face = catW([[.56, .06], [.66, .34], [.9, .58], [1.3, .7], [1.9, .74]], 12, .95, .6);
     strokes([back, cur, hc(cur[cur.length - 1], face[0]), face]);
     st = [-.25, 1.25];
@@ -154,8 +225,7 @@ function shapeOf(name, cx, cy, R) {
 
   else if (name === 'egg') { const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
     // sunny side up, seen at a slight angle: wobbly white with a thickness edge underneath, a domed yolk with a shine and a soft shadow
-    const wob = a => 1 + .06 * Math.sin(a * 3 + .6) + .07 * Math.sin(a * 5 + 2.1) + .025 * Math.sin(a * 9 + .4);
-    const white = Array.from({ length: 91 }, (_, q) => { const a = Math.PI * .55 + q / 90 * Math.PI * 2.03, rr = wob(a); return [Math.cos(a) * 1.3 * rr, .02 + Math.sin(a) * .86 * rr, 1]; });
+    const wob = EGG_WOB, white = Array.from({ length: 91 }, (_, q) => { const a = Math.PI * .55 + q / 90 * Math.PI * 2.03; return [...eggWhite(a, 1), 1]; });
     const edge = []; for (let q = 0; q <= 40; q++) { const a = Math.PI * .18 + q / 40 * Math.PI * .64, rr = wob(a); edge.push([Math.cos(a) * 1.3 * rr * .97, .02 + Math.sin(a) * .86 * rr + .1, .6 + .3 * Math.sin(Math.PI * q / 40)]); }
     const Y = [.18, -.12], yolk = Array.from({ length: 61 }, (_, q) => { const a = -Math.PI * .6 + q / 60 * Math.PI * 2.02; return [Y[0] + Math.cos(a) * .5, Y[1] + Math.sin(a) * .42, 1.1]; });
     const shine = catW([[Y[0] - .3, Y[1] - .02], [Y[0] - .22, Y[1] - .2], [Y[0] - .04, Y[1] - .28]], 6, .85, .7);
@@ -199,11 +269,10 @@ function shapeOf(name, cx, cy, R) {
     st = [0, 1.55];
   }
   else if (name === 'hangul') {
-    const t = .12;
-    strokes([[[-1.45, -.5, .9], [-1.45, .25, 1]], [[-1.45, .25, t], [-1.45, -.5, t]], [[-1.45, -.5, 1], [-.93, -.5, 1], [-.93, .25, 1]], [[-.93, .25, t], [-1.45, .25, t]], [[-1.45, .25, .9], [-.93, .25, 1]],
-      [[-.93, .25, t], [-.62, -.82, t]], [[-.62, -.82, 1], [-.62, .72, .9]], [[-.62, .72, t], [-.62, -.06, t]], [[-.62, -.06, 1], [-.34, -.06, .8]],
-      [[-.34, -.06, t], [.02, -.58, t]], [[.02, -.58, 1], [.7, -.58, 1], [.68, -.2, 1], [.6, .12, .7]], [[.6, .12, t], [.06, -.24, t]], [[.06, -.24, 1], [.66, -.24, .9]],
-      [[.66, -.24, t], [-.22, .48, t]], [[-.22, .48, 1], [.98, .48, .8]]]);
+    // a name stamp (dojang): the red line cuts the square and the letters are written inside it, one stroke per line. The black ink writes ㅁ: its left side, then top and right as one stroke, then the base
+    const t = .02;
+    strokes([[[-.78, -.82, 1], [-.78, -.16, 1]], [[-.78, -.16, t], [-.78, -.82, t]], [[-.78, -.82, 1], [-.12, -.82, 1], [-.12, -.16, 1]],
+      [[-.12, -.16, t], [-.78, -.16, t]], [[-.78, -.16, 1], [-.12, -.16, 1]]]);
     st = [.38, .85];
   }
   else if (name === 'spring') {
@@ -213,13 +282,25 @@ function shapeOf(name, cx, cy, R) {
       [[-.7, 1.15, t], [-.62, .02, t]], [[-.62, .02, .7], [-.46, -.4, .45], [-.34, -.7, .22]],
       [[-.34, -.7, t], [.3, .04, t]], [[.3, .04, .6], [.58, .24, .38], [.9, .3, .22]],
       [[.9, .3, t], [.62, -.12, t]], [[.62, -.12, .55], [.72, -.55, .35], [.86, -.9, .22]]]);
-    const B = [[-1.45, .5], [-1.12, .98], [-.75, 1.1], [-1.0, -.18], [-.5, -.45], [-.3, -.78], [.05, .04], [.6, .3], [.92, .24], [.75, -.6], [.66, -.36], [1.2, -.33]];
+    // cherry petals, brushed by the red line: most resting along the branches, a few drifting in the air below them.
+    // [centre x, y, angle, size] in unit coordinates; the brush visits them left to right and ends on the petal by the twig
+    const PET = [[-1.76, .03, 2.6, .95], [-1.45, .5, .5, 1], [-1.2, .95, 1.9, .95], [-1.05, -.17, 2.1, 1.05], [-.95, .5, 2.9, .85], [-.85, 1.12, .2, .9],
+      [-.55, -.4, 1.2, 1], [-.5, .1, 4.0, .95], [-.3, -.8, 3.6, .95], [-.2, .6, 1.5, .85], [.05, .02, .8, 1.05], [.42, .17, 2.4, .95], [.55, .75, 3.3, .8],
+      [.6, .28, 2.6, 1], [.68, -.38, 1.9, .95], [.76, -.62, 4.4, 1], [.95, -.2, 5.2, .95], [1.2, -.33, .3, 1]];
     const lp = [], lq = (x, y, w) => lp.push([cx + x * R, cy + y * R, w]);
-    B.forEach((b, k) => { blooms.push([cx + b[0] * R, cy + b[1] * R]);
-      const pt = q => { const th = q / 40 * Math.PI * 2, r = .022 + .055 * Math.abs(Math.cos(2.5 * th)); return [b[0] + Math.cos(th) * r, b[1] + Math.sin(th) * r]; };
-      if (k) { const p0 = lp[lp.length - 1], s0 = pt(0); lq((p0[0] - cx) / R, (p0[1] - cy) / R, t); lq(s0[0], s0[1], t); }
-      for (let q = 0; q <= 40; q++) { const p = pt(q); lq(p[0], p[1], q === 0 || q === 40 ? t : .75); } });
-    colorPaths[1] = chaikin(resample(lp, 4), 2);
+    PET.forEach(([x, y, a, sz], k) => { blooms.push([cx + x * R, cy + y * R]);
+      // one petal in one movement of the brush: out from its narrow base along one side, round the notched tip and back along the other,
+      // so the brush fills it. It is a little cupped, so one side bows more than the other
+      const L1 = .13 * sz, c = Math.cos(a), sn = Math.sin(a), bx = x - c * L1 / 2, by = y - sn * L1 / 2, at = (d, side) => [bx + c * d - sn * side, by + sn * d + c * side];
+      // the brush lifts between petals: the lift is set a hair from the last mark, or resampling would drop it and fade the weight across the move
+      if (k) { const p0 = lp[lp.length - 1]; lq((p0[0] - cx) / R + .002, (p0[1] - cy) / R, t); lq(bx - .002, by, t); }
+      // the brush sets down a little before the first petal, unseen, so that petal is already at full pressure
+      else { lq(bx - .28, by + .04, t); lq(bx - .002, by, t); }
+      [[0, 0, .45], [.25, -.018, 1], [.58, -.026, 1.15], [.88, -.02, 1], [1, -.009, .85], [.9, 0, .75], [1, .009, .85], [.88, .018, 1], [.58, .024, 1.15], [.25, .016, 1], [.02, 0, .5]]
+        .forEach(([u, sw, w]) => lq(...at(L1 * u, sw * sz), w)); });
+    // after the last petal, red carries on as a little twig out to the Sound dot
+    [[1.3, -.27], [1.42, -.22], [1.54, -.26], [1.64, -.39]].forEach(([x, y]) => lq(x, y, 1));
+    colorPaths[1] = chaikin(resample(lp, CP_STEP), 1);
     st = [-.2, 1.42];
   }
   else if (name === 'maple') {
@@ -246,13 +327,20 @@ function shapeOf(name, cx, cy, R) {
     const spP = (u, dr = 0) => { const r = 1.15 * Math.pow(1 - u, .8) + .04 + dr, th = Math.PI * .5 + u * Math.PI * 2 * 2.4; return [Math.cos(th) * r, Math.sin(th) * r]; };
     const pet = (a, Lp, wp, li) => { const B = [0, .55], d = [Math.sin(a), -Math.cos(a)], n = [Math.cos(a), Math.sin(a)]; return { li, f: [B[0] + d[0] * Lp * .4 - n[0] * wp * .8, B[1] + d[1] * Lp * .4 - n[1] * wp * .8], t: [B[0] + d[0] * Lp, B[1] + d[1] * Lp], e: [B[0] + d[0] * (Lp + .16), B[1] + d[1] * (Lp + .16)] }; };
     const arm = (sd, spread, inner, li) => { const b0 = sd * .22 * (inner ? .5 : 1), ex = b0 + sd * spread; return { li, f: [b0 + sd * spread * .6, .3], t: [ex, 1.0], e: [ex - sd * .27, 1.03] }; };
-    const scrib = (() => { const o = []; [[-.3, 1.06, 1], [-.06, 1.0, -1], [.18, .8, 1]].forEach(([y, xe, d]) => { const n = Math.round((xe - .28) / .04); for (let k = 0; k <= n; k++) { const x = d > 0 ? .28 + k * .04 : xe - k * .04; o.push([x, y + .018 * Math.sin(x * 26)]); } }); return o; })();
     const IN = {
       enso: [{ li: 6, f: [Math.cos(3.3), Math.sin(3.3)], t: [Math.cos(4.0), Math.sin(4.0)], e: [-.24, -.42] }, { li: 5, f: [1, 0], t: [Math.cos(.62), Math.sin(.62)], e: [.38, .26] }],
       spiral: [.4, .58, .74].map((u, k) => ({ li: 4 + k, f: spP(u - .07), t: spP(u), e: spP(u + .01, -.15) })),
-      triforce: [{ li: 4, f: [-.32, -.08], t: [.3, -.08], e: [0, -.36] }, { li: 5, f: [-.9, .82], t: [-.25, .82], e: [-.525, .5] }, { li: 6, f: [.62, .1], t: [.92, .6], e: [.525, .5] }],
+      // triskele: orange, green and purple each echo one arm on its inner side (the same curve, drawn in a little), ending well inside it
+      triskele: [[4, 1], [5, 2], [6, 0]].map(([li, k]) => ({ li, path: Array.from({ length: 31 }, (_, q) => { const u = .3 + q / 30 * .6, a = Math.PI / 2 + k * Math.PI * 2 / 3, th = a - 2.5 + u * 2.5, rr = (.08 + 1.05 * Math.pow(u, .9)) * .78; return [Math.cos(th) * rr, Math.sin(th) * rr]; }) })),
+      // triforce: each small triangle gets its own pattern. Orange spirals in to the heart of the top one, green zigzags along the
+      // left one's base like a row of little peaks, purple traces a smaller triangle inside the right one
+      triforce: [{ li: 4, path: Array.from({ length: 49 }, (_, q) => { const u = q / 48, a = -Math.PI / 2 + u * Math.PI * 2 * 1.4, r = .24 * (1 - .9 * u); return [Math.cos(a) * r, -.36 + Math.sin(a) * r]; }) },
+        { li: 5, path: [[-.86, .68], [-.75, .5], [-.64, .68], [-.53, .44], [-.42, .68], [-.31, .5], [-.2, .68]] },
+        { li: 6, path: [[.3, .66], [.4, .665], [.65, .665], [.75, .66], [.7, .57], [.58, .33], [.525, .24], [.47, .33], [.36, .55], [.33, .61]] }],
       gameboy: [{ li: 4, path: [[-.42, -.22], [-.3, -.3], [-.18, -.44], [-.02, -.56]] }, { li: 5, path: [[.8, -.05], [.72, .1], [.6, .2], [.47, .27]] }, { li: 6, path: [[.62, .72], [.48, .62], [.32, .52], [.21, .45]] }],
-      book: [{ li: 5, path: scrib }, { li: 6, path: [[.1, -.66], [.13, -.3], [.1, .1], [.13, .5], [.18, .85], [.27, 1.04]] }],
+      // book: the coloured lines are handwritten notes. Left page: red, blue, green, each written towards its dot on the left;
+      // right page: purple, yellow, orange, each written out to its dot on the right
+      book: BOOK_NOTES.map(([li, dx, f, ex], i) => ({ li, path: Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = ex + (dx - ex) * u; return [x, bookRowY(x, f) + .01 * Math.sin(u * 19 + i * 1.7) + .005 * Math.sin(u * 47 + i)]; }) })),
       coffee: [{ li: 4, path: [[-.66, -.4], [-.3, -.49], [.15, -.5], [.58, -.43]] }, { li: 5, path: [[-.8, -.02], [-.66, .28], [-.4, .48], [-.08, .57]] }, { li: 6, path: [[.62, -.24], [.4, -.27], [.2, -.3], [.06, -.33]] }],
       headphones: [[1, -.72, 1], [2, .72, -1]].map(([li, x, sd]) => { const path = []; for (let q = 0; q <= 16; q++) { const u = q / 16, a = -Math.PI / 2 - sd * u * Math.PI * 1.7, r = .17 * (1 - .9 * u); path.push([x + Math.cos(a) * r, .35 + Math.sin(a) * r * 1.5]); } return { li, path }; }),
       maple: (() => { const vp = (li, ctrl) => { const o = []; cat(ctrl, 10, (x, y) => o.push([x, y])); return { li, path: o }; };
@@ -262,11 +350,42 @@ function shapeOf(name, cx, cy, R) {
         for (let q = 0; q <= 10; q++) { const u = .08 + .92 * q / 10, b = Math.sin(Math.PI * u) * wp * .62 * sg; path.push([B[0] + d[0] * Lp * u + n[0] * b, B[1] + d[1] * Lp * u + n[1] * b]); }
         path.push([B[0] + d[0] * (Lp + .12), B[1] + d[1] * (Lp + .12)]); return { li, path }; }).concat([{ li: 6, path: [[0, .6], [.01, .8], [.03, 1.0], [.02, 1.2], [-.02, 1.38]] }]),
       camera: [{ li: 4, f: [-.26, .15], t: [0, -.11], e: [0, .15] }, { li: 5, f: [-.75, -.45], t: [-.5, -.72], e: [-.45, -.58] }, { li: 6, f: [.55, -.45], t: [1.2, -.42], e: [.95, -.22] }],
-      spring: [{ li: 4, f: [-.55, -.2], t: [-.36, -.66], e: [-.31, -.8] }, { li: 5, f: [.42, .12], t: [.86, .29], e: [.98, .31] }, { li: 6, f: [.66, -.3], t: [.84, -.86], e: [.88, -.99] }],
+      // spring: purple sprouts its own small twig to the upper left instead of ending at the top-right twig tip beside the black ink dot
       octopus: [arm(-1, 1.15, 0, 3), arm(-1, .55, 1, 4), arm(1, .55, 1, 5), arm(1, 1.15, 0, 6)],
       wave: WAVES.map(([li, x0, y0, w, h, o]) => ({ li, path: li === 3 ? blueRide : miniWave(x0, y0, w, h, o) })),
-      egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, { li: 4, path: [[-.5, -.62], [-.2, -.7], [.1, -.7], [.4, -.64]] }, { li: 5, path: [[-1.1, .3], [-.9, .52], [-.6, .66], [-.3, .72]] }, { li: 6, path: [[.9, -.5], [.7, -.62], [.48, -.66]] }],
-      samurai: [{ li: 4, path: [[.82, -.67], [.64, -.47], [.44, -.32], [.27, -.27]] }, { li: 5, path: [[-.7, .39], [-.42, .51], [-.18, .57], [0, .57]] }, { li: 6, path: [[-.74, -.87], [-.54, -.69], [-.36, -.62], [-.26, -.61]] }]
+      egg: [{ li: 2, w: 2.1, path: [].concat(Array.from({ length: 141 }, (_, q) => { const u = q / 140, a = Math.PI * .22 - u * Math.PI * 2 * 4.4, rr = .42 * Math.min(1, 1.3 * (1 - u)) + .004; return [.18 + Math.cos(a) * rr * 1.08, -.12 + Math.sin(a) * rr * .9]; })) }, 
+        // orange runs inside the white along its top, green inside it along the bottom, purple circles outside the yolk; each ends well apart
+        { li: 4, path: eggArc(Math.PI * .97, Math.PI * 1.8, .78) }, { li: 5, path: eggArc(Math.PI * .22, Math.PI * .8, .84) },
+        { li: 6, path: Array.from({ length: 49 }, (_, q) => { const a = -Math.PI * .08 + q / 48 * Math.PI * 1.1; return [.18 + Math.cos(a) * .66, -.12 + Math.sin(a) * .56]; }) }],
+      // mountain: red circles the sun on its own; orange is a second halo round it. Yellow is the snow line under the summit, blue a river
+      // winding down from where the snow melts, purple a gull gliding in the sky to the left
+      mountain: [{ li: 2, path: [[-.4, -.44], [-.29, -.35], [-.18, -.45], [-.06, -.34], [.06, -.45], [.17, -.35], [.28, -.44], [.36, -.4]] },
+        { li: 3, path: [[-.17, -.26], [.05, .02], [-.13, .3], [.08, .56], [.02, .86]] },
+        { li: 4, path: Array.from({ length: 25 }, (_, q) => { const a = 2.25 + q / 24 * 2.6; return [.98 + Math.cos(a) * .44, -.62 + Math.sin(a) * .44]; }) },
+        { li: 6, path: [[-1.66, -.96], [-1.54, -1.05], [-1.42, -1.0], [-1.33, -.92], [-1.24, -1.0], [-1.12, -1.06], [-.99, -.98]] }],
+      // onsen: orange, green and purple are wisps of steam rising out of the bath beside the black ones
+      onsen: [{ li: 4, path: wisp(-.78, .36, -.36, .07, .3) }, { li: 6, path: wisp(-.21, .3, -.42, .05, 2.1) }, { li: 5, path: wisp(.79, .36, -.36, .07, 4.0) }],
+      // spring: red draws the blossoms (see the shape), blue rides the drooping branch, yellow the upright branch and green the lower right one, each on past its tip blossom so the dot sits clear of it; orange its own twig in the open on the left
+      spring: [{ li: 3, path: [[-1.31, .08], [-1.37, .45], [-1.24, .82], [-.9, 1.03], [-.66, 1.11], [-.52, 1.17], [-.4, 1.24]] }, { li: 2, path: [[-.58, 0], [-.43, -.4], [-.31, -.7], [-.25, -.87], [-.2, -1.0]] },
+        { li: 4, path: [[-1.58, -.04], [-1.67, -.3], [-1.66, -.52], [-1.57, -.7]] },
+        { li: 5, path: [[.36, .09], [.6, .26], [.9, .32], [1.06, .36], [1.2, .43]] }, { li: 6, path: [[.66, -.2], [.62, -.45], [.52, -.66], [.38, -.84]] }],
+      // plane: red and green are the navigation lights on the port and starboard wingtips; the others stream behind as contrails
+      plane: (() => { const rot = ([x, y]) => [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2], trail = (ex, L, ph) => Array.from({ length: 9 }, (_, q) => { const u = q / 8, ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08); return rot([ex + .03 * Math.sin(u * Math.PI * 2 + ph) * u, ey + .07 + L * u]); });
+        // red and green are the wind streaming back off the port and starboard wingtips
+        return [{ li: 1, path: planeWind(-1, .6) }, { li: 5, path: planeWind(1, 2.4) },
+          { li: 2, path: trail(-.86, .9, .4) }, { li: 4, path: trail(-.48, .45, 1.6) }, { li: 6, path: trail(.48, .45, 2.9) }, { li: 3, path: trail(.86, .9, 4.1) }]; })(),
+      // longfins: green runs down the left blade beside its rib, orange down the right blade beside its rib, purple down the outside of the right fin, ending clear of its outline
+      longfins: [{ li: 5, path: [[.1, -.35], [.1, .1], [.1, .55], [.1, .95]].map(p => finPt(-.4, .16, p)) }, { li: 4, path: [[-.1, -.35], [-.1, .1], [-.1, .55], [-.1, .95]].map(p => finPt(.4, -.16, p)) },
+        { li: 6, path: [[.3, -.55], [.32, -.3], [.39, -.1], [.49, .5], [.57, .9], [.66, 1.06]].map(p => finPt(.4, -.16, p)) }],
+      // hangul (마크, a name stamp): red cuts the stamp's square, clockwise from its top left corner (Sound's dot ends there); the others write
+      // the letters over the red: purple ㅏ's upright, yellow its arm (Journal's dot at the tip), green ㅋ's top and side, orange ㅋ's middle bar
+      // (right to left, so its dot sits clear of green), blue the ㅡ (Freediving's dot at its right end). Points close to each corner keep it square
+      hangul: [{ li: 1, path: SEAL_SQ }, { li: 6, path: [[.3, -.92], [.3, -.64], [.3, -.36], [.3, -.1]] }, { li: 2, path: [[.3, -.5], [.45, -.5], [.6, -.5], [.74, -.5]] },
+        { li: 5, path: [[-.8, .1], [-.2, .1], [.4, .1], [.68, .1], [.72, .12], [.72, .3], [.72, .54]] }, { li: 4, path: [[.62, .33], [.14, .33], [-.34, .33], [-.8, .33]] },
+        { li: 3, path: [[-.84, .76], [-.28, .76], [.28, .76], [.84, .76]] }],
+      // samurai: one coloured line comes in to the middle of each of the six circles
+      samurai: [{ li: 1, path: [[-.95, -1.05], [-.7, -.9], [-.45, -.7], [-.26, -.61]] }, { li: 2, path: [[.95, -1.05], [.7, -.9], [.45, -.7], [.26, -.61]] }, { li: 3, path: [[-1.0, -.2], [-.7, -.32], [-.45, -.31], [-.26, -.27]] },
+        { li: 4, path: [[.82, -.67], [.64, -.47], [.44, -.32], [.26, -.27]] }, { li: 5, path: [[-.9, .45], [-.66, .3], [-.44, .13], [-.26, .07]] }, { li: 6, path: [[.9, .45], [.66, .3], [.44, .13], [.26, .07]] }]
     }[name];
     if (IN) for (const sp of IN) { let pts = [];
       if (sp.path) { const o = []; cat(sp.path, 6, (x, y) => o.push(S([x, y]))); pts = o; }
@@ -277,7 +396,7 @@ function shapeOf(name, cx, cy, R) {
         for (let k = 0; k < ride.length; k++) { const a = ride[Math.max(0, k - 2)], b = ride[Math.min(ride.length - 1, k + 2)], tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, f = Math.min(1, k / 6); pts.push([ride[k][0] - ty / tl * off * sg * f, ride[k][1] + tx / tl * off * sg * f]); }
         const A = pts[pts.length - 1], T = [tx0 / tl0, ty0 / tl0], dd = Math.hypot(E[0] - A[0], E[1] - A[1]), k1 = Math.min(dd * .6, R * .45), C1 = [A[0] + T[0] * k1, A[1] + T[1] * k1], C2 = [E[0] + (C1[0] - E[0]) * .3, E[1] + (C1[1] - E[1]) * .3];
         for (let q = 1; q <= 24; q++) { const u = q / 24, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; pts.push([a * A[0] + b * C1[0] + c * C2[0] + d * E[0], a * A[1] + b * C1[1] + c * C2[1] + d * E[1]]); } }
-      colorPaths[sp.li] = chaikin(resample(pts.map(p => [p[0], p[1], sp.w || 1]), 4), 2); } }
+      colorPaths[sp.li] = chaikin(resample(pts.map(p => [p[0], p[1], sp.w || 1]), CP_STEP), 1); } }
   const glyph = ['egg', 'samurai', 'hangul', 'spring', 'octopus', 'maple', 'signature', 'triskele', 'frog', 'plane', 'triforce', 'onsen', 'mountain', 'muaythai', 'coffee', 'fox', 'gameboy', 'longfins'].includes(name);
   const gRes = name === 'hangul' ? [6, 3] : [7, 3];
   let Q = glyph ? chaikin(resample(P, gRes[0]), gRes[1]) : chaikin(resample(P, 20), 4);
@@ -287,7 +406,11 @@ function shapeOf(name, cx, cy, R) {
   const lTip = (a, Lp) => [cx + Math.sin(a) * (Lp + .12) * R, cy + (.55 - Math.cos(a) * (Lp + .12)) * R];
   const wEnd = li => { const W0 = WAVES.find(v => v[0] === li), p = li === 3 ? blueRide : miniWave(...W0.slice(1)), e = p[p.length - 1]; return [cx + e[0] * R, cy + e[1] * R]; };
   const stOv = name === 'maple' ? { sound: [cx - .84 * R, cy - .38 * R], journal: [cx + .84 * R, cy - .38 * R], freediving: [cx, cy - .88 * R], labelAt: { sound: [cx - 1.08 * R, cy - .72 * R], journal: [cx + 1.08 * R, cy - .72 * R], freediving: [cx, cy - 1.38 * R] } } : name === 'headphones' ? { sound: [cx - .72 * R, cy + .35 * R], journal: [cx + .72 * R, cy + .35 * R], labelAt: { sound: [cx - .72 * R, cy + 1.0 * R], journal: [cx + .72 * R, cy + 1.0 * R] } } : name === 'octopus' ? { freediving: [cx + (-.22 - 1.15 + .27) * R, cy + 1.03 * R] } : name === 'wave' ? { sound: wEnd(1), journal: wEnd(2), freediving: wEnd(3), labelAt: (() => { const lc = (li, dx, dy, deg, sc) => { const W0 = WAVES.find(v => v[0] === li), [C, r] = miniC(...W0.slice(1)); return [cx + (C[0] + dx * r) * R, cy + (C[1] + dy * r) * R, deg, sc]; };
-        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, 2.0, .45, 7, 1.08) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : null;
+        return { freediving: [cx + 1.3 * R, cy - .58 * R, -9, 1.18], sound: lc(1, -1.6, -1.7, -12, .92), journal: lc(2, -1.3, -2.3, -4, 1.04) }; })() } : name === 'lotus' ? { sound: lTip(-1.25, .9), journal: lTip(1.25, .9), freediving: lTip(0, 1.45) } : name === 'egg' ? { journal: [cx + .18 * R, cy - .12 * R], labelAt: { journal: [cx + .18 * R, cy + .4 * R] } } : name === 'book' ? { sound: [cx - 1.17 * R, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R, cy + bookRowY(1.15, .5) * R],
+        // labels sit just outside the pages, level with their dots (32 px gap plus half the label's width)
+        labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'triskele' ? { freediving: [cx + .62 * R, cy + 1.12 * R] } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R], journal: [cx + .36 * R, cy - .4 * R] } : name === 'spring' ? { sound: [cx + 1.64 * R, cy - .39 * R], journal: [cx - .2 * R, cy - 1.0 * R], freediving: [cx - .4 * R, cy + 1.24 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; const w = planeWind(-1, .6).pop(); return { sound: [cx + w[0] * R, cy + w[1] * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - SEAL.x * R, cy - (SEAL.y - .01) * R], journal: [cx + .74 * R, cy - .5 * R], freediving: [cx + .84 * R, cy + .76 * R],
+        // labels sit just outside the stamp's right edge, clear of the letters
+        labelAt: { journal: [cx + SEAL.x * R + 58, cy - .5 * R], freediving: [cx + SEAL.x * R + 74, cy + .76 * R] } } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
 }
 
@@ -307,7 +430,7 @@ class Component extends DCLogic {
     setTimeout(() => { try { sessionStorage.removeItem('nav-from'); } catch (e) {} }, 4000);
     this.raf = requestAnimationFrame(this.tick);
   }
-  componentWillUnmount() { cancelAnimationFrame(this.raf); }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); if (this.offTap) document.removeEventListener('pointerdown', this.offTap); }
   // paint, not outline. Four things real strokes do:
   // 1. ridges catch the light: one light from the upper left, so the edge facing it gets a pale highlight and the opposite edge a soft shadow, swapping as the stroke turns
   // 2. colour mixed on the brush stays in stripes: two or three bands of the same hue, a little lighter or deeper, running the length of the stroke
@@ -404,7 +527,7 @@ class Component extends DCLogic {
       if (!L.keep && !L.page && !CPp && arc.length > 4) { let j = arc.length - 1; const isOut = p => { const k = sec(p); return Math.hypot(p[0] - cx, p[1] - cy) >= .86 * Math.max(secR[k], secR[(k + 1) % SB], secR[(k + SB - 1) % SB]); }, jmin = Math.floor(arc.length * .45); const outT = q => { if (q < 5) return true; const p = arc[q], pp = arc[q - 4], tx = p[0] - pp[0], ty = p[1] - pp[1], tl = Math.hypot(tx, ty) || 1, ox = p[0] - cx, oy = p[1] - cy, ol = Math.hypot(ox, oy) || 1; return (tx * ox + ty * oy) / (tl * ol) > -.15; }; while (j > jmin && !(isOut(arc[j]) && outT(j))) j--; if (j <= jmin) { j = arc.length - 1; while (j > jmin && !isOut(arc[j])) j--; } if (j < arc.length - 1 && j > 6) { arc.length = j + 1; z.length = j + 1; cw.length = j + 1; wl.length = j + 1; } }
       if (!L.keep && !L.page && !CPp && arc.length > 4) { const e = arc[arc.length - 1], pe = arc[arc.length - 4], tl1 = Math.hypot(e[0] - pe[0], e[1] - pe[1]) || 1, te1 = [(e[0] - pe[0]) / tl1, (e[1] - pe[1]) / tl1], ox = e[0] - cx, oy = e[1] - cy, ol = Math.hypot(ox, oy) || 1;
         let dx = te1[0] * .5 + ox / ol, dy = te1[1] * .5 + oy / ol; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl; let E = [e[0] + dx * 30, e[1] + dy * 30];
-        const ringR = a => { const k = ((Math.floor((a + Math.PI) / (2 * Math.PI) * SB)) % SB + SB) % SB; return Math.max(secR[k], secR[(k + 1) % SB], secR[(k + SB - 1) % SB], secR[(k + 2) % SB], secR[(k + SB - 2) % SB]) + 34; };
+        const ringR = a => { const k = ((Math.floor((a + Math.PI) / (2 * Math.PI) * SB)) % SB + SB) % SB; return Math.max(secR[k], secR[(k + 1) % SB], secR[(k + SB - 1) % SB], secR[(k + 2) % SB], secR[(k + SB - 2) % SB]) + 34 + (RING_EXTRA[this.shapeName] || 0); };
         const ae = Math.atan2(e[1] - cy, e[0] - cx); let best = null; this.runA = this.runA || []; const adiff = (x, y) => { let d = Math.abs(x - y) % (2 * Math.PI); return d > Math.PI ? 2 * Math.PI - d : d; };
         const overlaps = (a0, a1) => this.runA.some(([b0, b1]) => { const n = 16; let o = 0; for (let q = 0; q <= n; q++) { const a = a0 + (a1 - a0) * q / n; let lo = Math.min(b0, b1), hi = Math.max(b0, b1); let aa = a; while (aa < lo - Math.PI) aa += 2 * Math.PI; while (aa > hi + Math.PI) aa -= 2 * Math.PI; if (aa >= lo - .12 && aa <= hi + .12) o++; } return o > 4; });
         const crs = Math.cos(ae) * te1[1] - Math.sin(ae) * te1[0], tsg = crs >= 0 ? 1 : -1, outD = Math.cos(ae) * te1[0] + Math.sin(ae) * te1[1];
@@ -420,7 +543,7 @@ class Component extends DCLogic {
             const da2 = da - dS * .18, m = Math.max(2, Math.ceil(Math.abs(da2) / .05)), rEnd = best[2] - ringR(best[1]); for (let q = 1; q <= m; q++) { const u = q / m, a = aW + da2 * u, r = ringR(a) + rEnd * u; seg.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
           const sm = avg(avg(avg(seg, 3), 3), 3); sm[0] = e; sm[sm.length - 1] = E; for (let q = 1; q < sm.length; q++) arc.push(sm[q]); }
         for (let q = n0; q < arc.length; q++) { z.push(.3); cw.push(1); wl.push(1); } }
-      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple'))) {
+      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'hangul' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'plane' || this.shapeName === 'spring'))) {
         if (rev) { arc.reverse(); z.reverse(); cw.reverse(); wl.reverse(); }
         { const S0 = this.stations[L.page], lim = Math.floor(arc.length * .45); let popped = 0;
           while (arc.length > 12 && popped < lim) { const e1 = arc[arc.length - 1], p1 = arc[arc.length - 5], tx = e1[0] - p1[0], ty = e1[1] - p1[1], tl = Math.hypot(tx, ty) || 1, sx = S0[0] - e1[0], sy = S0[1] - e1[1], sl = Math.hypot(sx, sy) || 1;
@@ -462,7 +585,7 @@ class Component extends DCLogic {
     if (this.shapeName === 'spring' && !this.trans && !this.fromDive) { const ink = this.paths[0], e = this.endOf(ink); this.paths.forEach((P, li) => { if (this.colorPaths[li] && !P.tr) P.d = Math.max(P.d ?? P.L.d, e - this.durOf(P) + .3); }); }
     // label placement: decided once, against every settled stroke
     { const pts = []; this.paths.forEach(P => P.pts.forEach((p, i) => { if (i >= P.arc0 && (!P.L.keep || (P.wt[i] ?? 1) >= .2)) pts.push(p); }));
-      const lw = { freediving: 116, sound: 74, journal: 84 }, lh = { freediving: 18, sound: 18, journal: 18 };
+      const mw = r => { const e = r.current && r.current.children[1]; return e && e.offsetWidth ? e.offsetWidth + 4 : 0; }, lw = { freediving: mw(this.btnRef) || 116, sound: mw(this.sndRef) || 74, journal: mw(this.jrnRef) || 84 }, lh = { freediving: 18, sound: 18, journal: 18 };
       this.labelUp = {};
       for (const pg of ['freediving', 'sound', 'journal']) { const S = this.stations[pg], w = lw[pg], h = lh[pg];
         const boxes = { below: [S[0] - w / 2 - 6, S[0] + w / 2 + 6, S[1] + 10, S[1] + 18 + h * 1.6], above: [S[0] - w / 2 - 6, S[0] + w / 2 + 6, S[1] - 18 - h * 1.6, S[1] - 10], right: [S[0] + 10, S[0] + 22 + w, S[1] - h, S[1] + h], left: [S[0] - 22 - w, S[0] - 10, S[1] - h, S[1] + h] };
@@ -474,11 +597,13 @@ class Component extends DCLogic {
 
   goDive = () => {
     if (this.go != null || this.T < this.readyT) return;
+    if (this.tapReveal('freediving')) return;
     const { W, H, cx, cy, R } = this.geo, SY = Math.max(H * .26, 190);
     // strokes draw the surface, buoy and flag first, then carry on up into their menu dots
     const LX = W < 720 ? 26 : 56, BS = clamp(W / 900, .75, 1), NX = k => W - 316 + { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }[k], NY = 28;
     const bz = (A, C1, C2, B, n) => { const o = []; for (let i = 1; i <= n; i++) { const u = i / n, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, dd = u ** 3; o.push([a * A[0] + b * C1[0] + c * C2[0] + dd * B[0], a * A[1] + b * C1[1] + c * C2[1] + dd * B[1]]); } return o; };
-    const surf = k => { const o = []; for (let x = 6; x <= W - 6; x += 9) o.push([x, SY + this.waveY(x - LX, k, 0)]); return o; };
+    // start off-screen like the Freediving page's surface, so the line reaches the left edge
+    const surf = k => { const o = []; for (let x = -20; x <= W - 6; x += 9) o.push([x, SY + this.waveY(x - LX, k, 0)]); return o; };
     const mkX = (o) => { const F = o.feat, f0p = F[0], lead = bz(o.start, o.c1, o.c2 || [f0p[0] - 50, f0p[1] - 110], f0p, 44), fl = F[F.length - 1], fp = F[F.length - 2], tl = Math.hypot(fl[0] - fp[0], fl[1] - fp[1]) || 1, E = o.end;
       const rise = bz(fl, o.r1 || [fl[0] + (fl[0] - fp[0]) / tl * 70, fl[1] + (fl[1] - fp[1]) / tl * 70 - 50], o.rx != null && o.rx < -100 ? [E[0] + o.rx, E[1] + 20] : [E[0] + (o.rx ?? -40), E[1] + 130], E, 40);
       const pre = o.circ || [o.start], pts = pre.concat(lead, F.slice(1), rise), f0 = pre.length + lead.length - 1; return { ...o, pts, f0, f1: f0 + F.length - 1 }; };
@@ -490,7 +615,7 @@ class Component extends DCLogic {
     const flag = []; for (let q = 0; q <= 8; q++) { const u = q / 8; flag.push([B[0] + (1 + 20 * u) * BS, B[1] + (-39 + Math.sin(u * Math.PI) * 1.2) * BS]); }
     this.exits = [
       mkX({ col: INK, k: 0, d: 0, dur: 3.1, ink: 1, circ, circW: P.wt.slice(P.arc0), h0: cl, start: e, c1: [e[0] + tg[0] * R * 1.2, e[1] + tg[1] * R * 1.2], c2: [-30, s0[0][1] - 90], feat: s0, end: [NX('home'), NY], rx: 40, w: 8, tw: 3.2, ta: .9 }),
-      mkX({ col: [0, 158, 224], k: 1, d: .35, dur: 2.8, start: hd('freediving'), c1: [hd('freediving')[0] - 60, hd('freediving')[1] + 90], c2: [-20, s1[0][1] - 70], feat: s1, end: [NX('freediving'), NY], w: 6, tw: 1.8, ta: .55 }),
+      mkX({ col: [0, 158, 224], k: 1, d: .35, dur: 2.95, start: hd('freediving'), c1: [hd('freediving')[0] - 60, hd('freediving')[1] + 90], c2: [-20, s1[0][1] - 70], feat: s1, end: [NX('freediving'), NY], w: 6, tw: 1.8, ta: .55 }),
       mkX({ col: [34, 86, 186], k: 2, d: .6, dur: 2.7, start: [cx + Math.cos(2.3) * R, cy + Math.sin(2.3) * R], c1: [cx + Math.cos(2.3) * R * 2.2, cy + Math.sin(2.3) * R * 2], c2: [-20, s2[0][1] - 60], feat: s2, end: [NX('freediving'), NY], w: 6.5, tw: 1.1, ta: .3 }),
       mkX({ col: [255, 118, 18], k: 3, d: .25, dur: 2.7, start: hd('c4'), c1: [hd('c4')[0], hd('c4')[1] + 120], c2: [B[0] + 120, B[1] - 90], feat: coil, end: [NX('c4'), NY], r1: [B[0] + 30, Math.max(40, B[1] - 170)], rx: -260, w: 7, tw: 6.5 * BS, ta: 1 }),
       mkX({ col: [232, 34, 44], k: 4, d: .5, dur: 2.6, start: hd('sound'), c1: [hd('sound')[0], hd('sound')[1] - 100], c2: [B[0] - 30, B[1] - 120], feat: flag, end: [NX('sound'), NY], r1: [B[0] + 20, Math.max(30, B[1] - 160)], rx: -260, w: 6.5, tw: 4.6 * BS, ta: 1 })
@@ -501,30 +626,93 @@ class Component extends DCLogic {
   // Sound / Journal: strokes fade, every head flies up to its nav dot, then the page opens with the same nav in place
   goPage = pg => () => {
     if (this.go != null || this.T < this.readyT) return;
+    if (this.tapReveal(pg)) return;
     this.exits = []; this.navFrom = {};
     ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].forEach(k => { const h = this.heads && this.heads[k]; if (h) this.navFrom[k] = { p: h.p.slice(), col: h.col }; });
-    this.dest = pg === 'sound' ? 'Sound.dc.html' : 'Journal.dc.html'; this.go = 0;
+    this.dest = pg === 'sound' ? 'Sound.dc.html?from=page' : 'Journal.dc.html'; this.go = 0;
   };
   goSound = this.goPage('sound'); goJournal = this.goPage('journal');
   sndOn = () => { this.hovPg.sound = 1; }; sndOff = () => { this.hovPg.sound = 0; }; jrnOn = () => { this.hovPg.journal = 1; }; jrnOff = () => { this.hovPg.journal = 0; };
-  durOf(P) { const fast = this.shapeName === 'spring' && this.colorPaths && this.colorPaths[LINES.indexOf(P.L)]; return (2.8 + P.len / (fast ? 2400 : this.shapeName === 'octopus' && P.L.keep ? 1300 : 650)) / P.L.spd; }
+  durOf(P) { const fast = this.shapeName === 'spring' && this.colorPaths && this.colorPaths[LINES.indexOf(P.L)], run = P.len / (fast ? 2400 : this.shapeName === 'octopus' && P.L.keep ? 1300 : 650); return (2.8 + (P.L.keep ? Math.min(run, INK_RUN) : run)) / P.L.spd; }
   endOf(P) { return P.tr ? P.L.d * .6 + (1.6 + (P.len - P.oldLen) / 900) / P.L.spd : (P.d ?? P.L.d) + this.durOf(P); }
-  shuffle = () => {
-    if (this.go != null || this.morph || !this.paths || this.T < this.readyT) return;
+  // the ink dot calls this with a click event and gets a random symbol; the local symbol picker (src/dev/symbol-picker.js) passes a name
+  shuffle = (name) => {
+    if (this.go != null || this.morph || !this.paths || this.T < this.readyT) return false;
     const grab = () => this.paths.map(P => P.pts.slice(P.arc0 - 1));
     this.trans = this.paths.map(P => { const c = P.cut0 || 0; return { pts: P.pts.slice(c), z: P.zA.slice(c), cw: P.cw.slice(c), wt: P.wt.slice(c) }; }); const old = grab(), opts = SHAPES.filter(x => x !== this.shapeName); this.fromPts = null;
-    this.override = pickShape(this.shapeName);
+    this.override = SHAPES.includes(name) ? name : pickShape(this.shapeName);
     this.build(this.geo.W, this.geo.H);
-    this.T = 0; this.go = null; this.oldPaths = null;
+    this.T = 0; this.go = null; this.oldPaths = null; return true;
   };
+  static SHAPES = SHAPES;
   hoverOn = () => { this.hov = 1; };
   hoverOff = () => { this.hov = 0; };
+  // hovering a section dot (or the black ink dot) fades every other line from the start of its stroke to its tail, all at the same time, down to 25%; it plays back in reverse when the hover ends
+  fadeTick(dt) {
+    dt = Math.max(0, dt); const pg = this.go != null || !(this.T >= this.readyT) ? null : this.hov ? 'freediving' : this.hovPg.sound ? 'sound' : this.hovPg.journal ? 'journal' : this.hovI ? 'ink' : null, hl = pg === 'ink' ? 0 : pg ? LINES.findIndex(L => L.page === pg) : -1;
+    if (!this.fadeC) this.fadeC = LINES.map(() => 0);
+    this.fadeC = this.fadeC.map((c, li) => { const tg = hl >= 0 && li !== hl ? FADE.sweep : 0; return tg > c ? Math.min(tg, c + dt) : Math.max(tg, c - dt); });
+  }
+  // the button is a 48px circle on the dot (what the pointer hovers); its label sits below, above, left or right of it,
+  // or at labelAt (rotated and scaled) when the symbol sets it apart. Gaps match the original layout: 24px below/above, 32px beside
+  placeLabel(btn, dot, LA, side) {
+    btn.style.left = dot[0] + 'px'; btn.style.top = dot[1] + 'px';
+    const lab = btn.children[1]; if (!lab) return; const st = lab.style; st.left = st.right = st.top = st.bottom = '';
+    if (LA) { st.left = (24 + LA[0] - dot[0]) + 'px'; st.top = (24 + LA[1] - dot[1]) + 'px'; st.transformOrigin = '50% 50%'; st.translate = '-50% -50%'; st.rotate = LA.length > 2 ? LA[2] + 'deg' : ''; st.scale = LA.length > 2 ? String(LA[3]) : ''; return; }
+    st.rotate = st.scale = '';
+    if (side === 'left' || side === 'right') { st[side === 'right' ? 'left' : 'right'] = '56px'; st.top = '50%'; st.translate = '0 -50%'; }
+    else { st.left = '50%'; st[side === 'above' ? 'bottom' : 'top'] = '48px'; st.translate = '-50% 0'; }
+  }
+  // one motion both ways. On hover the letters come out of the dot, nearest first, growing, sharpening and appearing; when the hover ends they
+  // go back in the same way and the dot pulses once as the last one arrives. Each letter keeps its own progress, so a hover that changes its
+  // mind halfway turns around smoothly. btn: the section's button; dot: its dot on screen; rot: [degrees, scale] when the label sits apart
+  labelFx(pg, btn, dot, on, rot) {
+    const lab = btn && btn.children[1]; if (!lab) return;
+    const L = this.labs || (this.labs = {}), chs = [...lab.children], s = L[pg] || (L[pg] = { on: false, t: 0, pk: null, p: chs.map(() => 0) }), dt = this.dtF || 0;
+    if (s.pk != null) { s.pk += dt; if (s.pk > LABEL.time + LABEL.pulse) s.pk = null; }
+    if (on !== s.on || !s.plan) {
+      // where each letter rests, untransformed, relative to the dot
+      const keep = chs.map(c => c.style.transform); chs.forEach(c => { c.style.transform = 'none'; });
+      const th = rot ? -rot[0] * Math.PI / 180 : 0, sc = rot ? rot[1] || 1 : 1;
+      const P = chs.map((el, i) => { const r = el.getBoundingClientRect(), dx = dot[0] - (r.left + r.width / 2), dy = dot[1] - (r.top + r.height / 2); return { el, i, d: Math.hypot(dx, dy), dx: (dx * Math.cos(th) - dy * Math.sin(th)) / sc, dy: (dx * Math.sin(th) + dy * Math.cos(th)) / sc }; });
+      chs.forEach((c, i) => { c.style.transform = keep[i]; });
+      [...P].sort((a, b) => a.d - b.d).forEach((p, r) => { p.rank = r; });
+      s.pk = s.on && !on ? 0 : on ? null : s.pk; s.plan = P; s.on = on; s.t = 0; s.gap = P.length > 1 ? (LABEL.time - LABEL.letter) / (P.length - 1) : 0;
+    } else { s.t += dt; if (s.p.every(v => v === (on ? 1 : 0)) && s.rest) return; }
+    let vis = 0;
+    for (const p of s.plan) {
+      if (s.t >= p.rank * s.gap) s.p[p.i] = clamp(s.p[p.i] + (on ? dt : -dt) / LABEL.letter, 0, 1);
+      const u = 1 - smooth(s.p[p.i]); vis = Math.max(vis, 1 - u);
+      p.el.style.transform = u < .001 ? '' : `translate(${(p.dx * u).toFixed(1)}px, ${(p.dy * u).toFixed(1)}px) scale(${(1 - (1 - LABEL.shrink) * u).toFixed(3)})`;
+      p.el.style.opacity = (1 - u * u).toFixed(3); p.el.style.filter = u > .02 ? `blur(${(LABEL.blur * u).toFixed(2)}px)` : '';
+    }
+    lab.style.opacity = vis > 0 ? '1' : '0'; s.rest = s.p.every(v => v === (on ? 1 : 0));
+  }
+  // 0..1 through the dot's pulse as the last absorbed letter arrives
+  labelPulse(pg) { const s = this.labs && this.labs[pg]; if (!s || s.pk == null) return 0; const u = clamp((s.pk - (LABEL.time - LABEL.letter * .35)) / LABEL.pulse, 0, 1); return Math.sin(Math.PI * u); }
+  // touch screens have no hover: the first tap shows the label, the second goes there
+  tapReveal(pg) { if (typeof matchMedia === 'undefined' || !matchMedia('(hover: none)').matches) return false; const s = this.labs && this.labs[pg]; if (s && s.on) return false;
+    if (pg === 'freediving') this.hov = 1; else this.hovPg[pg] = 1;
+    if (!this.offTap) { this.offTap = e => { if (e.target.closest && e.target.closest('button[aria-label]')) return; this.hov = 0; this.hovPg.sound = this.hovPg.journal = 0; }; document.addEventListener('pointerdown', this.offTap); }
+    return true; }
+  // x: 0 at the start of the visible stroke, 1 at its tail
+  fadeAt(li, x) {
+    const c = this.fadeC && this.fadeC[li]; if (!c) return 1;
+    const p = easeIO(clamp(c / FADE.sweep, 0, 1)); if (p <= 0) return 1;
+    // the wet edge creeps unevenly, a little ahead here and behind there (the same on every line, so they stay in step), and settles gently (smootherstep)
+    const xw = x + FADE.wander * (Math.sin(x * 7.3 + 2.1) + .5 * Math.sin(x * 17.9 + 4.7)) * Math.sin(Math.PI * p), u = clamp((p * (1 + FADE.soft) - xw) / FADE.soft, 0, 1);
+    return 1 - (1 - FADE.to) * u * u * u * (u * (u * 6 - 15) + 10);
+  }
 
   tick = now => {
     cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now;
     this.T += dt; this.hovT += (this.hov - this.hovT) * (1 - Math.exp(-dt * 8)); for (const k of ['sound', 'journal']) this.hovPgT[k] = (this.hovPgT[k] || 0) + ((this.hovPg[k] || 0) - (this.hovPgT[k] || 0)) * (1 - Math.exp(-dt * 8));
-    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; location.href = this.dest || 'Freediving v2.dc.html?from=home'; } }
+    this.fadeTick(dt); this.dtF = Math.max(0, dt);
+    // leaving for Freediving: keep a picture of this last frame, which that page shows while it loads so there's no blank moment in between
+    if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} // Sound picks the menu dots up where they landed and flies them in as its faders
+      if (/^Sound/.test(this.dest || '')) try { const o = {}; Object.entries({ ink: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }).forEach(([k, v]) => { o[k] = [innerWidth - 316 + v, 28]; }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
+      location.href = this.dest || 'Freediving%20v2.dc.html?from=home'; } }
     this.draw();
   };
 
@@ -578,15 +766,20 @@ class Component extends DCLogic {
       ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = .35; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; return;
     }
     const oldCut = this.oldPaths && T < 1.8 ? smooth(clamp(T / 1.6, 0, 1)) : -1; if (oldCut < 0) this.oldPaths = null;
-    let pidc = 0, inkPid = null; const runs = (this.oldPaths ? this.oldPaths.map(P => [P, 1]) : []).concat(this.paths.map(P => [P, 0]));
+    let pidc = 0, inkPid = null, topPid = null; const runs = (this.oldPaths ? this.oldPaths.map(P => [P, 1]) : []).concat(this.paths.map(P => [P, 0]));
     for (const [P, isOld] of runs) {
       const tr = P.tr, L = P.L, dur = tr ? (1.6 + (P.len - P.oldLen) / 900) / L.spd : this.durOf(P), k = isOld ? 1 : clamp((T - (tr ? L.d * .6 : (P.d ?? L.d))) / dur, 0, 1); if ((k <= 0 && !tr) || (L.keep && G != null && !this.dest)) continue; const pid = ++pidc; if (L.keep && !isOld) inkPid = pid;
+      // spring: red draws the cherry blossoms, the focus, so it is painted last and at full strength, over every other colour
+      if (!isOld && L === LINES[1] && this.shapeName === 'spring') topPid = pid;
       const newL = P.len - P.entry, ek = tr ? easeIO(k) : 0, bodyL = tr ? P.oldLen + (newL - P.oldLen) * smooth(k) : 0;
       const h = tr ? P.oldLen + (P.len - P.oldLen) * ek : P.len * easeIO(k), tEnd = (P.d ?? L.d) + dur, fin = isOld || tr ? 1 : smooth(clamp((T - tEnd) / 1.2, 0, 1));
       const cut = isOld ? P.entry + (P.len - P.entry) * oldCut : tr ? h - bodyL - 1 : -1e9; P.cut0 = tr ? Math.max(0, P.s.findIndex(v => v >= cut)) : P.arc0 - 1;
       const pts = [], ws = [], as = [], zs = [], ss = [], dry = [];
       for (let i = 0; i < P.pts.length; i++) {
-        const s = P.s[i]; if (s > h) break; if (s < cut) continue;
+        // the tip (and a retreating tail) sit exactly where they should, between stored points, so slow motion glides instead of hopping a point at a time
+        let s = P.s[i], pt = P.pts[i], tipEnd = false;
+        if (s > h) { if (!i || P.s[i - 1] >= h) break; pt = lerpPt(P.pts[i - 1], pt, (h - P.s[i - 1]) / (s - P.s[i - 1])); s = h; tipEnd = true; }
+        if (s < cut) { const s1 = P.s[i + 1]; if (s1 == null || s1 <= cut) continue; pt = lerpPt(pt, P.pts[i + 1], (cut - s) / (s1 - s)); s = cut; }
         const behind = isOld ? 1e4 : h - s, isArc = i >= P.arc0 || (tr && !isOld), ue = clamp(s / P.entry, 0, 1), join = smooth(clamp((s - P.entry) / 120, 0, 1));
         // arm (entry) stays like a tentacle while travelling, then retracts
         const tailP = -160 + (P.entry + 160) * fin; let a = isArc || tr ? 1 : clamp((s - tailP) / 160, 0, 1) * clamp(1 - Math.max(0, behind - P.entry * .9) / 200, 0, 1);
@@ -602,10 +795,12 @@ class Component extends DCLogic {
         if (tr) w *= Math.pow(clamp((s - cut) / 120, 0, 1), .65) / Math.min(1, .45 + s / 70);
         if (isArc) { const TRV = tr && !isOld, E0 = TRV ? Math.max(0, cut) : P.entry, L0 = TRV ? h : P.len, ua = clamp((s - E0) / Math.max(1, L0 - E0), 0, 1), sa = clamp((s - E0) / 40, 0, 1); const press = ua < .04 ? .75 + .55 * smooth(ua / .04) : ua < .12 ? 1.3 - .3 * smooth((ua - .04) / .08) : 1; const multi = ['signature', 'hangul', 'maple', 'triskele', 'octopus', 'spring', 'frog', 'plane', 'onsen', 'mountain', 'muaythai', 'fox', 'gameboy', 'longfins', 'egg', 'samurai'].includes(this.shapeName), se = (L.keep ? P.len : L0) - s, hl = multi ? 50 : Math.min(150, (L0 - E0) * .4), harai = se < hl ? .42 + .58 * smooth(se / hl) : 1; w *= (L.keep ? press : 1) * (multi ? 1 : 1 - .12 * ua) * harai * (L.keep ? 1 : Math.sqrt(Math.max(.1, sa))); if (L.keep) { dr = multi ? smooth(clamp((70 - se) / 70, 0, 1)) * .6 : smooth(clamp((50 - se) / 50, 0, 1)) * .35; w *= 1 + this.hovT * .12; } else if (!L.page) dr = clamp((s - (L0 - 200)) / 200, 0, 1) * .8; }
         if (P.wt[i] < (L.keep && this.shapeName === 'samurai' ? .5 : .2) || (this.colorPaths[LINES.indexOf(L)] && i >= P.arc0 && P.wt[i] < .5)) { a *= ['hangul', 'signature', 'maple', 'triskele', 'frog', 'spring', 'octopus', 'plane', 'onsen', 'mountain', 'muaythai', 'coffee', 'fox', 'gameboy', 'longfins', 'egg', 'samurai', 'wave'].includes(this.shapeName) ? 0 : .06; w *= .4; } else if (P.wt[i] < 1) a *= clamp(.25 + .75 * P.wt[i], 0, 1); if (isOld) { const tp = clamp((s - cut) / 120, 0, 1); w *= Math.pow(tp, .65); a *= Math.min(1, tp * 1.5); }
-        if (L.page) a = Math.min(1, a / .94) * (.62 + .38 * Math.pow(clamp(1 - (h - s) / 900, 0, 1), 1.2));
+        // page lines fade a little towards their start; not spring's red, whose start is the blossoms
+        if (L.page && !(L === LINES[1] && this.shapeName === 'spring')) a = Math.min(1, a / .94) * (.62 + .38 * Math.pow(clamp(1 - (h - s) / 900, 0, 1), 1.2));
         else if (!L.keep && isArc) { const nh = smooth(clamp(1 - (h - s) / 220, 0, 1)); a *= (.72 + .28 * Math.pow(.5 + .5 * Math.sin(s * .006 + P.ph * 2.3), 1.5)) * (1 - nh) + nh; }
         if (!L.keep && !isOld) { const nh = smooth(clamp(1 - (h - s) / 90, 0, 1)), wb = (L.w || 8) * .55; if (w < wb) w += (wb - w) * nh; }
-        pts.push(P.pts[i]); ws.push(w); as.push(clamp(a, 0, 1) * .94); zs.push(z); ss.push(s); dry.push(dr);
+        pts.push(pt); ws.push(w); as.push(clamp(a, 0, 1) * .94); zs.push(z); ss.push(s); dry.push(dr);
+        if (tipEnd) break;
       }
       const n = pts.length; if (n < 2) continue;
       if (!isOld) { this.heads = this.heads || {}; this.heads[L.keep ? 'ink' : L.page || 'c' + LINES.indexOf(L)] = { p: pts[n - 1], a: as[n - 1], w: ws[n - 1], col: L.col, t: T, set: smooth(clamp((T - tEnd + .4) / 1.0, 0, 1)) }; }
@@ -620,6 +815,8 @@ class Component extends DCLogic {
         const c0 = [p0[0] + n0[0] * o0, p0[1] + n0[1] * o0], c1 = [p1[0] + n1[0] * o1, p1[1] + n1[1] * o1];
         quads.push({ z, a, col: cc || col, rgb: sub === 1 ? colDa : L.col, brgb: L.col, base: sub === 1 ? qb : 0, pid, sub, mul: false, ink: !!L.keep, q: [[c0[0] - n0[0] * hw0, c0[1] - n0[1] * hw0], [c1[0] - n1[0] * hw1, c1[1] - n1[1] * hw1], [c1[0] + n1[0] * hw1, c1[1] + n1[1] * hw1], [c0[0] + n0[0] * hw0, c0[1] + n0[1] * hw0]] }); };
       { const sw = smooth1(ws, 5), box = (arr, r) => { const c = [0]; for (let q = 1; q < n; q++) c[q] = c[q - 1] + (arr[q] + arr[q - 1]) / 2 * (ss[q] - ss[q - 1]); const o = []; let lo = 0, hi = 0; for (let q = 0; q < n; q++) { while (ss[lo] < ss[q] - r) lo++; if (hi < q) hi = q; while (hi < n - 1 && ss[hi + 1] <= ss[q] + r) hi++; const span = ss[hi] - ss[lo]; o.push(span > 1e-6 ? (c[hi] - c[lo]) / span : arr[q]); } return o; }, sa2 = box(box(as, 32), 32); for (let q = 0; q < n; q++) { ws[q] = sw[q]; as[q] = sa2[q] * smooth(clamp(sa2[q] / .25, 0, 1)); } }
+      // each line's trail runs over the part you can see: from where its stroke begins (after the hidden lead-in it flew in on) to its tail
+      if (!isOld && this.fadeC) { const li = LINES.indexOf(L), x0 = tr ? ss[0] : Math.max(ss[0], P.entry), xl = Math.max(1, ss[n - 1] - x0); for (let q = 0; q < n; q++) as[q] *= this.fadeAt(li, clamp((ss[q] - x0) / xl, 0, 1)); }
       const cap = (ci) => { const r = ws[ci] / 2, c = pts[ci], q = []; if (r < .6 || as[ci] < .02) return; for (let k3 = 0; k3 < 12; k3++) { const an = k3 / 12 * 6.2832; q.push([c[0] + Math.cos(an) * r, c[1] + Math.sin(an) * r]); } quads.push({ z: zs[ci], a: as[ci] * (1 - dry[ci] * .9), col, rgb: L.col, pid, sub: 9, mul: false, ink: !!L.keep, q }); };
       cap(0); cap(n - 1);
       for (let i = 0; i < n - 1; i++) {
@@ -631,7 +828,6 @@ class Component extends DCLogic {
 
     this.exitHeads = [];
     if (G != null && this.exits) for (const X of this.exits) { const pid = X.ink && inkPid != null ? inkPid : 'x' + (++pidc);
-      const wpts = []; for (let x = -20; x <= W + 20; x += 10) wpts.push([x, SY + this.waveY(x - LX, X.k, T)]);
       const all = X.pts.slice(), sw = X.pts.length - 1, sl = [0];
       for (let i = 1; i < all.length; i++) sl[i] = sl[i - 1] + Math.hypot(all[i][0] - all[i - 1][0], all[i][1] - all[i - 1][1]);
       const len = sl[all.length - 1], swL = sl[sw], kx = clamp((G - X.d) / (X.dur || 1.5), 0, 1); if (kx <= 0 && !X.h0) continue;
@@ -639,7 +835,9 @@ class Component extends DCLogic {
       const hh = h0 + (len - h0) * (X.f0 != null ? .65 * easeIO(kx) + .35 * (1 - Math.pow(1 - kx, 2)) : 1 - Math.pow(1 - kx, 2.2)), col = `rgb(${X.col[0]},${X.col[1]},${X.col[2]})`;
       const P2 = [], W2 = [], A2 = [], Z2 = [], I2 = []; if (X.f0 != null && X.tA == null && hh >= sl[X.f0]) X.tA = G;
       for (let i = 0; i < all.length; i++) {
-        const sv = sl[i]; if (sv > hh) break; const inF = X.f0 != null && i >= X.f0 && i <= X.f1; if (!inF && sv < len * smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1))) continue;
+        let sv = sl[i], pt = all[i], tipEnd = false; const inF = X.f0 != null && i >= X.f0 && i <= X.f1, tailCut = len * smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1));
+        if (sv > hh) { if (!i || sl[i - 1] >= hh) break; pt = lerpPt(all[i - 1], pt, (hh - sl[i - 1]) / (sv - sl[i - 1])); sv = hh; tipEnd = true; }
+        if (!inF && sv < tailCut) { const s1 = sl[i + 1]; if (s1 == null || s1 <= tailCut) continue; pt = lerpPt(pt, all[i + 1], (tailCut - sv) / (s1 - sv)); sv = tailCut; }
         const behind = hh - sv, onW = X.f0 != null ? inF : i >= sw, onC = i < nC, u = clamp((sv - s0) / (swL - s0), 0, 1);
         const z = onW || onC ? .05 : Math.min(X.f0 != null ? .3 : 9, -.7 + 1.9 * Math.pow(Math.sin(Math.PI * u), 1.2));
         const sc = Math.pow(3.4, z), tip = Math.sqrt(clamp(behind / 26, .04, 1)), blend = X.f0 != null ? (onW ? 1 : smooth(clamp(1 - Math.min(Math.abs(i - X.f0), Math.abs(i - X.f1)) / 10, 0, 1))) : smooth(clamp((sv - swL + 160) / 160, 0, 1));
@@ -648,34 +846,61 @@ class Component extends DCLogic {
         if (!onW && blend > 0) a = a * (1 - blend) + X.ta * blend * clamp(1 - behind / TLx, .4, 1);
         if (X.ink && !onW) a = Math.min(1, a * 1.1);
         if (onC && X.circW && X.circW[i] < .2) a = 0;
-        P2.push(all[i]); W2.push(w); A2.push(a); Z2.push(z + (onW ? -2 : 0)); I2.push(i);
+        P2.push(pt); W2.push(w); A2.push(a); Z2.push(z + (onW ? -2 : 0)); I2.push(i);
+        if (tipEnd) break;
       }
       const n2 = P2.length;
       for (let i = 0; i < n2 - 1; i++) {
         if (I2[i + 1] !== I2[i] + 1 || A2[i] <= 0 || A2[i + 1] <= 0) continue;
-        const q0 = P2[i], q1 = P2[i + 1], q2 = P2[Math.min(n2 - 1, i + 2)], pr = P2[Math.max(0, i - 1)];
+        // angle each end from its true neighbours only: across an erased stretch the next kept point can be far away (the dot), which would twist the end
+        const q0 = P2[i], q1 = P2[i + 1], q2 = i + 2 < n2 && I2[i + 2] === I2[i + 1] + 1 ? P2[i + 2] : q1, pr = i > 0 && I2[i - 1] === I2[i] - 1 ? P2[i - 1] : q0;
         const t0x = q1[0] - pr[0], t0y = q1[1] - pr[1], l0 = Math.hypot(t0x, t0y) || 1, t1x = q2[0] - q0[0], t1y = q2[1] - q0[1], l1 = Math.hypot(t1x, t1y) || 1;
         const n0 = [-t0y / l0, t0x / l0], n1 = [-t1y / l1, t1x / l1], h0b = W2[i] / 2, h1b = W2[i + 1] / 2;
         quads.push({ z: (Z2[i] + Z2[i + 1]) / 2 + (X.ink ? .02 : 0), a: (A2[i] + A2[i + 1]) / 2, col, rgb: X.col, pid, sub: 0, mul: !X.ink, q: [[q0[0] - n0[0] * h0b, q0[1] - n0[1] * h0b], [q1[0] - n1[0] * h1b, q1[1] - n1[1] * h1b], [q1[0] + n1[0] * h1b, q1[1] + n1[1] * h1b], [q0[0] + n0[0] * h0b, q0[1] + n0[1] * h0b]] });
       }
-      if (P2.length) { const hp = P2[P2.length - 1], dk = smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1)); this.exitHeads = this.exitHeads || []; this.exitHeads.push({ p: hp, col, r: (X.ink ? 8 : 7) + ((X.k === 3 ? 5.5 : 8) - (X.ink ? 8 : 7)) * dk }); }
+      // once a surface line has lifted off its right end towards its dot, the surface carries on out past the right edge, as on the Freediving page
+      if (X.k <= 2 && X.f1 != null) { if (X.tB == null && hh >= sl[X.f1] + 40) X.tB = G;
+        if (X.tB != null) { const e0 = all[X.f1], xr = e0[0] + (W + 20 - e0[0]) * smooth(clamp((G - X.tB) / .5, 0, 1)), ep = [e0];
+          for (let x = Math.ceil((e0[0] + 1) / 9) * 9; x < xr; x += 9) ep.push([x, SY + this.waveY(x - LX, X.k, 0)]); if (xr > e0[0] + 1) ep.push([xr, SY + this.waveY(xr - LX, X.k, 0)]);
+          // width keeps the line's own rhythm, measured along the stroke, so the join doesn't show
+          let se = sl[X.f1]; for (let i = 0; i < ep.length - 1; i++) { const q0 = ep[i], q1 = ep[i + 1], dd = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) || 1, nx = -(q1[1] - q0[1]) / dd, ny = (q1[0] - q0[0]) / dd, tipR = Math.sqrt(clamp((xr - q1[0]) / 26, .04, 1)), hw0 = X.tw * (.84 + .16 * Math.sin(se * .045)) / 2, hw1 = X.tw * (.84 + .16 * Math.sin((se += dd) * .045)) / 2 * (xr >= W + 19 ? 1 : tipR);
+            quads.push({ z: -1.95 + (X.ink ? .02 : 0), a: X.ta, col, rgb: X.col, pid, sub: 0, mul: !X.ink, q: [[q0[0] - nx * hw0, q0[1] - ny * hw0], [q1[0] - nx * hw1, q1[1] - ny * hw1], [q1[0] + nx * hw1, q1[1] + ny * hw1], [q0[0] + nx * hw0, q0[1] + ny * hw0]] }); } } }
+      // both blues share the Freediving dot: as they arrive they take on its own blue, so they merge into one dot instead of flickering between two
+      const hc = X.k === 1 || X.k === 2 ? `rgb(${X.col.map((v, j) => Math.round(v + ([24, 88, 224][j] - v) * smooth(clamp((kx - .8) / .2, 0, 1)))).join(',')})` : col;
+      if (P2.length) { const hp = P2[P2.length - 1], dk = smooth(clamp((G - X.d - (X.dur || 1.5) + .1) / .7, 0, 1)); this.exitHeads = this.exitHeads || []; this.exitHeads.push({ p: hp, col: hc, r: (X.ink ? 8 : 7) + ((X.k === 3 ? 5.5 : 8) - (X.ink ? 8 : 7)) * dk }); }
     }
 
     // each line is filled as one shape per opacity level (nested, stacked), so it never overlaps itself or seams; lines then blend translucently with each other
-    let sig = quads.length; for (let i = 0; i < quads.length; i += 7) { const Q = quads[i]; sig = (sig * 31 + Math.round(Q.a * 997) + Math.round(Q.q[0][0] * 8) * 3 + Math.round(Q.q[0][1] * 8) * 7 + Math.round(Q.q[2][0] * 8) * 11) % 2147483647; }
+    // signature of every piece of paint: if a slow-moving tip were missed, the frame would be reused and the tip would hop when it was noticed
+    let sig = quads.length; for (let i = 0; i < quads.length; i++) { const Q = quads[i]; sig = (sig * 31 + Math.round(Q.a * 997) + Math.round(Q.q[0][0] * 8) * 3 + Math.round(Q.q[0][1] * 8) * 7 + Math.round(Q.q[2][0] * 8) * 11) % 2147483647; }
     const cvs0 = ctx.canvas; if (!this.strokeC) this.strokeC = document.createElement('canvas'); const scv = this.strokeC; const sizeOk = scv.width === cvs0.width && scv.height === cvs0.height; if (!sizeOk) { scv.width = cvs0.width; scv.height = cvs0.height; }
     const reuse = sizeOk && this.strokeSig === sig; this.strokeSig = sig; const sctx = scv.getContext('2d');
     if (!reuse) { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over'; sctx.globalAlpha = 1; sctx.fillStyle = '#f5f3ee'; sctx.fillRect(0, 0, scv.width, scv.height); }
     const groups = new Map();
-    for (const Q of quads) { const k = Q.pid ?? 'u'; let g = groups.get(k); if (!g) { g = { col: Q.col, ink: !!Q.ink, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
-    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.zs / a.n) - (b.ink ? -10 : b.zs / b.n));
+    // spring's red brushes the cherry petals: they take blossom pink, every other one paler, and the twig out to the Sound dot stays red.
+    // Each colour is its own paint group, all over the other lines
+    const bloomR = this.blooms && this.blooms.length && topPid != null ? this.geo.R : 0;
+    for (const Q of quads) { let k = Q.pid ?? 'u', col = Q.col, top = 0, grad = null;
+      // the faint wash that softening leaves along the brush's unseen moves between petals would show as stalks once boosted: skip it
+      if (bloomR && k === topPid && Q.a < .2) continue;
+      if (k === topPid) { top = 10; if (bloomR) { const m = Q.q[2] || Q.q[0], qx = (Q.q[0][0] + m[0]) / 2, qy = (Q.q[0][1] + m[1]) / 2; let d = 1e9; for (const b of this.blooms) d = Math.min(d, Math.hypot(b[0] - qx, b[1] - qy)); d /= bloomR;
+        // just past a petal's rim is only the brush's unseen move leaving it: drop that wash (the twig, beyond the last petal, stays)
+        const twigX = this.blooms[this.blooms.length - 1][0] + bloomR * .05;
+        if (d > .074 && d < .2 && qx < twigX) continue;
+        // the twig flows out of the last petal: one paint group whose fill is a gradient, the petal's pink deepening to Sound's red
+        if (d >= .074 && qx >= twigX) { k = topPid + ':t'; col = 'rgb(239,104,121)'; grad = [twigX, twigX + bloomR * .32]; top = 10.05; }
+        else if (d < .135) { let bi = 0, bd = 1e18; this.blooms.forEach((b, n) => { const e = (b[0] - qx) ** 2 + (b[1] - qy) ** 2; if (e < bd) { bd = e; bi = n; } }); const pale = bi % 2;
+          k = topPid + (pale ? ':a' : ':b'); col = pale ? 'rgb(246,174,198)' : 'rgb(236,128,164)'; top = 10.1; } } }
+      let g = groups.get(k); if (!g) { g = { col, grad, ink: !!Q.ink, top, zs: 0, n: 0, qs: [] }; groups.set(k, g); } g.qs.push(Q); g.zs += Q.z; g.n++; }
+    const GL = reuse ? [] : [...groups.values()].sort((a, b) => (a.ink ? -10 : a.top || a.zs / a.n) - (b.ink ? -10 : b.top || b.zs / b.n));
     // each line: an opacity mask built with max-blending (overlaps keep the strongest value, slight overlaps hide joins), then page = page*(1-m) + colour*m — exact translucency, no levels, no seams
     const cvs = ctx.canvas, mkC = k => { if (!this[k]) this[k] = document.createElement('canvas'); const c = this[k]; if (c.width !== cvs.width || c.height !== cvs.height) { c.width = cvs.width; c.height = cvs.height; } return c; };
     const lcv = mkC('layerC'), lcv2 = mkC('layerC2'), lcv3 = mkC('layerC3'), lc = lcv.getContext('2d'), lc2 = lcv2.getContext('2d'), lc3 = lcv3.getContext('2d'), TF = ctx.getTransform(), EXT = .5;
     const addQ = (c2, q) => { if (q.length === 4) { const mx0 = (q[0][0] + q[3][0]) / 2, my0 = (q[0][1] + q[3][1]) / 2, mx1 = (q[1][0] + q[2][0]) / 2, my1 = (q[1][1] + q[2][1]) / 2, l = Math.hypot(mx1 - mx0, my1 - my0) || 1, ex = (mx1 - mx0) / l * EXT, ey = (my1 - my0) / l * EXT; c2.moveTo(q[0][0] - ex, q[0][1] - ey); c2.lineTo(q[1][0] + ex, q[1][1] + ey); c2.lineTo(q[2][0] + ex, q[2][1] + ey); c2.lineTo(q[3][0] - ex, q[3][1] - ey); } else { c2.moveTo(q[0][0], q[0][1]); for (let k3 = 1; k3 < q.length; k3++) c2.lineTo(q[k3][0], q[k3][1]); } c2.closePath(); };
     for (const g of GL) {
-      const am = g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-      for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 255); if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
+      const am = g.top ? 2.5 : g.ink ? 1 : .86, bk = new Map(); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      // opacity in 85 levels (steps of 3/255): finer is invisible, and every distinct level costs a fill
+      for (const Q of g.qs) { const v = Math.round(clamp(Q.a * am, 0, 1) * 85) * 3; if (v < 2) continue; let L2 = bk.get(v); if (!L2) bk.set(v, L2 = []); L2.push(Q.q); for (const p of Q.q) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
       if (!bk.size) continue;
       const bx0 = Math.max(0, Math.floor(TF.a * x0 + TF.e) - 3), by0 = Math.max(0, Math.floor(TF.d * y0 + TF.f) - 3), bx1 = Math.min(cvs.width, Math.ceil(TF.a * x1 + TF.e) + 3), by1 = Math.min(cvs.height, Math.ceil(TF.d * y1 + TF.f) + 3), bw = bx1 - bx0, bh = by1 - by0; if (bw <= 0 || bh <= 0) continue;
       // inverted mask: white, darken with (1 - alpha)
@@ -686,7 +911,7 @@ class Component extends DCLogic {
       // colour * alpha
       lc2.setTransform(1, 0, 0, 1, 0, 0); lc2.globalAlpha = 1; lc2.globalCompositeOperation = 'source-over'; lc2.drawImage(lcv, bx0, by0, bw, bh, bx0, by0, bw, bh);
       lc2.globalCompositeOperation = 'difference'; lc2.fillStyle = '#fff'; lc2.fillRect(bx0, by0, bw, bh);
-      lc3.setTransform(1, 0, 0, 1, 0, 0); lc3.globalAlpha = 1; lc3.globalCompositeOperation = 'source-over'; lc3.fillStyle = g.col; lc3.fillRect(bx0, by0, bw, bh); lc3.setTransform(TF); this.streaks(lc3, g.qs, g.col, g.ink); lc3.setTransform(1, 0, 0, 1, 0, 0);
+      lc3.setTransform(1, 0, 0, 1, 0, 0); lc3.globalAlpha = 1; lc3.globalCompositeOperation = 'source-over'; if (g.grad) { const G = lc3.createLinearGradient(TF.a * g.grad[0] + TF.e, 0, TF.a * g.grad[1] + TF.e, 0); G.addColorStop(0, 'rgb(246,174,198)'); G.addColorStop(1, 'rgb(232,34,44)'); lc3.fillStyle = G; } else lc3.fillStyle = g.col; lc3.fillRect(bx0, by0, bw, bh); lc3.setTransform(TF); this.streaks(lc3, g.qs, g.col, g.ink); lc3.setTransform(1, 0, 0, 1, 0, 0);
       lc2.globalCompositeOperation = 'multiply'; lc2.drawImage(lcv3, bx0, by0, bw, bh, bx0, by0, bw, bh);
       sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalAlpha = 1;
       sctx.globalCompositeOperation = 'multiply'; sctx.drawImage(lcv, bx0, by0, bw, bh, bx0, by0, bw, bh);
@@ -697,13 +922,13 @@ class Component extends DCLogic {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
     const inkDone = clamp((T - this.readyT + .3) / .4, 0, 1) * (1 - gone);
-    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone; ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
+    if (this.dots && inkDone > 0) for (const d of this.dots) { ctx.globalAlpha = inkDone * this.fadeAt(0, 1); ctx.fillStyle = '#141414'; ctx.beginPath(); ctx.arc(d[0], d[1], 5, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
 
     const bP = this.paths.find(P => P.L.page === 'freediving'), bEnd = bP.L.d + this.durOf(bP);
     const dA = smooth(clamp((T - Math.max(this.readyT, bEnd)) / .5, 0, 1)) * (1 - gone);
     const hd = this.heads && this.heads.freediving, [stx, sty] = hd && hd.t === T ? hd.p : this.station, btn = this.btnRef.current;
     const LAf = this.labelAt && this.labelAt.freediving;
-    if (btn) { { const sd = LAf ? null : this.labelUp && this.labelUp['freediving'], kid = btn.firstElementChild; if (kid) kid.style.display = LAf || sd === 'left' || sd === 'right' ? 'none' : ''; btn.style.flexDirection = sd === 'above' ? 'column-reverse' : 'column'; btn.style.alignItems = sd === 'left' ? 'flex-end' : sd === 'right' ? 'flex-start' : 'center'; btn.style.transform = LAf && LAf.length > 2 ? 'translate(-50%, -50%) rotate(' + LAf[2] + 'deg) scale(' + LAf[3] + ')' : sd === 'left' ? 'translate(calc(-100% - 14px), -50%)' : sd === 'right' ? 'translate(14px, -50%)' : sd === 'above' ? 'translate(-50%, calc(-100% + 14px))' : 'translate(-50%, -14px)'; } btn.style.left = (LAf ? LAf[0] : stx) + 'px'; btn.style.top = (LAf ? LAf[1] : sty) + 'px'; btn.style.opacity = dA.toFixed(3); btn.style.pointerEvents = dA > .5 ? 'auto' : 'none'; }
+    if (btn) { this.placeLabel(btn, [stx, sty], LAf, LAf ? null : this.labelUp && this.labelUp['freediving']); btn.style.opacity = dA.toFixed(3); btn.style.pointerEvents = dA > .5 ? 'auto' : 'none'; this.labelFx('freediving', btn, [stx, sty], !!this.hov && dA > .5, LAf && LAf.length > 2 ? [LAf[2], LAf[3]] : null); }
     if (dA > 0) {
       const dx = stx, dy = sty;
       if (this.hovT > .01) { const g = ctx.createRadialGradient(dx, dy, 0, dx, dy, 60); g.addColorStop(0, `rgba(30,90,190,${.3 * this.hovT * dA})`); g.addColorStop(1, 'rgba(30,90,190,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(dx, dy, 60, 0, 6.2832); ctx.fill(); }
@@ -711,7 +936,7 @@ class Component extends DCLogic {
     [['sound', this.sndRef, [214, 40, 40]], ['journal', this.jrnRef, [200, 150, 0]]].forEach(([pg, ref, c]) => {
       const P = this.paths.find(q => q.L.page === pg), S = this.stations[pg]; if (!P || !S) return;
       const a2 = smooth(clamp((T - Math.max(this.readyT, this.endOf(P))) / .5, 0, 1)) * (1 - gone), el = ref.current;
-      const LA = this.labelAt && this.labelAt[pg], hh = this.heads && this.heads[pg], HP = LA || (hh && hh.t === T ? hh.p : S); if (el) { { const sd = LA ? null : this.labelUp && this.labelUp[pg], kid = el.firstElementChild; if (kid) kid.style.display = LA || sd === 'left' || sd === 'right' ? 'none' : ''; el.style.flexDirection = sd === 'above' ? 'column-reverse' : 'column'; el.style.alignItems = sd === 'left' ? 'flex-end' : sd === 'right' ? 'flex-start' : 'center'; el.style.transform = LA && LA.length > 2 ? 'translate(-50%, -50%) rotate(' + LA[2] + 'deg) scale(' + LA[3] + ')' : sd === 'left' ? 'translate(calc(-100% - 14px), -50%)' : sd === 'right' ? 'translate(14px, -50%)' : sd === 'above' ? 'translate(-50%, calc(-100% + 14px))' : 'translate(-50%, -14px)'; } el.style.left = HP[0] + 'px'; el.style.top = HP[1] + 'px'; el.style.opacity = a2.toFixed(3); el.style.pointerEvents = a2 > .5 ? 'auto' : 'none'; }
+      const LA = this.labelAt && this.labelAt[pg], hh = this.heads && this.heads[pg], HP = LA || (hh && hh.t === T ? hh.p : S); if (el) { this.placeLabel(el, hh && hh.t === T ? hh.p : S, LA, LA ? null : this.labelUp && this.labelUp[pg]); el.style.opacity = a2.toFixed(3); el.style.pointerEvents = a2 > .5 ? 'auto' : 'none'; this.labelFx(pg, el, hh && hh.t === T ? hh.p : S, !!this.hovPg[pg] && a2 > .5, LA && LA.length > 2 ? [LA[2], LA[3]] : null); }
       const hv = this.hovPgT[pg] || 0; if (hv > .01 && a2 > 0) { const hp = hh && hh.t === T ? hh.p : S, g = ctx.createRadialGradient(hp[0], hp[1], 0, hp[0], hp[1], 60); g.addColorStop(0, 'rgba(' + c.join(',') + ',' + (.3 * hv * a2).toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + c.join(',') + ',0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hp[0], hp[1], 60, 0, 6.2832); ctx.fill(); }
     });
     // the buoy and flag fill with colour from where their lines arrive, outline drawing in with it, matching the Freediving buoy exactly
@@ -734,7 +959,7 @@ class Component extends DCLogic {
       const col = `rgb(${f.col[0]},${f.col[1]},${f.col[2]})`, tail = Math.max(0, kk - .35); ctx.strokeStyle = col; ctx.lineCap = 'round';
       for (let q = 0; q < 24; q++) { const u0 = tail + (kk - tail) * q / 24, u1 = tail + (kk - tail) * (q + 1) / 24, a0 = bz(u0), a1 = bz(u1); ctx.globalAlpha = .85 * (q / 24) * Math.sin(Math.PI * Math.min(1, kk * 1.15)); ctx.lineWidth = 1.5 + 3.5 * q / 24; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); }
       const p = bz(kk); ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], 7 + (/^c\d/.test(k) ? -1.5 : 1) * kk, 0, 6.2832); ctx.fill(); });
-    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2, al = (1 - gone);
+    if (this.heads) for (const pg in this.heads) { const h = this.heads[pg]; if (h.t !== T) continue; if (G != null && this.navFrom && this.navFrom[pg]) continue; const hv = pg === 'freediving' ? this.hovT : pg === 'ink' ? this.hovIT * 1.6 : (this.hovPgT[pg] || 0), hs = [...(this.shapeName || '')].reduce((x, ch) => x + ch.charCodeAt(0), 0) + ['freediving', 'sound', 'journal'].indexOf(pg) * 7, endR = [5, 8.5, 12.5][hs % 3], r = (pg === 'ink' ? 8 : 7.5 * (1 - h.set) + endR * h.set) + hv * 2 + LABEL.pulseR * this.labelPulse(pg), al = (1 - gone) * this.fadeAt(pg === 'ink' ? 0 : /^c\d$/.test(pg) ? +pg[1] : LINES.findIndex(L => L.page === pg), 1);
       if (al <= 0) continue; ctx.globalAlpha = al; ctx.fillStyle = `rgb(${h.col[0]},${h.col[1]},${h.col[2]})`; ctx.beginPath(); ctx.arc(h.p[0], h.p[1], r, 0, 6.2832); ctx.fill(); ctx.globalAlpha = 1; }
     this.hovIT += (this.hovI - this.hovIT) * .15;
     { const b = this.inkRef.current, h = this.heads && this.heads.ink; if (b) { const on = h && h.t === T && T >= this.readyT && G == null; if (h && h.t === T) { b.style.left = h.p[0] + 'px'; b.style.top = h.p[1] + 'px'; } b.style.pointerEvents = on ? 'auto' : 'none'; } }

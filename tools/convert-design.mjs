@@ -26,7 +26,7 @@ const LINKS = [
 ];
 const linkFor = href => { for (const [f, r] of LINKS) if (href.startsWith(f + '.dc.html')) return r + href.slice((f + '.dc.html').length); return null; };
 
-const EVENTS = { onclick: 'onClick', onmouseenter: 'onMouseEnter', onmouseleave: 'onMouseLeave', onfocus: 'onFocus', onblur: 'onBlur', onchange: 'onChange', oninput: 'onInput', onkeydown: 'onKeyDown' };
+const EVENTS = { onclick: 'onClick', onmousemove: 'onMouseMove', onmousedown: 'onMouseDown', onmouseup: 'onMouseUp', onmouseenter: 'onMouseEnter', onmouseleave: 'onMouseLeave', onfocus: 'onFocus', onblur: 'onBlur', onchange: 'onChange', oninput: 'onInput', onkeydown: 'onKeyDown' };
 const RENAME = { class: 'className', for: 'htmlFor', tabindex: 'tabIndex', crossorigin: 'crossOrigin', readonly: 'readOnly', maxlength: 'maxLength' };
 const VOID = new Set(['input', 'img', 'br', 'hr', 'meta', 'link']);
 const DROP = new Set(['hint-placeholder-val', 'hint-placeholder-count']);

@@ -26,14 +26,14 @@ const PAL = ['rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(24,88,224)', 'rgb(255,118,
 // albums are just categories. Placeholder pieces: give one a src (an audio file next to this page) and it plays that file with its real waveform;
 // without one it plays a synthesised stand-in of its kind. dur is in seconds (taken from the file when there is one)
 const ALBUMS = [
-  // img: the album's photo (black & white, white ground) laid into the page in the stark style; imgX: 0 puts it flush left, 1 flush against the panel; imgY: shift up (negative) as a fraction of the page height; imgFlip: upside down.
+  // img: the album's photo (black & white, white ground) laid into the page in the stark style; imgX: 0 puts it flush left, 1 flush against the panel; imgY: shift up (negative) as a fraction of the page height; imgFlip: upside down; imgMirror: left to right.
   // other photos ready to swap in: images/stair-ramp.jpg, images/great-buddha.jpg, images/wave-figure.jpg
   { title: 'Water', img: BASE + 'images/lone-tree.jpg', imgX: 1, imgY: -.2, tracks: [
     { title: 'Low tide, Panglao', kind: 'field', date: '2026-11-06', dur: 134 },
     { title: 'Breathe-up before a dive', kind: 'voice', date: '2026-11-12', dur: 65 },
     { title: 'Boat engine, 6 a.m.', kind: 'field', date: '2026-11-15', dur: 92 },
     { title: 'Surface', kind: 'music', date: '2026-12-01', dur: 188 }] },
-  { title: 'Studio', img: BASE + 'images/snow-walker.jpg', imgX: 1, imgY: -.42, tracks: [
+  { title: 'Studio', img: BASE + 'images/great-buddha.jpg', imgX: 1, imgMirror: true, tracks: [
     { title: 'Sketch no. 4', kind: 'music', date: '2026-03-02', dur: 166 },
     { title: 'Tape loop', kind: 'music', date: '2026-04-19', dur: 118 },
     { title: 'Late take, talking', kind: 'voice', date: '2026-05-07', dur: 52 }] },
@@ -368,8 +368,8 @@ class Component extends DCLogic {
         const ok = P.im.complete && P.im.naturalWidth > 0; P.k += ((ai === this.state.album && ok ? 1 : 0) - P.k) * Math.min(1, dt * 2.4); if (P.k < .004 || !ok) return;
         // full height, pushed right against the panel; imgY lifts it so the subject sits in the open top right, above the track list
         const ih = H, iw = Math.round(ih * P.im.naturalWidth / P.im.naturalHeight), iy = Math.round((a.imgY ?? 0) * H), ix = Math.round((a.imgX ?? 1) * (Wv - iw));
-        if (!P.c || P.key !== ih + 'x' + pr + 'cm' + !!a.imgFlip) { P.key = ih + 'x' + pr + 'cm' + !!a.imgFlip; P.c = document.createElement('canvas'); P.c.width = Math.round(iw * pr); P.c.height = Math.round(ih * pr); const px = P.c.getContext('2d');
-          if (a.imgFlip) { px.translate(0, P.c.height); px.scale(1, -1); } px.drawImage(P.im, 0, 0, P.c.width, P.c.height); px.setTransform(1, 0, 0, 1, 0, 0);
+        if (!P.c || P.key !== ih + 'x' + pr + 'cm' + !!a.imgFlip + !!a.imgMirror) { P.key = ih + 'x' + pr + 'cm' + !!a.imgFlip + !!a.imgMirror; P.c = document.createElement('canvas'); P.c.width = Math.round(iw * pr); P.c.height = Math.round(ih * pr); const px = P.c.getContext('2d');
+          if (a.imgFlip) { px.translate(0, P.c.height); px.scale(1, -1); } if (a.imgMirror) { px.translate(P.c.width, 0); px.scale(-1, 1); } px.drawImage(P.im, 0, 0, P.c.width, P.c.height); px.setTransform(1, 0, 0, 1, 0, 0);
           // soften every edge into white so the photo has no frame
           const cw = P.c.width, chh = P.c.height, fx = cw * .2, fy = chh * .08;
           [[0, 0, fx, 0, 0, 0, fx, chh], [cw, 0, cw - fx, 0, cw - fx, 0, fx, chh], [0, 0, 0, fy, 0, 0, cw, fy], [0, chh, 0, chh - fy, 0, chh - fy, cw, fy]].forEach(([x0, y0, x1, y1, rx, ry, rw, rh]) => { const gg = px.createLinearGradient(x0, y0, x1, y1); gg.addColorStop(0, 'rgba(255,255,255,1)'); gg.addColorStop(1, 'rgba(255,255,255,0)'); px.fillStyle = gg; px.fillRect(rx, ry, rw, rh); });

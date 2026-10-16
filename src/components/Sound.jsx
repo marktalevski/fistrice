@@ -251,8 +251,7 @@ class Component extends DCLogic {
     ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = -2; ctx.fillStyle = face; rr(G.x0, G.y0, G.w, H - G.y0 + 40, [18, 18, 0, 0]); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(G.mx0, G.y0, G.mx1 - G.mx0, H - G.y0); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(G.mx0, G.y0 + 1, 1, H - G.y0); ctx.fillRect(G.mx1 - 1, G.y0 + 1, 1, H - G.y0);
     if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10);
-      ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow();
-      ctx.save(); rr(G.x0, G.y0, G.w, H - G.y0, [18, 18, 0, 0]); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.04)'; for (let gy = G.y0 + 8; gy < H; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
+      ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
     ctx.globalAlpha = 1 - fo;
     // the jog wheel, a whole circle. It turns with the record while a piece plays and under the hand while dragged;

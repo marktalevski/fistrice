@@ -77,8 +77,21 @@ const FACE = (k, t) => { const P = [], put = a => a.forEach(p => P.push(p)), bli
   else if (k === 1) { put([[3, 2], [4, 3], [3, 4], [8, 2], [7, 3], [8, 4], [5, 6], [6, 6], [4, 7], [7, 7], [5, 8], [6, 8]]); const b = Math.floor(t * 4) % 7; if (b < 6) P.push([10, 8 - b]); if (b > 2) P.push([11, 10 - b]); }
   else if (k === 2) { put(blink ? [[3, 3], [4, 3], [5, 3], [7, 3], [8, 3], [9, 3]] : [[4, 2], [3, 3], [5, 3], [8, 2], [7, 3], [9, 3]]);
     put(Math.floor(t * 5) % 2 ? [[4, 6], [5, 6], [6, 6], [7, 6], [4, 7], [7, 7], [4, 8], [5, 8], [6, 8], [7, 8]] : [[5, 7], [6, 7], [5, 8], [6, 8]]); const ny = Math.floor(t * 3) % 2; put([[11, ny], [11, 1 + ny], [10, 2 + ny]]); }
-  else { eyes(1); put([[4, 7], [5, 7], [6, 7], [7, 7]]); const d = Math.floor(t * 2.5) % 4; for (let q = 0; q < d; q++) P.push([7 + q * 2, 0]); }
+  else if (k === 3) { eyes(1); put([[4, 7], [5, 7], [6, 7], [7, 7]]); const d = Math.floor(t * 2.5) % 4; for (let q = 0; q < d; q++) P.push([7 + q * 2, 0]); }
+  // winking (the right eye opens now and then)
+  else if (k === 4) { put([[3, 2], [4, 2], [3, 3], [4, 3]]); put(t % 2.6 < .3 ? [[7, 2], [8, 2], [7, 3], [8, 3]] : [[7, 3], [8, 3], [9, 2]]); put([[3, 7], [4, 8], [5, 8], [6, 8], [7, 8], [8, 7], [9, 6]]); }
+  // surprised: brows up, an O for a mouth
+  else if (k === 5) { const up = Math.floor(t * 2) % 2; put([[3, up], [4, up], [7, up], [8, up]]); put([[3, 2], [4, 2], [3, 3], [4, 3], [7, 2], [8, 2], [7, 3], [8, 3]]); put([[5, 6], [6, 6], [4, 7], [7, 7], [5, 8], [6, 8]]); }
+  // sleepy, with a Z drifting up
+  else if (k === 6) { put([[3, 3], [4, 3], [7, 3], [8, 3], [5, 7], [6, 7]]); const zy = 3 - (Math.floor(t * 1.6) % 4); put([[9, zy], [10, zy], [11, zy], [10, zy + 1], [9, zy + 2], [10, zy + 2], [11, zy + 2]].filter(p => p[1] >= 0)); }
+  // heart eyes (they beat)
+  else if (k === 7) { const big = Math.floor(t * 3) % 2; [[2, 1], [7, 1]].forEach(([x, y]) => { put([[x, y], [x + 2, y], [x, y + 1], [x + 1, y + 1], [x + 2, y + 1], [x + 1, y + 2]]); if (big) put([[x + 1, y]]); }); put([[2, 6], [9, 6], [3, 7], [8, 7], [4, 8], [5, 8], [6, 8], [7, 8]]); }
+  // sunglasses and a smirk
+  else if (k === 8) { put([[1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2], [9, 2], [10, 2], [2, 3], [3, 3], [4, 3], [7, 3], [8, 3], [9, 3]]); if (t % 3 < .25) put([[3, 2]]); put([[4, 7], [5, 7], [6, 7], [7, 7], [8, 6]]); }
+  // tongue out (it wags)
+  else { eyes(); put([[3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6]]); const w = Math.floor(t * 4) % 2; put(w ? [[5, 7], [6, 7], [5, 8], [6, 8]] : [[6, 7], [7, 7], [6, 8], [7, 8]]); }
   return P; };
+const N_FACES = 10;
 
 class Component extends DCLogic {
   state = { navHov: null, album: 0, hover: null, playing: null, paused: false, W: 1200, H: 800 };
@@ -103,7 +116,7 @@ class Component extends DCLogic {
   knobV = [0, 0, 0, 0, 0, 0];
   setKnob(i, v) { v = ((v % 10) + 10) % 10; if (this.knobV[i] === v) return; this.knobV[i] = v; this.knobAt = this.knobAt || []; this.knobAt[i] = this.t;
     if (this.knobV.join('') === '523869') this.onCombo(); }
-  // the combination is set. What it opens is still to be decided; for now the numbers flash once so you can tell it registered
+  // the combination is set. What it opens is still to be decided; for now every number stays lit while it is set, so you can tell
   onCombo() { this.comboT = this.t; }
   knobDown = i => e => { if (e.button) return; e.preventDefault();
     // a click on one of the numbers round the knob turns it straight to that number
@@ -117,6 +130,9 @@ class Component extends DCLogic {
     const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
     const cur = q == null ? 'ew-resize' : 'pointer'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
+  // a pad under the pointer shows one of the faces, chosen at random each time, in that pad's colour
+  padOn(i) { if (this.padHov !== i) { let f; do f = Math.floor(Math.random() * N_FACES); while (f === this.padFace && N_FACES > 1); this.padFace = f; } this.padHov = i; }
+  padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
@@ -128,7 +144,7 @@ class Component extends DCLogic {
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   // the track list on the centre screen: where each row sits (shared by the drawing and the row buttons over it)
   rowsOf(G) { const [sx, sy, sw, sh] = G.scr, n = this.albums[this.state.album].tracks.length, top = sy + 66, rh = clamp((sh - 70) / Math.max(1, n), 15, 44); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
-  t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
+  t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6, 7].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
   albums = ALBUMS.map((a, ai) => { const tracks = a.tracks.map((tr, ti) => ({ ...tr, id: ai + '-' + ti, ai, ti, env: envOf(tr) })); return { ...a, tracks, mix: mixOf(tracks) }; });
   strip = false;
   get look() { const s = this.props.style ?? 'stark'; return THEMES[s] ? s : 'stark'; }
@@ -151,6 +167,7 @@ class Component extends DCLogic {
     // pieces with a file: decode it for its real waveform and length
     this.albums.forEach(a => a.tracks.forEach(tr => { if (!tr.src) return; const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
       fetch(tr.src).then(res => res.arrayBuffer()).then(b => new OAC(1, 1, 44100).decodeAudioData(b)).then(buf => { tr.buf = buf; tr.dur = buf.duration; tr.env = envFromBuf(buf); a.mix = mixOf(a.tracks); this.forceUpdate(); }).catch(() => {}); }));
+    if (import.meta.env.DEV) window.__sound = this; // a handle for checking the page in development; not in the built site
     this.raf = requestAnimationFrame(this.tick);
   }
   componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
@@ -204,7 +221,8 @@ class Component extends DCLogic {
     if (this.out) { this.out.t += dt; const lim = this.out.k === 'home' ? 1.25 : this.out.k === 'dive' ? 1.95 : .55;
       if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} location.href = this.out.href; } }
     this.mx += ((this.mxT || 0) - this.mx) * Math.min(1, dt * 3);
-    if (this.vol) this.vol.gain.setTargetAtTime(this.volume ?? .85, this.ac.currentTime, .05);
+    // the volume fader sets the master gain; squared, so the fader moves through loudness the way the ear hears it (half way down is half as loud)
+    if (this.vol) this.vol.gain.setTargetAtTime(Math.pow(this.volume ?? 1, 2), this.ac.currentTime, .05);
     this.audioTick(); this.draw(dt); this.flipTick(); this.wheelTick(dt);
   };
   // the album clock beside the screen: the flip counter in its display, and the album names rolling through the display round it. The
@@ -231,7 +249,7 @@ class Component extends DCLogic {
     this.jogCs = {}; const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr * 2); this.jogCs.jog = [jx, jy + SY];
     this.dk.knobs.forEach((el, i) => { const [kx, ky] = G.knobs[i], hs = G.kc / 2; put(el, kx - hs, ky - hs, hs * 2, hs * 2); if (el.getAttribute('aria-valuenow') !== String(this.knobV[i])) el.setAttribute('aria-valuenow', String(this.knobV[i])); });
     [['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
-    this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = G.cpads[i]; put(el, p[0], p[1], p[2], p[3]); });
+    this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = i < 3 ? G.cpads[i] : G.spare; put(el, p[0], p[1], p[2], p[3]); });
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
@@ -247,7 +265,7 @@ class Component extends DCLogic {
     const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     const glow = (c, b) => { if (cy) { ctx.shadowColor = c; ctx.shadowBlur = b; } }, noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
     const c = this.cur, playing = !!c && !c.paused, pos = this.posOf(), u = c ? clamp(pos / c.tr.dur, 0, 1) : 0, kc = c ? KINDS[c.tr.kind].cs : PM, al = this.albums[this.state.album];
-    for (let i = 0; i < 7; i++) { const S = this.S[i]; S.k += ((this.padHov === i ? 1 : 0) - S.k) * Math.min(1, dt * 8); }
+    for (let i = 0; i < 8; i++) { const S = this.S[i]; S.k += ((this.padHov === i ? 1 : 0) - S.k) * Math.min(1, dt * 8); }
     ctx.save(); ctx.translate(0, SY); ctx.globalAlpha = 1 - foFace;
     // the body: only its top is on screen, the rest runs on below the edge
     const face = ctx.createLinearGradient(0, G.y0, 0, H); face.addColorStop(0, cy ? '#17121f' : '#1d1d1f'); face.addColorStop(1, cy ? '#0a0910' : '#111112');
@@ -292,15 +310,15 @@ class Component extends DCLogic {
     { const [kx, ky, kw, kh] = G.clock; ctx.fillStyle = '#060708'; rr(kx - 3, ky - 2, kw + 6, kh + 6, 8); ctx.fill(); }
     // the six numbered knobs: a dark well, the numbers 0..9 round it, a raised cap with a pointer that clicks to each number; the number it
     // points at is lit. When the combination is set they all flash once
-    { const comboK = this.comboT != null ? Math.max(0, 1 - (t - this.comboT) / 1.2) : 0;
+    { const comboOn = this.knobV.join('') === '523869', comboK = comboOn ? 1 : 0;
       if (!this.knobA) this.knobA = this.knobV.map(() => 0);
       G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], tgt = -150 + v * 300 / 9; this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 18);
-        const hv = this.knobHov === i || this.knobHeld === i, nr = kr + clamp(kr * .42, 5.5, 8), nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
+        const hv = this.knobHov === i || this.knobHeld === i, fzk0 = clamp(kr * .48, 5.5, 8), nr = kr + fzk0 * .7 + 1.8, nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
         ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; ctx.beginPath(); ctx.arc(kx, ky + 1.5, kr + 3, 0, TAU); ctx.fill();
-        const fzk = clamp(kr * .48, 5.5, 8); ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const fzk = fzk0; ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         for (let q = 0; q <= 9; q++) { const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0, nx = kx + Math.sin(a) * nr, ny = ky - Math.cos(a) * nr;
           // the number under the pointer gets a small ring, so it reads as something to press
-          if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,229,255,.16)'; ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .95, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
+          if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,229,255,.16)'; ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .62, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
           ctx.globalAlpha = (1 - fo) * (lit || q === nh ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? 'rgba(0,229,255,' + (.4 + .6 * comboK) + ')' : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
           if (q === nh && !on) ctx.fillStyle = '#ffffff'; ctx.fillText(String(q), nx, ny); noGlow(); }
         ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, ky - kr, 0, ky + kr); kg.addColorStop(0, hv ? '#4c535b' : '#40464d'); kg.addColorStop(1, hv ? '#24282d' : '#1d2024');
@@ -339,14 +357,13 @@ class Component extends DCLogic {
         ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 42, ry, tEnd - rx - 42, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 42, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
-      // pointing at a pad: the page's little pixel face over the now-playing strip (the pads still to come just say so)
-      const hp = this.padHov, hk = hp != null ? clamp(this.S[hp].k, 0, 1) : 0;
-      if (hk > .02) { const fp = 2.6; ctx.globalAlpha = (1 - fo) * hk * .95; ctx.fillStyle = '#04030a'; rr(sx + 4, sy + 4, sw - 8, 44, 4); ctx.fill(); ctx.globalAlpha = (1 - fo) * hk;
-        ctx.font = '400 10px ' + mich; ctx.textBaseline = 'middle';
-        if (hp < 4) { ctx.fillStyle = LAB[hp]; const fw = 12 * fp + 12 + 110, fx = sx + sw / 2 - fw / 2, fy = sy + 26 - 5 * fp; FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); ctx.textAlign = 'left'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + 26); }
-        else { ctx.fillStyle = cols[hp]; ctx.textAlign = 'center'; ctx.fillText('A PAGE · COMING SOON', sx + sw / 2, sy + 26); } ctx.globalAlpha = 1 - fo; } }
+      // pointing at a pad: a little pixel face, picked at random, in the pad's colour, on the right of the now-playing strip (over the time,
+      // which steps aside for it); the cover and title stay
+      const hp = this.padHov, hk = hp != null && this.S[hp] ? clamp(this.S[hp].k, 0, 1) : 0;
+      if (hk > .02) { const fp = 3.6, fw = 12 * fp, fx = sx + sw - 14 - fw, fy = sy + 27 - 5 * fp; ctx.globalAlpha = (1 - fo) * hk; ctx.fillStyle = cy ? '#04030a' : '#050607'; ctx.fillRect(sx + sw - 130, sy + 6, 124, 42);
+        const fc = hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#b9c0c6'; ctx.fillStyle = fc; glow(fc, 6); FACE(this.padFace ?? 0, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); noGlow(); ctx.globalAlpha = 1 - fo; } }
     // the volume fader, standing beside the screen
-    { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo + (hi - lo) * .15, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
+    { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
       ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);
       ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(V.x - 3, V.y0, 6, V.y1 - V.y0, 3); ctx.fill(); ctx.globalAlpha = (1 - fo) * .35; ctx.fillStyle = PM; for (let q = 0; q <= 6; q++) ctx.fillRect(V.x - 11, lo + (hi - lo) * q / 6, q % 3 ? 2 : 4, 1);
       const VC = NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.fillStyle = VC; glow(VC, 6); ctx.fillRect(V.x - 1, this.volY, 2, V.y1 - this.volY); noGlow();
@@ -560,9 +577,9 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
-        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
+        cpOn: i => () => this.padOn(4 + i), cpOff: i => () => this.padOff(4 + i), vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
-      pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
+      pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => this.padOn(i), off: () => this.padOff(i), go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
   }
 }
@@ -636,7 +653,7 @@ function View(v) {
           {"\n        "}
         </div>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
-        {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
+        {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={i < 3 ? nm + ' page: coming soon' : 'Spare pad'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />

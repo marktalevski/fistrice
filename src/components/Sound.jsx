@@ -2,7 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
-import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS } from '../lib/kirby.js';
+import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS, KIRBY_MOVES } from '../lib/kirby.js';
 import { deckGeo, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
@@ -346,13 +346,13 @@ class Component extends DCLogic {
     // the main screen: the piece playing (its title, kind and time, a thin line for how far it has got) over the album's pieces, which you pick from
     { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 5); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 5); ctx.clip();
       thumb(sx + 10, sy + 10, 34); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width;
+      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width; this.kTxtR = sx + 54 + Math.max(Math.min(tw, room), 135);
         ctx.save(); ctx.beginPath(); ctx.rect(sx + 54, sy + 10, room, 18); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + 54, sy + 23); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + 54 - o, sy + 23); ctx.fillText(ttl, sx + 54 - o + L, sy + 23); } ctx.restore(); noGlow();
         // the time, under the title: where you are, then what is left (and PAUSED when it is)
         ctx.textAlign = 'left'; ctx.font = '400 11px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, sx + 54, sy + 41); const tnw = ctx.measureText(tnow).width;
         ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)) + (c.paused ? '   PAUSED' : ''), sx + 54 + tnw + 10, sy + 41);
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(sx + 10, sy + 50, (sw - 20) * u, 1.5); noGlow(); }
-      else { ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', sx + 54, sy + 24); ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 54, sy + 39);
+      else { this.kTxtR = sx + 54 + 165; ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', sx + 54, sy + 24); ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 54, sy + 39);
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1); }
       ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; const tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 12, sy + 59);
       this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;
@@ -368,10 +368,26 @@ class Component extends DCLogic {
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // Kirby, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. His notes and
       // stars take the edge's ink while it is lit
-      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : this.kIdle || 'idle', kp = 2, kw = KIRBY_W * kp, kx = sx + sw - 10 - kw, ky = sy + 50 - KIRBY_H * kp - 2;
-        const ink = this.rimCol() || (hp != null ? (hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#ffd84a') : '#ffd84a');
-        ctx.globalAlpha = 1 - fo; ctx.fillStyle = cy ? '#04030a' : '#050607'; ctx.fillRect(kx - 6, sy + 4, kw + 10, 45);
-        kirby(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink }).forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.fillRect(kx + q * kp, ky + r * kp, kp, kp); }); } }
+      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : this.kIdle || 'idle', kp = 2, kw = KIRBY_W * kp, ky = sy + 50 - KIRBY_H * kp - 2;
+        // the free stretch of the strip he dances along: from just past the text to the right edge
+        const xMax = sx + sw - 10 - kw, xMin = Math.min((this.kTxtR || sx + 200) + 8, xMax); if (this.kX == null) this.kX = xMax; this.kX = clamp(this.kX, xMin, xMax);
+        // the dance: a run of moves picked at random (never one twice running), each a few beats long; a slide glides him somewhere new,
+        // and every so often he strikes a pose. The beat only runs while a piece plays
+        let dO = {}; if (mode === 'dance') { const bpm = 112; this.kB = (this.kB || 0) + dt * bpm / 60;
+          if (!this.kMv || this.kB >= KIRBY_MOVES[this.kMv]) { this.kB = 0; this.kN = (this.kN || 0) + 1; const pool = Object.keys(KIRBY_MOVES).filter(m => m !== this.kMv && m !== 'pose' && (m !== 'trio' || xMax - xMin > kw * 2.2)); if (this.kMv !== 'slide') pool.push('slide', 'slide');
+            this.kMv = this.kN % 7 === 0 ? 'pose' : pool[Math.floor(Math.random() * pool.length)];
+            // a slide glides him well across; hops, sways, shimmies and jump-spins carry him a little way; the rest stay put
+            this.kX0 = this.kX; let x1 = this.kX; if (this.kMv === 'slide') { let n = 0; while (n++ < 20 && Math.abs(x1 - this.kX) < (xMax - xMin) * .3) x1 = xMin + Math.random() * (xMax - xMin); }
+            else if (['hop', 'sway', 'shimmy', 'jumpspin'].includes(this.kMv)) x1 = clamp(this.kX + (Math.random() < .5 ? -1 : 1) * (xMax - xMin) * (.15 + Math.random() * .2), xMin, xMax);
+            this.kX1 = x1; this.kDir = x1 >= this.kX ? 1 : -1; }
+          { const u = clamp(this.kB / KIRBY_MOVES[this.kMv], 0, 1), e2 = u * u * (3 - 2 * u); this.kX = clamp(this.kX0 + ((this.kX1 ?? this.kX0) - this.kX0) * e2, xMin, xMax); }
+          dO = { move: this.kMv, mp: this.kB, dir: this.kDir }; }
+        const ink = this.rimCol() || (hp != null ? (hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#ffd84a') : '#ffd84a'), kx = Math.round(this.kX);
+        const cells = kirby(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
+        // in a trio two clones dance beside him, a little fainter (Sakurai's Kirbys dance in threes)
+        const at = mode === 'dance' && this.kMv === 'trio' ? [[0, 1]].concat([-1, 1].map(d => [d * kw * .95, .55]).filter(([d]) => kx + d >= xMin - kw * .6 && kx + d <= sx + sw - kw + 4)) : [[0, 1]];
+        ctx.save(); ctx.beginPath(); ctx.rect(sx + 2, sy + 2, sw - 4, 48); ctx.clip();
+        at.forEach(([d, al]) => { ctx.globalAlpha = (1 - fo) * al; cells.forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.fillRect(kx + d + q * kp, ky + r * kp, kp, kp); }); }); ctx.restore(); ctx.globalAlpha = 1 - fo; } }
     // the volume fader, standing beside the screen
     { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
       ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);

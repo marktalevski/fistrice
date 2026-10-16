@@ -2,6 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
+import { deckGeo, DECK_KEYS } from '../lib/deck.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = x => x * x * (3 - 2 * x);
@@ -64,8 +65,8 @@ const BAG_TAPE = (yc, slope, toLeft) => Array.from({ length: 13 }, (_, q) => { c
 const BAG_STREAK = (r, span) => { const a0 = Math.asin(.36 / r) + .065; return Array.from({ length: 9 }, (_, q) => { const a = Math.PI / 2 + a0 + span * (1 - q / 8); return [BAG_HOOK[0] + Math.cos(a) * r, BAG_HOOK[1] + Math.sin(a) * r]; }); };
 const BAG_LINES = [{ li: 1, path: BAG_TAPE(-.2, .22, true) }, { li: 2, path: BAG_TAPE(.02, -.22, false) }, { li: 3, path: BAG_TAPE(.24, .22, true) },
   { li: 6, path: BAG_STREAK(1.72, .2) }, { li: 5, path: BAG_STREAK(1.98, .26) }, { li: 4, path: BAG_STREAK(2.24, .32) }];
-// where a menu dot lands leaving Home for Sound: low on the page, in the column of its fader (Sound's faders sit 22px apart from the right edge)
-const sndDrop = (k, W, H) => { const i = ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].indexOf(k); return [W - 22 - (6 - i) * 22, H - 120]; };
+// where a menu dot lands leaving Home for Sound: just above the deck that rises in at the bottom, in the column of its fader
+const sndDrop = (k, W, H) => { const G = deckGeo(W, H), i = DECK_KEYS.indexOf(k === 'ink' ? 'home' : k); return [G.faders[i], G.y0 - 36]; };
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },

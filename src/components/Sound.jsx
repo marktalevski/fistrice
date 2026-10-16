@@ -2,6 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
+import { deckGeo, DECK_KEYS } from '../lib/deck.js';
 
 const PAGE = 'sound';
 const COL = [232, 34, 44];
@@ -78,33 +79,32 @@ const FACE = (k, t) => { const P = [], put = a => a.forEach(p => P.push(p)), bli
     put(Math.floor(t * 5) % 2 ? [[4, 6], [5, 6], [6, 6], [7, 6], [4, 7], [7, 7], [4, 8], [5, 8], [6, 8], [7, 8]] : [[5, 7], [6, 7], [5, 8], [6, 8]]); const ny = Math.floor(t * 3) % 2; put([[11, ny], [11, 1 + ny], [10, 2 + ny]]); }
   else { eyes(1); put([[4, 7], [5, 7], [6, 7], [7, 7]]); const d = Math.floor(t * 2.5) % 4; for (let q = 0; q < d; q++) P.push([7 + q * 2, 0]); }
   return P; };
-// pointer over empty ground: a pause sign while a piece plays, a play sign while it is paused (black with a white edge so it reads on any ground)
-const svgCur = body => "url(\"data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><g fill='#0c0c0c' stroke='#fff' stroke-width='1.5' stroke-linejoin='round'>" + body + "</g></svg>") + "\") 16 16, pointer";
-const CUR_PAUSE = svgCur("<rect x='8.5' y='7' width='5.5' height='18' rx='1'/><rect x='18' y='7' width='5.5' height='18' rx='1'/>");
-const CUR_PLAY = svgCur("<path d='M10 6.5 L25 16 L10 25.5 Z'/>");
-const CUR_SCRUB = svgCur("<rect x='14.5' y='4' width='3' height='24' rx='1'/><path d='M3.5 16 L11 10.5 L11 21.5 Z'/><path d='M28.5 16 L21 10.5 L21 21.5 Z'/>");
 
 class Component extends DCLogic {
   state = { navHov: null, album: 0, hover: null, playing: null, paused: false, W: 1200, H: 800 };
   canvasRef = React.createRef(); contentRef = React.createRef(); rootRef = React.createRef(); flapA = React.createRef(); flapB = React.createRef(); wheelRef = React.createRef();
-  wvOf() { return (this.props.deck ?? true) ? innerWidth - 194 : innerWidth; }
-  freeEl(el) { return !!el && !(el.closest && el.closest('button:not([aria-label="Pause"]),a,ol,h2,p,[data-navk]')); }
-  // the band round the wave where the pointer scrubs instead of pausing / resuming
-  inBand(x, y, el) { const c = this.cur; if (!c || this.strip || x == null || x > this.wvOf() || !this.freeEl(el)) return false; return Math.abs(x - this.posOf() / c.tr.dur * this.wvOf()) < 9; }
-  setCursor(el, x, y) { const r = this.rootRef.current; if (!r) return; if (el) { this.curEl = el; this.mp = [x, y]; } el = this.curEl; const [mx, my] = this.mp || [], c = this.cur, free = this.freeEl(el), band = !!this.scrub || this.inBand(mx, my, el);
-    this.hx = this.scrub ? this.scrub.x : null;
-    const v = c && free ? (band ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE) : ''; if (r.style.cursor !== v) r.style.cursor = v; }
+  wvOf() { return innerWidth; }
   seek(u) { const c = this.cur; if (!c) return; const off = clamp(u, 0, 1) * c.tr.dur; if (c.paused) { c.off = off; this.forceUpdate(); } else this.play(c.tr, off); }
   // arriving from another page, once the dots have become faders the page tunes in like a radio finding its station:
   // sig is the signal strength, rising with a few dropouts; u is the time since tuning began
   tuneAt(t) { if (!this.arr) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
-  recentScrub() { return performance.now() - (this.scrubAt || 0) < 350; }
-  scrubDown = e => { if (e.button || !this.inBand(e.clientX, e.clientY, e.target)) return; e.preventDefault(); this.scrub = { x: e.clientX }; this.hx = e.clientX;
-    // the playhead itself follows the pointer; a playing piece jumps along with it every few frames (rough, like dragging tape)
-    const mv = ev => { this.scrub.x = clamp(ev.clientX, 0, this.wvOf()); const now = performance.now(), c = this.cur;
-      if (c && !c.paused && now - (this.scrub.at || 0) > 70) { this.scrub.at = now; const sc = this.scrub; this.scrub = null; this.seek(sc.x / this.wvOf()); this.scrub = sc; } };
-    const up = ev => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); const u = this.scrub.x / this.wvOf(); this.scrub = null; this.scrubAt = performance.now(); this.seek(u); this.setCursor(ev.target, ev.clientX, ev.clientY); };
-    addEventListener('mousemove', mv); addEventListener('mouseup', up); };
+  // ---- the deck's controls
+  // jog wheel: drag it round to scrub, a turn is six seconds of the piece (clockwise forward); a playing piece jumps along every few frames, like tape
+  jogDown = e => { const c = this.cur; if (!c || e.button) return; e.preventDefault(); const [jx, jy] = this.jogC || [0, 0];
+    let a0 = Math.atan2(e.clientY - jy, e.clientX - jx); this.jog = { pos: this.posOf(), at: 0 };
+    const mv = ev => { const a = Math.atan2(ev.clientY - jy, ev.clientX - jx); let d = a - a0; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; a0 = a; this.jogA = (this.jogA || 0) + d;
+      const cc = this.cur; if (!cc || !this.jog) return; this.jog.pos = clamp(this.jog.pos + d / TAU * 6, 0, cc.tr.dur); const now = performance.now();
+      if (cc.paused) cc.off = this.jog.pos; else if (now - this.jog.at > 70) { this.jog.at = now; const j = this.jog; this.jog = null; this.play(cc.tr, j.pos); this.jog = j; } };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+  // play / pause; with nothing chosen yet it starts the album's first piece
+  playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
+  // cue: back to the start of the piece (a paused piece stays paused there)
+  cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
+  // faders can be pushed up and down; Sound's is the volume
+  faderDown = i => e => { if (e.button) return; e.preventDefault(); const set = y => { const G = deckGeo(innerWidth, innerHeight); this.S[i].hold = clamp(y - (this.deckSY || 0), G.lo, G.hi); };
+    set(e.clientY); this.S[i].drag = 1; const mv = ev => set(ev.clientY), up = () => { this.S[i].drag = 0; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
   albums = ALBUMS.map((a, ai) => { const tracks = a.tracks.map((tr, ti) => ({ ...tr, id: ai + '-' + ti, ai, ti, env: envOf(tr) })); return { ...a, tracks, mix: mixOf(tracks) }; });
   strip = false;
@@ -131,12 +131,12 @@ class Component extends DCLogic {
     this.raf = requestAnimationFrame(this.tick);
   }
   componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
-  componentDidUpdate(prev) { requestAnimationFrame(() => this.setCursor()); if (prev.style !== this.props.style) { this.t = 0; this.disp = null; this.listBottom = 0; } }
+  componentDidUpdate(prev) { if (prev.style !== this.props.style) { this.t = 0; this.disp = null; this.listBottom = 0; } }
   step(d) { this.goAlbum(this.state.album + d)(); }
   goAlbum = a => () => { a = clamp(a, 0, this.albums.length - 1); if (a === this.state.album) return; if (this.strip && this.cur) this.stop(); this.flipPrev = this.state.album; this.flipT0 = this.t; this.setState({ album: a, hover: null }); };
   trById(id) { const [a, b] = id.split('-').map(Number); return this.albums[a].tracks[b]; }
   // ---- sound
-  ensureAC() { if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; this.ac = new AC(); this.an = this.ac.createAnalyser(); this.an.fftSize = 512; this.an.connect(this.ac.destination); this.anBuf = new Float32Array(512); } if (this.ac.state === 'suspended') this.ac.resume(); }
+  ensureAC() { if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; this.ac = new AC(); this.an = this.ac.createAnalyser(); this.an.fftSize = 512; this.vol = this.ac.createGain(); this.an.connect(this.vol); this.vol.connect(this.ac.destination); this.anBuf = new Float32Array(512); } if (this.ac.state === 'suspended') this.ac.resume(); }
   play(tr, off = 0) {
     this.stopNodes(); this.ensureAC(); const ac = this.ac, now = ac.currentTime, out = ac.createGain(); out.gain.value = 0; out.connect(this.an);
     const N = { out, list: [] }, on = this.props.synth ?? true;
@@ -155,7 +155,7 @@ class Component extends DCLogic {
   stop() { this.stopNodes(); this.cur = null; this.live = 0; if (this.state.playing) this.setState({ playing: null, paused: false }); }
   toggle() { const c = this.cur; if (!c) return; if (c.paused) this.play(c.tr, c.off); else { c.off = this.ac.currentTime - c.t0; this.stopNodes(); c.paused = true; this.setState({ paused: true }); } }
   click(tr) { if (this.cur && this.cur.tr.id === tr.id) this.toggle(); else this.play(tr); }
-  posOf() { const c = this.cur; if (!c) return 0; if (this.scrub) return clamp(this.scrub.x / this.wvOf(), 0, 1) * c.tr.dur; return c.paused ? c.off : clamp(this.ac.currentTime - c.t0, 0, c.tr.dur); }
+  posOf() { const c = this.cur; if (!c) return 0; if (this.jog) return this.jog.pos; return c.paused ? c.off : clamp(this.ac.currentTime - c.t0, 0, c.tr.dur); }
   audioTick() { const c = this.cur; if (!c || c.paused) return; const ac = this.ac, now = ac.currentTime, pos = now - c.t0, tr = c.tr;
     if (pos >= tr.dur) { const nx = this.albums[tr.ai].tracks[tr.ti + 1]; if (nx) this.play(nx); else this.stop(); return; }
     const e = envAt(tr.env, pos / tr.dur), N = c.N;
@@ -181,6 +181,7 @@ class Component extends DCLogic {
     if (this.out) { this.out.t += dt; const lim = this.out.k === 'home' ? 1.25 : this.out.k === 'dive' ? 1.95 : .55;
       if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} location.href = this.out.href; } }
     this.mx += ((this.mxT || 0) - this.mx) * Math.min(1, dt * 3);
+    if (this.vol) this.vol.gain.setTargetAtTime(this.volume ?? .85, this.ac.currentTime, .05);
     this.audioTick(); this.draw(dt); this.flipTick(); this.wheelTick(dt);
   };
   // album names sit round an unseen drum centred on the counter: neighbours just above and below, further ones smaller and squashed;
@@ -195,149 +196,116 @@ class Component extends DCLogic {
   flipTick() { const A = this.flapA.current, B = this.flapB.current; if (!A || !B) return; const ft = this.flipT0 == null ? 2 : (this.t - this.flipT0) / .6;
     if (ft >= 1) { if (A.style.visibility !== 'hidden') { A.style.visibility = B.style.visibility = 'hidden'; } if (this.flipPrev != null && this.flipPrev !== this.state.album) { this.flipPrev = this.state.album; this.forceUpdate(); } return; }
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
-  // ---- nav strings: Home, Freediving, Sound, Journal and three loose strings run down the right edge. Touching one sets off a sharp synth-like wave on it;
-  // touching a page string also slides it (and every string to its left) over, and the page's name shows in the gap
-  strOn(i, e) { const S = this.S[i], r = rng((Math.random() * 1e9) | 0); if (S.offAt != null && S.on) { S.offAt = null; return; } S.offAt = null; S.on = 1; S.tv = (S.tv || 0) + (r() - .5) * 1.4; S.tp = this.t; S.yp = e && e.clientY != null ? e.clientY : innerHeight * .3; S.y0 = S.yp;
-    S.yp0 = S.ly = S.yp;
-    const per = 10 + r() * 20; S.wv = { type: Math.floor(r() * 5), per, half: per * (1.4 + r()), amp: 6 + r() * 6, dir: r() < .5 ? -1 : 1, v: 520 + r() * 420, seed: (r() * 1e6) | 0 }; }
-  strMove(i, e) { if (e && e.clientY != null) this.S[i].yp = e.clientY; }
-  strOff(i) { this.S[i].offAt = this.t + .18; }
-  drawStrings(ctx, W, H, t, dt, TH, live, fo) {
-    const look = this.look, md = this.props.strings ?? 'fader', PI = look === 'stark' && (this.props.deck ?? true) ? '#f2f2f0' : TH.ink, PM = look === 'stark' ? '#8a8f94' : TH.muted, cols = [PI, 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
-      LAB = [PI, 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'], pf = this.pf, lf = look === 'haze' ? "500 14px 'Hanken Grotesk', sans-serif" : look === 'stark' ? "400 11px Michroma, sans-serif" : "italic 400 21px Newsreader, Georgia, serif", nm = i => look !== 'many' ? names[i].toUpperCase() : names[i];
-    ctx.font = lf;
-    for (let i = 0; i < 7; i++) { const S = this.S[i]; if (S.offAt != null && t >= S.offAt) { S.on = 0; S.tp = t; S.offAt = null; } S.th = S.th || 0; S.tv = (S.tv || 0) + (-S.th * 30 - (S.tv || 0) * 2.2) * dt; S.th += S.tv * dt; S.k += ((S.on ? 1 : 0) - S.k) * Math.min(1, dt * 7); S.ly = (S.ly ?? S.yp) + (S.yp - (S.ly ?? S.yp)) * Math.min(1, dt * 12); }
-    // a hovered page string, and every string to its left, moves over by the width of the page's name, opening a gap for it on the string's right
-    const open = [0, 1, 2, 3].map(i => { const S = this.S[i]; if (!S.lw || S.lf !== lf) { S.lw = ctx.measureText(nm(i)).width + 34; S.lf = lf; } return easeIO(clamp(S.k, 0, 1)) * S.lw; });
-    // asm: how built the panel is (knobs, screen, faders); slide: how far it has slid off to the right
+  // ---- the deck: a DJ controller along the bottom (geometry in lib/deck.js). Its hit areas are real elements laid over the drawing
+  placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
+    const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; };
+    const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr * 2); this.jogC = [jx, jy + SY];
+    [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
+    this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); });
+    this.dk.fad.forEach((el, i) => put(el, G.faders[i] - G.sp / 2 + 2, G.fy0 - 6, G.sp - 4, G.fy1 - G.fy0 + 12)); }
+  drawDeck(ctx, W, H, t, dt, TH, live, fo) {
+    const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace",
+      cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
+      LAB = ['#f2f2f0', 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'];
+    // asm: how built the deck is (its controls); slide: how far it has dropped away below the screen
     const A = this.arr, O = this.out && this.out.k !== 'other' ? this.out : null; let asm = 1, slide = 0;
     if (A) { asm = smooth(clamp((t - 1.1) / .6, 0, 1)); slide = 1 - easeIO(clamp((t - .3) / 1, 0, 1)); }
     if (O) { asm = 1 - smooth(clamp(O.t / .45, 0, 1)); slide = easeIO(clamp((O.t - .3) / .8, 0, 1)); }
-    const SX = slide * (200 + open.reduce((a2, v) => a2 + v, 0)), foFace = fo; fo = 1 - (1 - fo) * asm;
-    const SP = 22, X = j => W + SX - (22 + (6 - j) * SP) - open.reduce((acc, v, i) => acc + (i >= j ? v : 0), 0);
-    // the strings sit on a piece of equipment: a dark mixer face that widens as a string opens, with slots, bridges, channel numbers and LEDs
-    // hover zones follow the strings and stretch across the open gap, so the pointer stays inside while it moves onto the name
-    if (!this.zoneEls || !this.zoneEls.every(el => el && el.isConnected)) this.zoneEls = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].map(k => document.querySelector('[data-navk="' + k + '"]'));
-    this.zoneEls.forEach((el, i) => { if (!el) return; el.style.right = 'auto'; el.style.left = (X(i) - SP / 2).toFixed(1) + 'px'; el.style.width = (SP + (i < 4 ? open[i] : 0)).toFixed(1) + 'px'; });
-    let ya = 0, yb = H;
-    if (this.props.deck ?? true) {
-      const px0 = X(0) - 22, px1 = W + SX, py0 = 0, py1 = H, haze = look === 'haze'; ya = py0 + 168; yb = py1 - 32;
-      const cy = look === 'stark' && (this.props.cyber ?? true), rrect = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
-      ctx.save(); ctx.globalAlpha = 1 - foFace;
-      const face = ctx.createLinearGradient(0, py0, 0, py1); face.addColorStop(0, cy ? '#110d1a' : haze ? '#21272d' : look === 'stark' ? '#151515' : '#191d24'); face.addColorStop(1, cy ? '#07060c' : haze ? '#161a1e' : look === 'stark' ? '#0a0a0a' : '#0f1217');
-      ctx.fillStyle = face; ctx.fillRect(px0, py0 - 40, px1 - px0 + 40, py1 - py0 + 80);
-      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
-      if (cy) { // a neon seam down the panel's edge, magenta into cyan, and a faint circuit grid on the face
-        const sg = ctx.createLinearGradient(0, py0, 0, py1); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.fillStyle = sg; ctx.shadowColor = NEON_M; ctx.shadowBlur = 12; ctx.fillRect(px0, py0, 1.5, py1 - py0); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-        ctx.fillStyle = 'rgba(0,229,255,.05)'; for (let gy = py0 + 8; gy < py1; gy += 16) ctx.fillRect(px0 + 2, gy, px1 - px0, 1); }
-      else { ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(px0, py0, 1, py1 - py0); }
-      // the panel's display: the piece that is playing (scrolling if it is long), its time, and a thin progress line
-      // the screen stretches with the panel; the song keeps its fixed spot on the right and the extra room on the left shows the page you are about to go to
-      { const c = this.cur, dx0 = W + SX - (22 + 6 * SP) - 22 + 12, dw = px1 - 12 - dx0, dy0 = 14, dh = 46, room = dw - 16, bx = px0 + 12, ext = dx0 - bx;
-        ctx.fillStyle = cy ? '#04030a' : '#050607'; rrect(bx, dy0, px1 - 12 - bx, dh, 3); ctx.fill(); ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rrect(bx + .5, dy0 + .5, px1 - 12 - bx - 1, dh - 1, 2.5); ctx.stroke();
-        if (ext > 24) { let hi = -1, hk = 0; for (let q = 0; q < 4; q++) if (this.S[q].k > hk) { hk = this.S[q].k; hi = q; }
-          ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(dx0 - 1, dy0 + 8, 1, dh - 16);
-          if (hi >= 0) { ctx.save(); ctx.beginPath(); ctx.rect(bx + 8, dy0, ext - 14, dh); ctx.clip(); ctx.globalAlpha = (1 - fo) * smooth(clamp((hk - .3) / .7, 0, 1)); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-            // a little pixel face for the page: Home smiles, Freediving holds its breath with bubbles, Sound sings, Journal thinks
-            const fp = 3, fx = Math.round(bx + 4 + (ext - 8 - 12 * fp) / 2), fy = dy0 + 8, on = FACE(hi, t); ctx.fillStyle = LAB[hi];
-            const ga = ctx.globalAlpha; ctx.globalAlpha = ga * .08; for (let r = 0; r < 10; r++) for (let q = 0; q < 12; q++) ctx.fillRect(fx + q * fp, fy + r * fp, fp - .6, fp - .6);
-            ctx.globalAlpha = ga; on.forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .6, fp - .6)); ctx.restore(); } }
-        ctx.save(); ctx.beginPath(); ctx.rect(dx0 + 8, dy0, room, dh); ctx.clip(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-        if (c) { const pos = this.posOf(), ttl = c.tr.title.toUpperCase(); ctx.font = "500 11px 'JetBrains Mono', monospace"; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; if (cy) { ctx.shadowColor = NEON_C; ctx.shadowBlur = 6; } const tw = ctx.measureText(ttl).width;
-          if (tw <= room) ctx.fillText(ttl, dx0 + 8, dy0 + 15); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, dx0 + 8 - o, dy0 + 15); ctx.fillText(ttl, dx0 + 8 - o + L, dy0 + 15); }
-          ctx.shadowBlur = 0; ctx.font = "400 9.5px 'JetBrains Mono', monospace"; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText(fmtDur(pos) + ' / ' + fmtDur(c.tr.dur) + (c.paused ? '  PAUSED' : ''), dx0 + 8, dy0 + 30);
-          ctx.fillStyle = cy ? 'rgba(0,229,255,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(dx0 + 8, dy0 + 38, room, 1.5); ctx.fillStyle = cy ? NEON_M : KINDS[c.tr.kind].cs; if (cy) { ctx.shadowColor = NEON_M; ctx.shadowBlur = 6; } ctx.fillRect(dx0 + 8, dy0 + 38, room * clamp(pos / c.tr.dur, 0, 1), 1.5); }
-        else { ctx.font = "400 9.5px 'JetBrains Mono', monospace"; ctx.fillStyle = PM; ctx.fillText('STANDBY', dx0 + 8, dy0 + dh / 2); }
-        if (cy) { ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(0,0,0,.35)'; for (let sy2 = dy0 + 1; sy2 < dy0 + dh; sy2 += 2) ctx.fillRect(bx, sy2, px1 - 12 - bx, 1); }
-        ctx.restore(); }
-      if (md === 'scope') { const sx0 = X(0) - 12, sx1 = W + SX - 12; ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#05080a'; rrect(sx0, ya - 6, sx1 - sx0, yb - ya + 12, 4); ctx.fill();
-        ctx.fillStyle = 'rgba(150,220,200,.07)'; for (let i = 0; i < 7; i++) ctx.fillRect(X(i) - .5, ya - 6, 1, yb - ya + 12); for (let y = ya + 24; y < yb; y += 30) ctx.fillRect(sx0, y, sx1 - sx0, 1); }
-      ctx.font = "500 9px 'JetBrains Mono', monospace"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for (let i = 0; i < 7; i++) { const xs = X(i), S = this.S[i];
-        if (md !== 'cable' && md !== 'scope') { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.4)'; rrect(xs - 3, ya, 6, yb - ya, 3); ctx.fill(); }
-        ctx.globalAlpha = (1 - fo) * .75; ctx.fillStyle = PM; ctx.fillText(pad2(i + 1), xs, ya - 14);
-        // two knobs per channel; a hovered channel's knobs turn up, Sound's twitch with the level
-        [84, 120].forEach((ky, r) => { const base = -2.3 + 4.6 * rng(i * 31 + r * 7 + 3)(), ang = base + (i === 2 ? .35 * live * Math.sin(t * 9 + r) : .9 * easeIO(clamp(S.k, 0, 1)));
-          ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(xs, ky + 1, 7.2, 0, TAU); ctx.fill();
-          ctx.fillStyle = cy ? '#1d1828' : '#2f363d'; ctx.beginPath(); ctx.arc(xs, ky, 6.6, 0, TAU); ctx.fill();
-          if (cy) { ctx.strokeStyle = r ? NEON_M : NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.lineWidth = 1.2; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 5; ctx.beginPath(); ctx.arc(xs, ky, 8.8, -Math.PI / 2 - 2.3, -Math.PI / 2 + ang); ctx.stroke(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1 - fo; } ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(xs, ky, 6.1, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
-          ctx.strokeStyle = i < 4 ? cols[i] : PM; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(xs + Math.sin(ang) * 1.5, ky - Math.cos(ang) * 1.5); ctx.lineTo(xs + Math.sin(ang) * 5.4, ky - Math.cos(ang) * 5.4); ctx.stroke(); ctx.lineCap = 'butt'; });
-        // no LED under the fader: the colour lives in the fader cap's stripe, which the menu dots squash into
-      }
-      // an open channel lights a small meter window in the gap between its knobs and the next channel's
-      for (let i = 0; i < 4; i++) { if (open[i] < 24) continue; const S = this.S[i], xs = X(i), ka = smooth(clamp((clamp(S.k, 0, 1) - .3) / .7, 0, 1)) * (1 - fo); if (ka <= .01) continue;
-        const x0 = xs + 14, x1 = xs + SP + open[i] - 14, w = x1 - x0; ctx.globalAlpha = ka; ctx.fillStyle = '#0b0e11'; rrect(x0, 70, w, 64, 3); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rrect(x0 + .5, 70.5, w - 1, 63, 2.5); ctx.stroke();
-        const nSeg = Math.floor((w - 12) / 6); if (nSeg < 2) continue;
-        [84, 120].forEach((ky, r) => { const nz = rng(((t * 12) | 0) * 13 + i * 5 + r)(), lv = live ? clamp(live * (1.15 - .12 * r) + .06 * (nz - .5), 0, 1) : 0;
-          for (let q = 0; q < nSeg; q++) { const on = (q + 1) / nSeg <= lv * ka; ctx.globalAlpha = ka * (on ? 1 : .1); ctx.fillStyle = on && q >= nSeg - 2 ? '#f4f6f7' : LAB[i]; ctx.fillRect(x0 + 6 + q * 6, ky - 5, 4, 10); } }); }
-      ctx.globalAlpha = 1 - fo; const bx0 = X(0) - 10, bw = W + SX - 14 - bx0;
-      [ya - 2, yb - 1].forEach((by, q) => { ctx.fillStyle = cy ? '#241d33' : '#3b444c'; ctx.fillRect(bx0, by, bw, 3); ctx.fillStyle = cy ? (q ? NEON_M : NEON_C) : 'rgba(255,255,255,.14)'; if (cy) { ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8; } ctx.fillRect(bx0, by, bw, 1); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; });
-      ctx.restore(); ctx.font = lf;
-    }
-    for (let i = 0; i < 7; i++) { const S = this.S[i], wv = S.wv, xs = X(i), since = t - S.tp, pc = wv ? S.yp0 + wv.dir * wv.v * since : 0, aT = wv && since < (H + 2 * wv.half) / wv.v ? Math.exp(-.5 * since) : 0;
-      // each touch picks a fresh hard-edged wave: saw, square, triangle, heartbeat or stepped noise, running along the string round the pointer
-      const shape = ph => { const u = ph - Math.floor(ph); switch (wv.type) { case 0: return 2 * u - 1; case 1: return u < .5 ? 1 : -1; case 2: return 1 - 4 * Math.abs(u - .5);
-        case 3: return u < .08 ? u / .08 * .25 : u < .12 ? .25 - (u - .08) / .04 * 1.4 : u < .17 ? -1.15 + (u - .12) / .05 * 2.15 : u < .22 ? 1 - (u - .17) / .05 * 1.2 : u < .3 ? -.2 + (u - .22) / .08 * .2 : 0;
-        default: return rng(wv.seed + Math.floor(ph * 3))() * 2 - 1; } };
-      const dxAt = y => { let d = 0; if (aT > .002 && Math.abs(y - pc) < wv.half) d += wv.amp * aT * (.5 + .5 * Math.cos(Math.PI * (y - pc) / wv.half)) * shape((y - pc) / wv.per + .5);
-        if (md === 'scope' && i === 2 && live && this.anBuf) { const q = clamp((y - ya) / (yb - ya), 0, 1); d += this.anBuf[Math.floor(q * 511)] * 40 * Math.sin(Math.PI * q); }
-        if (i === 2) d += (live * 3.5 * Math.sin(t * 46 + y * .015) + (t < 1.4 ? 4 * Math.exp(-3 * t) * Math.sin(t * 38) : 0)) * Math.sin(Math.PI * clamp((y - ya) / (yb - ya), 0, 1)); return d; };
-      const alpha = (i === 2 ? 1 : 1 - .82 * pf) * (1 - fo) * (i > 3 ? .7 : 1);
-      const trace = w => { ctx.beginPath(); let y = ya; ctx.moveTo(xs + dxAt(ya), ya); while (y < yb) { y = Math.min(yb, y + (aT > .002 && Math.abs(y - pc) < wv.half + 12 ? 2 : (md === 'scope' && i === 2 && live ? 3 : 10))); ctx.lineTo(xs + dxAt(y), y); } ctx.lineWidth = w; ctx.stroke(); };
-      const kk = clamp(S.k, 0, 1), big = i < 4; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt'; ctx.strokeStyle = cols[i]; ctx.fillStyle = cols[i];
-      if (md === 'fader') {
-        // a fader: thin track, lit below the cap; the cap rests at its own level, rides the music on Sound, and follows the pointer on hover
-        // caps start at the bottom, follow the pointer while hovered and stay where they were left
-        // faders keep their colour while a piece plays (the other strings dim towards Sound; these don't)
-        const alpha = (1 - fo) * (i > 3 ? .7 : 1);
-        const lo = ya + 14, hi = yb - 14; if (S.on) S.hold = clamp(S.ly, lo, hi); S.hold = clamp(S.hold ?? hi, lo, hi);
-        const tgt = S.hold; S.cy = S.cy == null ? hi : S.cy + (tgt - S.cy) * Math.min(1, dt * 10);
-        if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 10; q++) ctx.fillRect(xs - 9, ya + 10 + (yb - ya - 20) * q / 10, q % 5 ? 2 : 4, 1); ctx.fillStyle = cols[i]; }
-        ctx.globalAlpha = alpha * .22; ctx.fillRect(xs - .75, ya, 1.5, yb - ya);
-        ctx.globalAlpha = alpha * (.35 + .65 * Math.max(kk, i === 2 ? .75 : 0)); ctx.fillRect(xs - 1, S.cy, 2, yb - S.cy);
-        const cw = big ? 16 : 12, ch = big ? 26 : 20, cg = ctx.createLinearGradient(0, S.cy - ch / 2, 0, S.cy + ch / 2); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
-        ctx.globalAlpha = Math.max(alpha, .5) * (1 - fo); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(xs - cw / 2, S.cy - ch / 2, cw, ch); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-        ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(xs - cw / 2 + 2, S.cy - ch / 2 + 4, cw - 4, 1); ctx.fillRect(xs - cw / 2 + 2, S.cy + ch / 2 - 5, cw - 4, 1);
-        ctx.fillStyle = cols[i]; if (look === 'stark' && (this.props.cyber ?? true)) { ctx.shadowColor = cols[i]; ctx.shadowBlur = 8; } ctx.fillRect(xs - cw / 2 + 1, S.cy - 1, cw - 2, 2); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-      } else if (md === 'led') {
-        // a column of square LEDs: the touch wave lights them as it passes; Sound fills from the bottom with the level
-        const sz = big ? 5 : 4;
-        for (let y = ya + 2; y < yb - 2; y += 8) { const q = (y - ya) / (yb - ya); let b = Math.min(1, Math.abs(dxAt(y)) / 5); if (i === 2 && live && 1 - q < live * .95) b = 1; b = Math.max(b, kk * .3);
-          ctx.globalAlpha = alpha * (.1 + .9 * b); ctx.fillRect(xs - sz / 2, y, sz, sz); if (b > .5) { ctx.globalAlpha = alpha * .2 * b; ctx.fillRect(xs - sz / 2 - 2, y - 2, sz + 4, sz + 4); } }
-      } else if (md === 'cable') {
-        // a patch cable between a jack at the top and one at the bottom, slack bowing it sideways; touching it sets it swinging
-        const bow = [5, -4, 6, -5, 4, -6, 5][i] + S.th * 120, w = big ? 5 : 4, y0 = ya + 20, y1 = yb - 20;
-        const cx = y => { const u = clamp((y - y0) / (y1 - y0), 0, 1); return xs + bow * Math.sin(Math.PI * u) + (i === 2 ? live * 2.5 * Math.sin(t * 30 + y * .02) * Math.sin(Math.PI * u) : 0); };
-        [[ya, 1], [yb, -1]].forEach(([jy, s]) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#3b444c'; ctx.beginPath(); ctx.arc(xs, jy, 7, 0, TAU); ctx.fill(); ctx.fillStyle = '#0b0e11'; ctx.beginPath(); ctx.arc(xs, jy, 4.5, 0, TAU); ctx.fill();
-          ctx.globalAlpha = alpha; ctx.fillStyle = '#9ba4ac'; ctx.fillRect(xs - 3, s > 0 ? jy - 2 : jy - 12, 6, 14); ctx.fillStyle = cols[i]; ctx.fillRect(xs - 4, s > 0 ? jy + 10 : jy - 20, 8, 10); });
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        [['rgba(0,0,0,.45)', w + 3, 2], [cols[i], w, 0], ['rgba(255,255,255,.28)', 1, -1.2]].forEach(([c, lw, ox]) => { ctx.globalAlpha = alpha; ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(cx(y0) + ox, y0); for (let y = y0 + 8; y <= y1; y += 8) ctx.lineTo(cx(y) + ox, y); ctx.lineTo(cx(y1) + ox, y1); ctx.stroke(); });
-        ctx.lineCap = 'butt';
-      } else if (md === 'scope') {
-        // a phosphor trace: a wide soft pass for the glow and a fine bright one on top; Sound draws the live waveform
-        ctx.lineJoin = 'round'; ctx.globalAlpha = alpha * .22; trace(big ? 7 : 5); ctx.globalAlpha = alpha * .45; trace(big ? 3 : 2.2); ctx.globalAlpha = alpha; trace(big ? 1.4 : 1.1);
-      } else { ctx.globalAlpha = alpha; trace(big ? 3 : 2); }
-      if (i < 4 && open[i] > 1) { const k = clamp(S.k, 0, 1); ctx.globalAlpha = (1 - fo) * smooth(clamp((k - .45) / .55, 0, 1)); ctx.fillStyle = LAB[i]; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(nm(i), xs + (SP + open[i]) / 2, clamp(S.ly, ya + 24, yb - 24)); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; } }
-    // arriving / leaving, each string is a dot: arriving, the dots fly in from where the last page left them and settle on the fader caps;
+    const SY = slide * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
+    const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+    const glow = (c, b) => { if (cy) { ctx.shadowColor = c; ctx.shadowBlur = b; } }, noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
+    const c = this.cur, playing = !!c && !c.paused, pos = this.posOf(), u = c ? clamp(pos / c.tr.dur, 0, 1) : 0, kc = c ? KINDS[c.tr.kind].cs : PM;
+    for (let i = 0; i < 7; i++) { const S = this.S[i]; S.k += ((this.padHov === i ? 1 : 0) - S.k) * Math.min(1, dt * 8); }
+    ctx.save(); ctx.translate(0, SY); ctx.globalAlpha = 1 - foFace;
+    // the body: a dark controller with a neon seam round it
+    const face = ctx.createLinearGradient(0, G.y0, 0, G.y1); face.addColorStop(0, cy ? '#151020' : '#1b1b1b'); face.addColorStop(1, cy ? '#08070d' : '#0c0c0c');
+    ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10; ctx.fillStyle = face; rr(G.x0, G.y0, G.w, G.h, 16); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
+    if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10); rr(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1, 16); ctx.stroke(); noGlow();
+      ctx.save(); rr(G.x0, G.y0, G.w, G.h, 16); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.045)'; for (let gy = G.y0 + 8; gy < G.y1; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
+    else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1, 16); ctx.stroke(); }
+    ctx.globalAlpha = 1 - fo;
+    // the jog wheel: turns with the record while a piece plays and under the hand while dragged; the ring round it is how far the piece has got
+    const [jx, jy, jr] = G.jog; if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
+    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(jx, jy, jr + 7, 0, TAU); ctx.stroke();
+    if (c) { ctx.strokeStyle = cy ? NEON_M : kc; glow(NEON_M, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 7, -Math.PI / 2, -Math.PI / 2 + u * TAU); ctx.stroke(); noGlow(); }
+    ctx.fillStyle = '#2a2e33'; ctx.beginPath(); ctx.arc(jx, jy, jr, 0, TAU); ctx.fill();
+    const rim = ctx.createLinearGradient(jx - jr, jy - jr, jx + jr, jy + jr); rim.addColorStop(0, '#737b83'); rim.addColorStop(.5, '#2b3036'); rim.addColorStop(1, '#5c636a'); ctx.strokeStyle = rim; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(jx, jy, jr - 2.5, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#101214'; ctx.beginPath(); ctx.arc(jx, jy, jr * .84, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1; for (let q = .38; q < .82; q += .055) { ctx.beginPath(); ctx.arc(jx, jy, jr * q, 0, TAU); ctx.stroke(); }
+    ctx.save(); ctx.translate(jx, jy); ctx.rotate(this.jogA || 0); ctx.fillStyle = 'rgba(255,255,255,.055)';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .84, -.35, .35); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .84, Math.PI - .25, Math.PI + .25); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -jr * .42); ctx.lineTo(0, -jr * .8); ctx.stroke(); ctx.lineCap = 'butt'; ctx.restore();
+    ctx.fillStyle = c ? kc : '#2f343a'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.fillStyle = '#0c0c0c'; ctx.beginPath(); ctx.arc(jx, jy, 3, 0, TAU); ctx.fill();
+    if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .86, 0, TAU); ctx.stroke(); noGlow(); }
+    // cue and play / pause
+    const btn = ([bx, by, br], col, lit, hov, icon) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = hov ? '#2a2f34' : '#1f2327'; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.globalAlpha = (1 - fo) * (lit ? 1 : hov ? .85 : .5); if (lit) glow(col, 12); ctx.beginPath(); ctx.arc(bx, by, br - 1, 0, TAU); ctx.stroke(); noGlow();
+      ctx.fillStyle = lit ? col : '#cfd3d6'; ctx.globalAlpha = 1 - fo; icon(bx, by); };
+    btn(G.cue, 'rgb(255,170,40)', !!c && c.paused, this.btnHov === 'cue', (bx, by) => { ctx.font = '600 8.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CUE', bx, by + .5); });
+    btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { if (playing) { ctx.fillRect(bx - 5, by - 6, 3.5, 12); ctx.fillRect(bx + 1.5, by - 6, 3.5, 12); } else { ctx.beginPath(); ctx.moveTo(bx - 4, by - 7); ctx.lineTo(bx + 7, by); ctx.lineTo(bx - 4, by + 7); ctx.closePath(); ctx.fill(); } });
+    // the screen: the playing piece (scrolling if long), its time and progress; pointing at a pad shows that page's little pixel face instead
+    { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 3); ctx.fill(); ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 2.5); ctx.stroke();
+      ctx.save(); rr(sx, sy, sw, sh, 3); ctx.clip(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      const hp = this.padHov != null && this.padHov < 4 ? this.padHov : -1, hk = hp >= 0 ? clamp(this.S[hp].k, 0, 1) : 0;
+      if (hk > .02) { ctx.globalAlpha = (1 - fo) * hk; const fp = 2.4, fx = sx + 10, fy = sy + (sh - 10 * fp) / 2; ctx.fillStyle = LAB[hp];
+        FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); ctx.font = '400 10px Michroma, sans-serif'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + sh / 2 + .5); }
+      ctx.globalAlpha = (1 - fo) * (1 - hk); const tx = sx + 10, room = sw - 20;
+      if (c) { const ttl = c.tr.title.toUpperCase(), tm = fmtDur(pos) + ' / ' + fmtDur(c.tr.dur) + (c.paused ? '  PAUSED' : ''); ctx.font = '400 9.5px ' + mono; const tmw = ctx.measureText(tm).width;
+        ctx.fillStyle = cy ? NEON_M : PM; ctx.textAlign = 'right'; ctx.fillText(tm, sx + sw - 10, sy + 13); ctx.textAlign = 'left';
+        ctx.font = '500 11px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const tw = ctx.measureText(ttl).width, troom = room - tmw - 16;
+        ctx.save(); ctx.beginPath(); ctx.rect(tx, sy, troom, sh); ctx.clip(); if (tw <= troom) ctx.fillText(ttl, tx, sy + 13); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, tx - o, sy + 13); ctx.fillText(ttl, tx - o + L, sy + 13); } ctx.restore(); noGlow();
+        ctx.fillStyle = cy ? 'rgba(0,229,255,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(tx, sy + 25, room, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(tx, sy + 25, room * u, 1.5); noGlow(); }
+      else { ctx.font = '400 9.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('STANDBY  ·  PRESS ▶ OR PICK A PIECE', tx, sy + sh / 2); }
+      if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.35)'; for (let sy2 = sy + 1; sy2 < sy + sh; sy2 += 2) ctx.fillRect(sx, sy2, sw, 1); }
+      ctx.restore(); ctx.globalAlpha = 1 - fo; }
+    // a knob and a fader per channel. The menu dots land on the fader caps; Sound's fader is the volume and its knob twitches with the level
+    const lo = G.lo, hi = G.hi;
+    ctx.font = '500 8px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 7; i++) { const S = this.S[i], xs = G.faders[i], big = i < 4, ky = G.knobY;
+      const base = -2.3 + 4.6 * rng(i * 31 + 3)(), ang = base + (i === 2 ? .35 * live * Math.sin(t * 9) : .9 * easeIO(clamp(S.k, 0, 1)));
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(xs, ky + 1, 7.2, 0, TAU); ctx.fill(); ctx.fillStyle = cy ? '#1d1828' : '#2f363d'; ctx.beginPath(); ctx.arc(xs, ky, 6.6, 0, TAU); ctx.fill();
+      if (cy) { ctx.strokeStyle = i % 2 ? NEON_M : NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.lineWidth = 1.2; glow(ctx.strokeStyle, 5); ctx.beginPath(); ctx.arc(xs, ky, 8.8, -Math.PI / 2 - 2.3, -Math.PI / 2 + ang); ctx.stroke(); noGlow(); ctx.globalAlpha = 1 - fo; }
+      ctx.strokeStyle = i < 4 ? cols[i] : PM; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(xs + Math.sin(ang) * 1.5, ky - Math.cos(ang) * 1.5); ctx.lineTo(xs + Math.sin(ang) * 5.4, ky - Math.cos(ang) * 5.4); ctx.stroke(); ctx.lineCap = 'butt';
+      // the fader: slot, scale, lit below the cap, the cap with its coloured stripe
+      S.hold = clamp(S.hold ?? (i === 2 ? lo + (hi - lo) * .15 : hi), lo, hi); S.cy = S.cy == null ? hi : S.cy + (S.hold - S.cy) * Math.min(1, dt * (S.drag ? 30 : 10));
+      const alpha = (1 - fo) * (i > 3 ? .7 : 1);
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(xs - 3, G.fy0, 6, G.fy1 - G.fy0, 3); ctx.fill();
+      if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 8; q++) ctx.fillRect(xs - 10, lo + (hi - lo) * q / 8, q % 4 ? 2 : 4, 1); }
+      ctx.fillStyle = cols[i]; ctx.globalAlpha = alpha * .22; ctx.fillRect(xs - .75, G.fy0, 1.5, G.fy1 - G.fy0);
+      ctx.globalAlpha = alpha * (.35 + .65 * Math.max(clamp(S.k, 0, 1), i === 2 ? .75 : 0)); ctx.fillRect(xs - 1, S.cy, 2, G.fy1 - S.cy);
+      const cw = big ? 18 : 14, ch = big ? 22 : 18, cg = ctx.createLinearGradient(0, S.cy - ch / 2, 0, S.cy + ch / 2); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
+      ctx.globalAlpha = Math.max(alpha, .5) * (1 - fo); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(xs - cw / 2, S.cy - ch / 2, cw, ch); noGlow(); ctx.shadowOffsetY = 0;
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(xs - cw / 2 + 2, S.cy - ch / 2 + 3, cw - 4, 1); ctx.fillRect(xs - cw / 2 + 2, S.cy + ch / 2 - 4, cw - 4, 1);
+      ctx.fillStyle = cols[i]; glow(cols[i], 8); ctx.fillRect(xs - cw / 2 + 1, S.cy - 1, cw - 2, 2); noGlow(); }
+    this.volume = clamp(1 - (this.S[2].hold - lo) / (hi - lo), 0, 1);
+    // the page pads: always labelled, lit in their page's colour; Sound's stays lit, the others light up under the pointer
+    ctx.font = (W < 760 ? '400 7.5px' : '400 8.5px') + ' Michroma, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    G.pads.forEach(([px, py, pw, ph], i) => { const lit = Math.max(i === 2 ? 1 : 0, clamp(this.S[i].k, 0, 1)), col = cols[i];
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#22262b'; rr(px, py, pw, ph, 5); ctx.fill();
+      ctx.globalAlpha = (1 - fo) * (.16 + .74 * lit); ctx.fillStyle = col; if (lit > .3) glow(col, 14 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 4); ctx.fill(); noGlow();
+      ctx.globalAlpha = 1 - fo; ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 5); ctx.stroke();
+      ctx.fillStyle = lit > .5 ? '#0c0c0c' : LAB[i]; ctx.fillText(names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
+    ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
+    // arriving / leaving, each channel is a dot: arriving, the dots fly in from where the last page left them and settle on the fader caps;
     // leaving, the caps turn back into dots (and for Freediving they fly up into that page's menu)
-    const KEYS = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'], OFF = { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 };
-    const bz = (P0, P1, C1, C2, u) => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * P0[0] + b * C1[0] + c * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c * C2[1] + d * P1[1]]; };
+    const OFF = { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 };
+    const bz = (P0, P1, C1, C2, u2) => { const a = (1 - u2) ** 3, b = 3 * (1 - u2) ** 2 * u2, c2 = 3 * (1 - u2) * u2 * u2, d = u2 ** 3; return [a * P0[0] + b * C1[0] + c2 * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c2 * C2[1] + d * P1[1]]; };
     this.dotPos = {};
-    if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const S = this.S[i], k = KEYS[i], cap = [X(i) - SX, md === 'fader' && S.cy != null ? S.cy : yb - 14]; let p = cap, a = A ? 1 - smooth(clamp((t - 1.3) / .4, 0, 1)) : 1 - asm;
-      // with faders, each dot squashes into its cap's coloured stripe as it lands (and leaving, the stripe rounds back into the dot), so it stays solid throughout
-      const fm = md === 'fader' ? (A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm) : 0; if (md === 'fader') a = 1;
-      if (A) { const f = A.nf[k] || (k === 'home' && A.nf.ink); if (f) p = A.nf.low ? bz(f, cap, [f[0], f[1] + (cap[1] - f[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f, cap, [f[0] - 120, f[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
+    if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const S = this.S[i], k = DECK_KEYS[i], cap = [G.faders[i], S.cy ?? hi]; let p = cap, a = 1;
+      // each dot squashes into its cap's coloured stripe as it lands (and leaving, the stripe rounds back into the dot), so it stays solid throughout
+      const fm = A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm;
+      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) p = A.nf.low ? bz(f2, cap, [f2[0], f2[1] + (cap[1] - f2[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f2, cap, [f2[0] - 120, f2[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
       if (O && O.k === 'dive') { const D = [W - 316 + OFF[k], 28]; p = bz(cap, D, [cap[0] - 80, cap[1] - 200], [D[0] - 40, D[1] + 160], easeIO(clamp((O.t - .85 - i * .05) / .9, 0, 1))); }
       this.dotPos[k] = p; if (a <= .01) continue;
       const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
-      const r0 = i < 4 ? 8 : 5.5, sw = (i < 4 ? 16 : 12) - 2, dw = 2 * r0 + (sw - 2 * r0) * fm, dh = 2 * r0 + (2 - 2 * r0) * fm;
-      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && look === 'stark' && (this.props.cyber ?? true)) { ctx.shadowColor = c0; ctx.shadowBlur = 8 * fm; }
-      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, dh / 2); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+      const r0 = i < 4 ? 8 : 5.5, sw = (i < 4 ? 18 : 14) - 2, dw = 2 * r0 + (sw - 2 * r0) * fm, dh = 2 * r0 + (2 - 2 * r0) * fm;
+      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && cy) { ctx.shadowColor = c0; ctx.shadowBlur = 8 * fm; }
+      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, dh / 2); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); noGlow(); }
     ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
   // ---- layout
   // the wave lies flat across the middle of the page and opens up and down while a piece plays
-  geom(W, H) { const m = clamp(W * .05, 26, 56), amp = Math.min(H * .3, 260); return { m, amp, yB: Math.round(H / 2) }; }
+  geom(W, H) { const top = deckGeo(W, H).y0 - 8, m = clamp(W * .05, 26, 56), amp = Math.min(top * .32, 260); return { m, amp, yB: Math.round(top / 2) }; }
   segsOf(ai, W, m) { const tr = this.albums[ai].tracks, gap = W < 700 ? 16 : 28, avail = W - m - 140 - gap * (tr.length - 1), wt = tr.map(t => Math.pow(t.dur, .6)), sw = wt.reduce((a, b) => a + b, 0); let x = m;
     return tr.map((t, k) => { const w = avail * wt[k] / sw, s = { tr: t, x0: x, x1: x + w }; x += w + gap; return s; }); }
   // the many style's pieces: for every column, FK slots above the baseline and FK below, each its own shape, size, tilt, colour and depth
@@ -355,7 +323,7 @@ class Component extends DCLogic {
     const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1), look = this.look, TH = THEMES[look];
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); this.grainP = null; }
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.filter = 'none';
-    const t = this.t, fo = this.out ? smooth(clamp(this.out.t / .45, 0, 1)) : 0, { m, amp, yB } = this.geom(W, H), Wv = (this.props.deck ?? true) ? W - 194 : W, cyber = look === 'stark' && (this.props.cyber ?? true);
+    const t = this.t, fo = this.out ? smooth(clamp(this.out.t / .45, 0, 1)) : 0, { m, amp, yB } = this.geom(W, H), Wv = W, cyber = look === 'stark' && (this.props.cyber ?? true);
     const al = this.albums[this.state.album], c = this.cur, pos = this.posOf(), segs = this.strip ? this.segsOf(this.state.album, W, m) : null, hov = this.state.hover, hovTr = hov ? this.trById(hov) : null;
     let playX = null;
     if (c) { const u = pos / c.tr.dur; if (!this.strip) playX = u * Wv; else { const sg = segs.find(q => q.tr.id === c.tr.id); if (sg) playX = sg.x0 + u * (sg.x1 - sg.x0); } }
@@ -464,7 +432,7 @@ class Component extends DCLogic {
     // handing over to / from Home and Freediving: their paper ground comes in under the panel
     const pap = this.arr ? 1 - smooth(clamp((t - .2) / 1, 0, 1)) : this.out && this.out.k !== 'other' ? smooth(clamp((this.out.t - .25) / .7, 0, 1)) : 0;
     if (pap > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = pap; ctx.fillStyle = '#f5f3ee'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-    this.drawStrings(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
+    this.drawDeck(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
     const ta = (this.arr ? (t >= 1.7 ? 1 : 0) : smooth(clamp((t - 1.4) / .8, 0, 1))) * (1 - fo), el = this.contentRef.current;
     if (el) { el.style.opacity = (ta * (1 - this.pf)).toFixed(3); el.style.pointerEvents = this.pf > .5 ? 'none' : ''; el.style.transform = 'translateY(' + ((1 - ta) * (this.arr ? 0 : 8)).toFixed(1) + 'px)'; this.typeIn(t); }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
@@ -493,20 +461,20 @@ class Component extends DCLogic {
       downList: this.albums.slice(album + 1).map((a, k) => ({ num: pad2(album + k + 2), title: a.title, go: this.goAlbum(album + k + 1) })),
       upNum: album > 0 ? pad2(album) : '', upTitle: album > 0 ? this.albums[album - 1].title : '',
       downNum: album < n - 1 ? pad2(album + 2) : '', downTitle: album < n - 1 ? this.albums[album + 1].title : '',
-      panelW: (this.props.deck ?? true) ? '194px' : '0px',
+      // the space the deck takes at the bottom; albums are this much shorter than the screen
+      ch: 'calc(100vh - ' + (H - deckGeo(W, H).y0 + 8) + 'px)',
       isList: !this.strip, isStrip: this.strip, albums, cur: albums[album], segs,
-      albumY: 'translateY(' + (-album * 100) + 'vh)', titleY: 'translateY(' + (-album * 1.02) + 'em)',
+      albumY: 'translateY(calc(' + (-album) + ' * (100vh - ' + (H - deckGeo(W, H).y0 + 8) + 'px)))', titleY: 'translateY(' + (-album * 1.02) + 'em)',
       prevName: album > 0 ? '↑ ' + this.albums[album - 1].title : '', prevOp: album > 0 ? 1 : 0, prevPe: album > 0 ? 'auto' : 'none',
       nextName: album < n - 1 ? '↓ ' + this.albums[album + 1].title : '', nextOp: album < n - 1 ? 1 : 0, nextPe: album < n - 1 ? 'auto' : 'none',
       goPrev: this.goAlbum(album - 1), goNext: this.goAlbum(album + 1),
       canvasRef: this.canvasRef, contentRef: this.contentRef, goHome: this.goHome,
       navOff: () => this.setState({ navHov: null }),
-      isPlaying: !!playing && !paused, pauseAll: e => { if (this.recentScrub() || this.inBand(e.clientX, e.clientY, e.target)) return; this.toggle(); },
-      scrubDown: this.scrubDown, bgLeave: () => { this.hx = null; },
-      // while paused, a click on empty ground (not a label, list, button or link) resumes
-      rootRef: this.rootRef, bgMove: e => this.setCursor(e.target, e.clientX, e.clientY),
-      bgClick: e => { if (!this.cur || !this.cur.paused || this.recentScrub() || this.inBand(e.clientX, e.clientY, e.target)) return; const el = e.target; if (el && el.closest && el.closest('button,a,ol,h2,p,[data-navk]')) return; this.toggle(); },
-      str: Object.fromEntries(['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].map((k, i) => [k, { on: e => this.strOn(i, e), move: e => this.strMove(i, e), off: () => this.strOff(i), go: this.GO[k] }]))
+      rootRef: this.rootRef,
+      // the deck's controls
+      deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
+        btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; }, fader: [0, 1, 2, 3, 4, 5, 6].map(i => this.faderDown(i)) },
+      pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
   }
 }
@@ -515,20 +483,20 @@ function View(v) {
   return (
     <>
     {"\n    "}
-    <div ref={v.rootRef} onClick={v.bgClick} onMouseMove={v.bgMove} onMouseDown={v.scrubDown} onMouseLeave={v.bgLeave} style={sty(`position:fixed;inset:0;overflow:hidden;color:${v.th?.ink ?? ''};background:${v.th?.bg ?? ''};font-family:${v.th?.body ?? ''};-webkit-font-smoothing:antialiased`)}>
+    <div ref={v.rootRef} style={sty(`--ch:${v.ch ?? '100vh'};position:fixed;inset:0;overflow:hidden;color:${v.th?.ink ?? ''};background:${v.th?.bg ?? ''};font-family:${v.th?.body ?? ''};-webkit-font-smoothing:antialiased`)}>
       {"\n      \n  \n      "}
       <canvas ref={v.canvasRef} style={sty("position:absolute;inset:0;width:100%;height:100%;pointer-events:none")} />
       {"\n      \n  \n      \n      "}
-      <div ref={v.contentRef} style={sty("position:absolute;inset:0;overflow:hidden;opacity:0")}>
+      <div ref={v.contentRef} style={sty("position:absolute;left:0;right:0;top:0;height:var(--ch);overflow:hidden;opacity:0")}>
         {"\n        "}
         <div style={sty(`position:absolute;left:0;right:0;top:0;transform:${v.albumY ?? ''};transition:transform .9s cubic-bezier(.65,0,.2,1)`)}>
           {"\n          "}
           {(v.albums || []).map((al, $index) => (
             <React.Fragment key={$index}>
               {"\n            "}
-              <section aria-label={al?.title} style={sty("position:relative;height:100vh")}>
+              <section aria-label={al?.title} style={sty("position:relative;height:var(--ch)")}>
                 {"\n              "}
-                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);right:214px;bottom:calc(50% + 30px);display:flex;flex-direction:column;align-items:flex-start;gap:clamp(8px, 1.6vh, 14px)")}>
+                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);right:40px;bottom:calc(50% + 30px);display:flex;flex-direction:column;align-items:flex-start;gap:clamp(8px, 1.6vh, 14px)")}>
                   {"\n                "}
                   <p style={sty(`margin:0;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${v.th?.muted ?? ''};background:${v.th?.labBg ?? ''};padding:${v.th?.chipPad ?? ''};border-radius:3px`)}>
                     {al?.meta}
@@ -540,7 +508,7 @@ function View(v) {
                   {"\n              "}
                 </div>
                 {"\n              "}
-                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);top:calc(50% + 30px);width:min(820px, max(280px, calc(100% - clamp(26px, 5vw, 56px) - 366px)));display:flex;flex-direction:column;align-items:flex-start;gap:12px")}>
+                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);top:calc(50% + 30px);width:min(820px, max(280px, calc(100% - clamp(26px, 5vw, 56px) - 196px)));display:flex;flex-direction:column;align-items:flex-start;gap:12px")}>
                   {"\n                "}
                   <ol style={sty(`list-style:none;margin:0;width:100%;box-sizing:border-box;background:${v.th?.listBg ?? ''};padding:${v.th?.listPad ?? ''};border-radius:${v.th?.listRad ?? ''};display:flex;flex-direction:column;border-top:1px solid color-mix(in srgb, currentColor 18%, transparent)`)}>
                     {"\n                "}
@@ -641,44 +609,25 @@ function View(v) {
       </div>
       {"\n      \n      \n      \n  \n      "}
       <div role="navigation" aria-label="Pages" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
-        {"\n        "}
-        <a href={BASE + "?from=dive"} onClick={v.goHome} aria-label="Home" data-navk="home" onMouseEnter={v.str?.home?.on} onMouseMove={v.str?.home?.move} onMouseLeave={v.str?.home?.off} onFocus={v.str?.home?.on} onBlur={v.str?.home?.off} style={sty("position:absolute;top:0;bottom:0;right:121px;width:18px;display:block;pointer-events:auto;cursor:pointer")}>
+        <a href={BASE + "?from=dive"} onClick={v.pad?.home?.go} aria-label="Home" data-navk="home" onMouseEnter={v.pad?.home?.on} onMouseLeave={v.pad?.home?.off} onFocus={v.pad?.home?.on} onBlur={v.pad?.home?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
           <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
         </a>
-        {"\n        "}
-        <a href={BASE + "freediving/"} onClick={v.str?.freediving?.go} aria-label="Freediving" data-navk="freediving" onMouseEnter={v.str?.freediving?.on} onMouseMove={v.str?.freediving?.move} onMouseLeave={v.str?.freediving?.off} onFocus={v.str?.freediving?.on} onBlur={v.str?.freediving?.off} style={sty("position:absolute;top:0;bottom:0;right:103px;width:18px;display:block;pointer-events:auto;cursor:pointer")}>
+        <a href={BASE + "freediving/"} onClick={v.pad?.freediving?.go} aria-label="Freediving" data-navk="freediving" onMouseEnter={v.pad?.freediving?.on} onMouseLeave={v.pad?.freediving?.off} onFocus={v.pad?.freediving?.on} onBlur={v.pad?.freediving?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
           <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
         </a>
-        {"\n        "}
-        <a href={BASE + "sound/"} onClick={v.str?.sound?.go} aria-current="page" aria-label="Sound" data-navk="sound" onMouseEnter={v.str?.sound?.on} onMouseMove={v.str?.sound?.move} onMouseLeave={v.str?.sound?.off} onFocus={v.str?.sound?.on} onBlur={v.str?.sound?.off} style={sty("position:absolute;top:0;bottom:0;right:85px;width:18px;display:block;pointer-events:auto;cursor:pointer")}>
+        <a href={BASE + "sound/"} onClick={v.pad?.sound?.go} aria-current="page" aria-label="Sound" data-navk="sound" onMouseEnter={v.pad?.sound?.on} onMouseLeave={v.pad?.sound?.off} onFocus={v.pad?.sound?.on} onBlur={v.pad?.sound?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:default")}>
           <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
         </a>
-        {"\n        "}
-        <a href={BASE + "journal/"} onClick={v.str?.journal?.go} aria-label="Journal" data-navk="journal" onMouseEnter={v.str?.journal?.on} onMouseMove={v.str?.journal?.move} onMouseLeave={v.str?.journal?.off} onFocus={v.str?.journal?.on} onBlur={v.str?.journal?.off} style={sty("position:absolute;top:0;bottom:0;right:67px;width:18px;display:block;pointer-events:auto;cursor:pointer")}>
+        <a href={BASE + "journal/"} onClick={v.pad?.journal?.go} aria-label="Journal" data-navk="journal" onMouseEnter={v.pad?.journal?.on} onMouseLeave={v.pad?.journal?.off} onFocus={v.pad?.journal?.on} onBlur={v.pad?.journal?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
           <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
         </a>
-        {"\n        "}
-        <span data-navk="c4" aria-hidden="true" onMouseEnter={v.str?.c4?.on} onMouseMove={v.str?.c4?.move} onMouseLeave={v.str?.c4?.off} style={sty("position:absolute;top:0;bottom:0;right:49px;width:18px;pointer-events:auto")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </span>
-        {"\n        "}
-        <span data-navk="c5" aria-hidden="true" onMouseEnter={v.str?.c5?.on} onMouseMove={v.str?.c5?.move} onMouseLeave={v.str?.c5?.off} style={sty("position:absolute;top:0;bottom:0;right:31px;width:18px;pointer-events:auto")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </span>
-        {"\n        "}
-        <span data-navk="c6" aria-hidden="true" onMouseEnter={v.str?.c6?.on} onMouseMove={v.str?.c6?.move} onMouseLeave={v.str?.c6?.off} style={sty("position:absolute;top:0;bottom:0;right:13px;width:18px;pointer-events:auto")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </span>
-        {"\n      "}
       </div>
-      {"\n      "}
-      {v.isPlaying ? (
-        <>
-          {"\n        "}
-          <button type="button" aria-label="Pause" onClick={v.pauseAll} style={sty("position:absolute;inset:0;z-index:4;border:0;padding:0;background:none;cursor:inherit;opacity:0")} />
-          {"\n      "}
-        </>
-      ) : null}
+      <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
+        <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
+        <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
+        <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
+        {(v.deck?.fader || []).map((fd, i) => <div key={i} data-fader={i} onPointerDown={fd} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />)}
+      </div>
       {"\n    "}
     </div>
     </>

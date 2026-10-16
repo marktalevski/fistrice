@@ -119,7 +119,7 @@ class Component extends DCLogic {
     set(e.clientY); this.volDrag = 1; const mv = ev => set(ev.clientY), up = () => { this.volDrag = 0; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   // the track list on the centre screen: where each row sits (shared by the drawing and the row buttons over it)
-  rowsOf(G) { const [sx, sy, sw, sh] = G.scr, n = this.albums[this.state.album].tracks.length, top = sy + 66, rh = clamp((sh - 70) / Math.max(1, n), 15, 26); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
+  rowsOf(G) { const [sx, sy, sw, sh] = G.scr, n = this.albums[this.state.album].tracks.length, top = sy + 66, rh = clamp((sh - 70) / Math.max(1, n), 15, 44); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
   t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
   albums = ALBUMS.map((a, ai) => { const tracks = a.tracks.map((tr, ti) => ({ ...tr, id: ai + '-' + ti, ai, ti, env: envOf(tr) })); return { ...a, tracks, mix: mixOf(tracks) }; });
   strip = false;
@@ -319,12 +319,15 @@ class Component extends DCLogic {
       this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;
         if (on || hv) { ctx.fillStyle = on ? (cy ? 'rgba(0,229,255,.13)' : 'rgba(255,255,255,.09)') : 'rgba(255,255,255,.05)'; ctx.fillRect(rx, ry + .5, rw, rh - 1); }
         if (on) { ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(rx, ry + rh - 1.5, rw * u, 1); }
-        ctx.textAlign = 'left'; ctx.font = '400 9px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 8, mid);
-        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(rx + 32, mid, 2.8, 0, TAU); ctx.fill();
-        // columns: title, then (room allowing) kind and date, then length
-        const wide = rw > 360, mid2 = rw > 280, tEnd = rw - (wide ? 200 : mid2 ? 120 : 52);
-        ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.save(); ctx.beginPath(); ctx.rect(rx + 42, ry, tEnd - 42, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 42, mid); ctx.restore();
-        ctx.textAlign = 'right'; ctx.fillStyle = PM; if (wide) ctx.fillText(KINDS[tr.kind].label.toUpperCase(), rx + rw - 126, mid); if (mid2) ctx.fillText(fmtDate(tr.date).toUpperCase(), rx + rw - 48, mid); ctx.fillText(fmtDur(tr.dur), rx + rw - 8, mid); });
+        // the rows share the screen's height, and their type grows with them
+        const fz2 = clamp(rh * .34, 9, 12.5); ctx.textAlign = 'left'; ctx.font = '400 ' + fz2.toFixed(1) + 'px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 8, mid);
+        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(rx + 32, mid, 2.4 + fz2 * .1, 0, TAU); ctx.fill();
+        // columns, measured from the right: length, then (room allowing) date and kind, each a gap apart; the title takes what is left
+        ctx.font = '400 ' + (fz2 - .5).toFixed(1) + 'px ' + mono; const gp = 14, wD = ctx.measureText('00:00').width, wDt = ctx.measureText('00 MMM 0000').width, wK = ctx.measureText('MUSIC').width;
+        const xDur = rx + rw - 8, xDate = xDur - wD - gp, xKind = xDate - wDt - gp, showDate = xDate - wDt - gp - (rx + 42) > 150, showKind = showDate && xKind - wK - gp - (rx + 42) > 170;
+        const tEnd = (showKind ? xKind - wK : showDate ? xDate - wDt : xDur - wD) - gp;
+        ctx.textAlign = 'right'; ctx.fillStyle = PM; if (showKind) ctx.fillText(KINDS[tr.kind].label.toUpperCase(), xKind, mid); if (showDate) ctx.fillText(fmtDate(tr.date).toUpperCase(), xDate, mid); ctx.fillText(fmtDur(tr.dur), xDur, mid);
+        ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 42, ry, tEnd - rx - 42, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 42, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // pointing at a pad: the page's little pixel face over the now-playing strip (the pads still to come just say so)

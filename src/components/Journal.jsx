@@ -30,7 +30,7 @@ class Component extends DCLogic {
   }
   stay = e => { if (e) e.preventDefault(); };
   goHome = this.leave(HOME, true);
-  GO = { freediving: this.leave(BASE + 'freediving/'), sound: PAGE === 'sound' ? this.stay : this.leave(BASE + 'sound/'), journal: PAGE === 'journal' ? this.stay : this.leave(BASE + 'journal/') };
+  GO = { freediving: this.leave(BASE + 'freediving/'), sound: PAGE === 'sound' ? this.stay : this.leave(BASE + 'sound/?from=page', true), journal: PAGE === 'journal' ? this.stay : this.leave(BASE + 'journal/') };
   tick = now => {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now; this.t += dt;

@@ -300,13 +300,44 @@ class Component extends DCLogic {
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = i < 3 ? G.cpads[i] : G.spare; put(el, p[0], p[1], p[2], p[3]); });
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
+  // arriving, the controller unfolds out of the beat pads like a Transformer: once the dots have dropped in and become the pads, the right
+  // deck opens out round them, then the middle panel swings out on its hinge at the right deck's edge, then the left deck on its hinge at
+  // the middle's, each locking in with a clunk (and shaded while it is still turned away). The deck is drawn whole to a layer of its own and
+  // laid in piece by piece; the dots have a layer over it. Otherwise the deck is simply drawn
+  deckOut(ctx, W, H, t, dt, TH, live, fo) {
+    const A = this.arr, U = { r0: 1.9, r1: 2.35, m0: 2.25, m1: 2.8, l0: 2.7, l1: 3.25 };
+    if (!A || t > U.l1 + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
+    const dpr = ctx.getTransform().a, pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
+    const dk = this.unC || (this.unC = mk()), dt2 = this.unD || (this.unD = mk()); [dk, dt2].forEach(c => { if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; } });
+    const oc = dk.getContext('2d'), od = dt2.getContext('2d'); [oc, od].forEach(c => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.lineCap = 'round'; c.lineJoin = 'round'; });
+    this.dotsCtx = od; this.drawDeck(oc, W, H, t, dt, TH, live, fo); this.dotsCtx = null;
+    const G = deckGeo(W, H), e = (a, b) => clamp((t - a) / (b - a), 0, 1), out3 = u => 1 - Math.pow(1 - u, 3), back = u => { const c1 = 1.9, c3 = c1 + 1; return u <= 0 ? 0 : 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
+    const uR = e(U.r0, U.r1), uM = e(U.m0, U.m1), uL = e(U.l0, U.l1);
+    // a clunk as each panel locks
+    const sh = [U.r1, U.m1, U.l1].reduce((a, k) => a + (t > k && t < k + .2 ? Math.sin((t - k) / .2 * Math.PI * 3) * (1 - (t - k) / .2) * 2.4 : 0), 0);
+    const blit = (x, y, w, h, dx, dy, dw, dh) => { if (w <= .5 || h <= .5 || dw <= .5 || dh <= .5) return; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, dx, dy, dw, dh); };
+    const shade = (x, y, w, h, k) => { if (k <= .01) return; ctx.globalAlpha = k; ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; };
+    const edge = (x, y0, y1, k) => { if (k <= .01) return; ctx.globalAlpha = k; ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1; };
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0; ctx.translate(0, sh); const y0 = G.y0, hh = H - G.y0;
+    // the right deck, opening out from round the pads to its full size
+    if (uR > 0) { const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6, k = out3(uR);
+      const x0 = bx0 + (G.mx1 - bx0) * k, x1 = bx1 + (G.x1 - bx1) * k, yy0 = by0 + (y0 - by0) * k, yy1 = by1 + (H - by1) * k; blit(x0, yy0, x1 - x0, yy1 - yy0, x0, yy0, x1 - x0, yy1 - yy0);
+      if (uR < 1) { ctx.globalAlpha = 1 - uR; ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10; ctx.strokeRect(x0, yy0, x1 - x0, yy1 - yy0); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1; } }
+    // the middle panel swings out leftward on its hinge at the right deck's edge (turned away, it is darker); then the left deck on its hinge
+    if (uM > 0) { const k = back(uM), w = (G.mx1 - G.mx0) * k; blit(G.mx0, y0, G.mx1 - G.mx0, hh, G.mx1 - w, y0, w, hh); shade(G.mx1 - w, y0, w, hh, .6 * (1 - Math.min(1, k))); edge(G.mx1 - w, y0, H, 1 - uM); }
+    if (uL > 0) { const k = back(uL), w = (G.mx0 - G.x0) * k; blit(G.x0, y0, G.mx0 - G.x0, hh, G.mx0 - w, y0, w, hh); shade(G.mx0 - w, y0, w, hh, .6 * (1 - Math.min(1, k))); edge(G.mx0 - w, y0, H, 1 - uL); }
+    ctx.restore(); ctx.globalAlpha = 1;
+    ctx.drawImage(dt2, 0, 0, pw, ph, 0, 0, W, H);
+    // the album clock (on the page, not the canvas) comes in once the middle panel is open
+    if (this.wheelRef.current) { const o = smooth(e(U.m1 - .1, U.m1 + .2)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
+  }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
     const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
       cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
       LAB = ['#f2f2f0', 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'];
     // asm: how built the deck is (its controls); slide: how far it has dropped away below the screen
     const A = this.arr, O = this.out && this.out.k !== 'other' ? this.out : null; let asm = 1, slide = 0;
-    if (A) { asm = smooth(clamp((t - 1.1) / .6, 0, 1)); slide = 1 - easeIO(clamp((t - .3) / 1, 0, 1)); }
+    if (A) { asm = 1; slide = 0; }
     if (O) { asm = 1 - smooth(clamp(O.t / .45, 0, 1)); slide = easeIO(clamp((O.t - .3) / .8, 0, 1)); }
     this.fK = (this.fK || 0) + ((this.focus ? 1 : 0) - (this.fK || 0)) * Math.min(1, dt * 2.2); const fz = easeIO(clamp(this.fK, 0, 1));
     { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && (this.scrub || performance.now() - (this.fMove || 0) < 2200);
@@ -339,7 +370,8 @@ class Component extends DCLogic {
     ctx.globalAlpha = 1 - fo;
     // the jog wheel, a whole circle. It turns with the record while a piece plays and under the hand while dragged;
     // the lit ring round it is how far the piece has got
-    if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
+    if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0) + (this.arr && t > 2.95 && t < 3.7 ? dt * TAU * 2.4 * (1 - (t - 2.95) / .75) : 0);
+    if (this.arr && t > 2.3 && !this.knobSwept) { this.knobSwept = true; this.knobA = this.knobV.map(() => 150); }
     { const [jx, jy, jr] = G.jog;
       const rh = this.rimHov || this.rimDrag; ctx.strokeStyle = rh ? 'rgba(0,229,255,.35)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = rh ? 5 : 3; if (rh) glow(NEON_C, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke(); noGlow();
       // tick marks just outside the rim, like a dial, so it reads as somewhere to click: faint at rest, lit when pointed at
@@ -391,7 +423,7 @@ class Component extends DCLogic {
     // points at is lit. When the combination is set they all flash once
     { const comboOn = this.knobV.join('') === '523869', comboK = comboOn ? 1 : 0;
       if (!this.knobA) this.knobA = this.knobV.map(() => 0);
-      G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], rw = this.knobRaw && this.knobRaw[i], tgt = -150 + v * 300 / 9 + (rw != null ? (rw - (-150 + v * 300 / 9)) * .3 : 0); this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 34);
+      G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], rw = this.knobRaw && this.knobRaw[i], tgt = -150 + v * 300 / 9 + (rw != null ? (rw - (-150 + v * 300 / 9)) * .3 : 0); this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * (this.arr ? 5 : 34));
         const kk = this.knobKick && this.knobKick[i], kA = this.knobA[i] + (kk ? kk.d * 6 * Math.exp(-(t - kk.t) * 24) * Math.cos((t - kk.t) * 60) : 0);
         const hv = this.knobHov === i || this.knobHeld === i, fzk0 = clamp(kr * .48, 5.5, 8), nr = kr + fzk0 * .7 + 1.8, nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
         ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; ctx.beginPath(); ctx.arc(kx, ky + 1.5, kr + 3, 0, TAU); ctx.fill();
@@ -493,15 +525,16 @@ class Component extends DCLogic {
     const OFF = { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 };
     const bz = (P0, P1, C1, C2, u2) => { const a = (1 - u2) ** 3, b = 3 * (1 - u2) ** 2 * u2, c2 = 3 * (1 - u2) * u2 * u2, d = u2 ** 3; return [a * P0[0] + b * C1[0] + c2 * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c2 * C2[1] + d * P1[1]]; };
     this.dotPos = {};
-    if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
-      const fm = A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm;
-      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) p = A.nf.low ? bz(f2, cap, [f2[0], f2[1] + (cap[1] - f2[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f2, cap, [f2[0] - 120, f2[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
-      this.dotPos[k] = p; a *= 1 - .9 * fm * fm; if (a <= .01) continue;
-      const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
+    const dc = this.dotsCtx || ctx;
+    if (A && t < 2.6 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
+      const fm = A ? smooth(clamp((t - 1.3 - i * .06) / .35, 0, 1)) : asm;
+      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) { const u = clamp((t - .2 - i * .07) / .75, 0, 1), ub = t - (.95 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
+      this.dotPos[k] = p; a *= A ? 1 - smooth(clamp((t - 2.2) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
+      const pp = A ? fm : 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
       const r0 = i < 4 ? 8 : 5.5, dw = 2 * r0 + (pd[2] - 2 * r0) * fm, dh = 2 * r0 + (pd[3] - 2 * r0) * fm, rad = r0 + (6 - r0) * fm;
-      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && cy) { ctx.shadowColor = c0; ctx.shadowBlur = 10 * fm; }
-      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, rad); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); noGlow(); }
-    ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
+      dc.globalAlpha = a; dc.fillStyle = c0; if (fm > 0 && cy) { dc.shadowColor = c0; dc.shadowBlur = 10 * fm; }
+      dc.beginPath(); if (fm <= 0) dc.arc(p[0], p[1], r0, 0, TAU); else if (dc.roundRect) dc.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, rad); else dc.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); dc.fill(); dc.shadowBlur = 0; dc.shadowColor = 'transparent'; }
+    dc.globalAlpha = 1; ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
   // ---- layout
   // the wave lies flat across the middle of the page and opens up and down while a piece plays
   geom(W, H) { const t0 = deckGeo(W, H).y0 - 8, fz = easeIO(clamp(this.fK || 0, 0, 1)), top = t0 + (H - t0) * fz, m = clamp(W * .05, 26, 56), amp = Math.min(top * .32, 260); return { m, amp, yB: Math.round(top / 2) }; }
@@ -633,7 +666,7 @@ class Component extends DCLogic {
     // handing over to / from Home and Freediving: their paper ground comes in under the panel
     const pap = this.arr ? 1 - smooth(clamp((t - .2) / 1, 0, 1)) : this.out && this.out.k !== 'other' ? smooth(clamp((this.out.t - .25) / .7, 0, 1)) : 0;
     if (pap > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = pap; ctx.fillStyle = '#f5f3ee'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-    this.drawDeck(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
+    this.deckOut(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
     const ta = (this.arr ? (t >= 1.7 ? 1 : 0) : smooth(clamp((t - 1.4) / .8, 0, 1))) * (1 - fo), el = this.contentRef.current;
     if (el) { el.style.opacity = (ta * (1 - this.pf)).toFixed(3); el.style.pointerEvents = this.pf > .5 ? 'none' : ''; el.style.transform = 'translateY(' + ((1 - ta) * (this.arr ? 0 : 8)).toFixed(1) + 'px)'; this.typeIn(t); }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;

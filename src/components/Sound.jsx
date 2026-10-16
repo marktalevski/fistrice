@@ -24,9 +24,8 @@ const THEMES = {
 };
 // the cut-paper colours mixed in among a piece's own colour
 const PAL = ['rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(24,88,224)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)', 'rgb(244,138,172)', 'rgb(233,227,214)', 'rgb(110,200,230)'];
-// the paper inks in a ring (red, orange, yellow, green, sky, blue, purple, pink), and the colour u of the way round it, blended between two
-const INK_RING = [[232, 34, 44], [255, 118, 18], [255, 196, 0], [22, 168, 82], [110, 200, 230], [24, 88, 224], [138, 64, 214], [244, 138, 172]];
-const inkAt = u => { const n = INK_RING.length, x = ((u % 1) + 1) % 1 * n, i = Math.floor(x), f = x - i, a = INK_RING[i], b = INK_RING[(i + 1) % n], m = q => Math.round(a[q] + (b[q] - a[q]) * f); return 'rgb(' + m(0) + ',' + m(1) + ',' + m(2) + ')'; };
+// the paper inks the deck's lit edge picks from (all the wave's colours but the cream)
+const INKS = [[232, 34, 44], [255, 118, 18], [255, 196, 0], [22, 168, 82], [110, 200, 230], [24, 88, 224], [138, 64, 214], [244, 138, 172]];
 // albums are just categories. Placeholder pieces: give one a src (an audio file next to this page) and it plays that file with its real waveform;
 // without one it plays a synthesised stand-in of its kind. dur is in seconds (taken from the file when there is one)
 const ALBUMS = [
@@ -120,11 +119,11 @@ class Component extends DCLogic {
       addEventListener('pointermove', mv); addEventListener('pointerup', up); return; }
     const [jx, jy] = (this.jogCs || {})[e.currentTarget.getAttribute('data-deck')] || [0, 0], sx0 = e.clientX, sy0 = e.clientY;
     let a0 = Math.atan2(e.clientY - jy, e.clientX - jx), moved = false; this.jog = this.cur ? { pos: this.posOf(), at: 0 } : null;
-    const mv = ev => { if (!moved && Math.hypot(ev.clientX - sx0, ev.clientY - sy0) < 5) return; moved = true;
+    const mv = ev => { if (!moved && Math.hypot(ev.clientX - sx0, ev.clientY - sy0) < 5) return; moved = true; this.jogScr = true;
       const a = Math.atan2(ev.clientY - jy, ev.clientX - jx); let d = a - a0; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; a0 = a; this.jogA = (this.jogA || 0) + d;
       const cc = this.cur; if (!cc || !this.jog) return; this.jog.pos = clamp(this.jog.pos + d / TAU * 6, 0, cc.tr.dur); const now = performance.now();
       if (cc.paused) cc.off = this.jog.pos; else if (now - this.jog.at > 70) { this.jog.at = now; const j = this.jog; this.jog = null; this.play(cc.tr, j.pos); this.jog = j; } };
-    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null;
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; this.jogScr = false;
       if (!moved) { this.playBtn(); return; } if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   // six numbered knobs, a combination lock: each turns through 0..9 and clicks into place on a number. Click a number to turn straight to it,
@@ -151,11 +150,9 @@ class Component extends DCLogic {
   padOn(i) { if (this.padHov !== i) { let f; do f = Math.floor(Math.random() * N_FACES); while (f === this.padFace && N_FACES > 1); this.padFace = f; } this.padHov = i; }
   padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
-  // the RGB edge's colour where a line at x crosses its top (the playhead takes it, so the two run through the colours together); null when
+  // the lit edge's colour (the playhead takes it too); null when
   // the edge is plain
-  rimCol(x) { const R = this.rgbP; if (!R || !(this.rgbK > .5)) return null; let best = null, bd = 1e9; const top = R.P.reduce((m, p) => Math.min(m, p[1]), 1e9);
-    for (const p of R.P) { const dd = Math.abs(p[0] - x) + Math.abs(p[1] - top) * 4; if (dd < bd) { bd = dd; best = p; } }
-    return inkAt(best[2] / R.len * .32 - this.rgbH); }
+  rimCol() { return this.rgbK > .5 && this.rgbC ? 'rgb(' + this.rgbC.map(Math.round).join(',') + ')' : null; }
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
   cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
@@ -296,20 +293,15 @@ class Component extends DCLogic {
     if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10);
       ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
-    // while a piece plays the edge becomes an RGB strip (after Corsair's lighting), in the paper wave's own inks: about two and a half of them
-    // span the edge, drifting slowly round it (a touch quicker when the music is loud), drawn as the same hard line as the plain edge. On pause it holds still where it is; it fades back to the plain edge once nothing is loaded
-    { const c = this.cur, on = c ? 1 : 0, run = c && !c.paused; this.rgbK = (this.rgbK || 0) + (on - (this.rgbK || 0)) * Math.min(1, dt * 3);
-      const lv = run ? clamp(this.live || 0, 0, 1) : 0; this.rgbLv = (this.rgbLv || 0) + (lv - (this.rgbLv || 0)) * Math.min(1, dt * 10); if (run) this.rgbH = ((this.rgbH || 0) + dt * (.035 + .05 * this.rgbLv)) % 1;
-      if (this.rgbK > .01) { const K = this.rgbK, L = this.rgbLv;
-        // the edge as a polyline: up the left side, round the corner, along the top, round, and down the right
-        if (!this.rgbP || this.rgbP.W !== W || this.rgbP.H !== H) { const P = [], r = 18, a = G.x0 + .5, b = G.x1 - .5, top = G.y0 + .5, add = (x, y) => P.push([x, y]);
-          for (let y = H + 2; y > top + r; y -= 5) add(a, y); for (let q = 0; q <= 8; q++) { const t2 = Math.PI + q / 8 * Math.PI / 2; add(a + r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
-          for (let x = a + r + 5; x < b - r; x += 5) add(x, top); for (let q = 0; q <= 8; q++) { const t2 = -Math.PI / 2 + q / 8 * Math.PI / 2; add(b - r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
-          for (let y = top + r + 5; y <= H + 2; y += 5) add(b, y); let d = 0; P.forEach((p, i) => { if (i) d += Math.hypot(p[0] - P[i - 1][0], p[1] - P[i - 1][1]); p[2] = d; }); this.rgbP = { W, H, P, len: d }; }
-        const { P, len } = this.rgbP; ctx.lineCap = 'square';
-        [[1.2, K]].forEach(([lw, al]) => { ctx.lineWidth = lw; ctx.globalAlpha = (1 - foFace) * al;
-          for (let i = 1; i < P.length; i++) { ctx.strokeStyle = inkAt(P[i][2] / len * .32 - this.rgbH); ctx.beginPath(); ctx.moveTo(P[i - 1][0], P[i - 1][1]); ctx.lineTo(P[i][0], P[i][1]); ctx.stroke(); } });
-        ctx.lineCap = 'butt'; ctx.globalAlpha = 1 - foFace; } }
+    // with a piece loaded the edge lights up in one of the paper wave's inks, picked at random for each new piece and held for as long as it
+    // plays (and while it is paused); a new piece fades it slowly to its own ink. The same hard line as the plain edge, which it fades back to
+    // once nothing is loaded
+    { const c = this.cur, on = c ? 1 : 0; this.rgbK = (this.rgbK || 0) + (on - (this.rgbK || 0)) * Math.min(1, dt * 3);
+      if (c && c.tr.id !== this.rgbTr) { this.rgbTr = c.tr.id; let k; do k = Math.floor(Math.random() * INKS.length); while (k === this.rgbI && INKS.length > 1); this.rgbI = k; if (!this.rgbC || this.rgbK < .05) this.rgbC = INKS[k].slice(); }
+      if (this.rgbC && this.rgbI != null) { const tg = INKS[this.rgbI], e = Math.min(1, dt * .9); this.rgbC = this.rgbC.map((v, q) => v + (tg[q] - v) * e); }
+      if (this.rgbK > .01 && this.rgbC) { ctx.strokeStyle = 'rgb(' + this.rgbC.map(Math.round).join(',') + ')'; ctx.lineWidth = 1.2; ctx.globalAlpha = (1 - foFace) * this.rgbK;
+        ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke();
+        ctx.globalAlpha = 1 - foFace; } }
     ctx.globalAlpha = 1 - fo;
     // the jog wheel, a whole circle. It turns with the record while a piece plays and under the hand while dragged;
     // the lit ring round it is how far the piece has got
@@ -527,7 +519,9 @@ class Component extends DCLogic {
       // scrub aids. settle: while the playhead is dragged the pieces gather into neat lines (all of them, or only round the pointer for lens);
       // ghost: faint lines always under the pieces; contour: a fine outline round the wave
       const sm = this.props.settle ?? 'lens', ghost = this.props.ghost ?? false, contour = this.props.contour ?? false;
-      this.stl = (this.stl || 0) + ((this.scrub && sm !== 'off' ? 1 : 0) - (this.stl || 0)) * Math.min(1, dt * 9); if (this.scrub) this.lensX = this.scrub.x;
+      // (scrubbing now happens on the deck: a drag on the jog or round its rim lines the pieces up round the playhead)
+      const scr = this.scrub || ((this.jogScr || this.rimDrag) && playX != null ? { x: playX } : null);
+      this.stl = (this.stl || 0) + ((scr && sm !== 'off' ? 1 : 0) - (this.stl || 0)) * Math.min(1, dt * 9); if (scr) this.lensX = scr.x;
       if (!this.hhA || this.hhA.length !== n) this.hhA = new Float32Array(n); this.hhA.fill(-1);
       for (let i = 0; i < n; i++) { const x = i * g + g / 2, ig = introG(x); if (ig <= 0) continue;
         const b = spec && x <= playX ? spec[2 + (i * 37) % 140] / 255 * Math.exp(-(playX - x) / (W * .3)) : 0; this.sp[i] += (b - this.sp[i]) * .45;

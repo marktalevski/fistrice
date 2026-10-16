@@ -310,7 +310,7 @@ class Component extends DCLogic {
     this.fK = (this.fK || 0) + ((this.focus ? 1 : 0) - (this.fK || 0)) * Math.min(1, dt * 2.2); const fz = easeIO(clamp(this.fK, 0, 1));
     { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && (this.scrub || performance.now() - (this.fMove || 0) < 2200);
       // the exit pill stays, faded right down, while the mouse is still
-      if (ex) { const o = (awake ? 1 : .18).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
+      if (ex) { const o = (!this.focus ? 0 : awake ? 1 : .18).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
       if (R) { const c = this.cur, cu = !this.focus || this.fK < .5 ? '' : this.scrub ? CUR_SCRUB : !awake ? 'none' : !c ? '' : this.nearHead(this.fmx) ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE; if (R.style.cursor !== cu) R.style.cursor = cu; } }
     const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
     if (this.wheelRef.current) { const o = (1 - fo).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }

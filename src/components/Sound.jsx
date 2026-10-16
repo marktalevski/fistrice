@@ -325,10 +325,18 @@ class Component extends DCLogic {
       ctx.save(); ctx.translate(jx, jy); ctx.rotate(this.jogA || 0); ctx.fillStyle = 'rgba(255,255,255,.05)';
       for (const a of [0, Math.PI]) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .86, a - .3, a + .3); ctx.closePath(); ctx.fill(); }
       ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -jr * .5); ctx.lineTo(0, -jr * .82); ctx.stroke(); ctx.lineCap = 'butt'; ctx.restore();
-      ctx.fillStyle = '#16191c'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.strokeStyle = c ? kc : '#3a4047'; ctx.lineWidth = 3; if (c) glow(kc, 10); ctx.beginPath(); ctx.arc(jx, jy, jr * .24, 0, TAU); ctx.stroke(); noGlow();
-      // the hub is the full-screen key: four corner marks, lit when pointed at
-      { const hv = this.btnHov === 'full', q = Math.round(jr * .1), l = Math.max(3.5, q * .45); ctx.strokeStyle = hv ? NEON_C : '#9aa1a8'; ctx.lineWidth = hv ? 2 : 1.6; ctx.lineCap = 'round'; if (hv) glow(NEON_C, 8); ctx.beginPath();
-        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dx, dy]) => { const x = jx + dx * q, y = jy + dy * q; ctx.moveTo(x - dx * l, y); ctx.lineTo(x, y); ctx.lineTo(x, y - dy * l); }); ctx.stroke(); noGlow(); ctx.lineCap = 'butt'; }
+      // the hub is the full-screen key: a raised push button (like play / pause) in a dark well, ringed in cyan, marked FULL over a
+      // two-way arrow; it lifts a shade when pointed at and sinks in while pressed
+      { const hv = this.btnHov === 'full', dn = this.fullDown && hv, hr = jr * .3, sk = dn ? 1.5 : 0;
+        ctx.fillStyle = '#08090b'; ctx.beginPath(); ctx.arc(jx, jy + 1.5, hr + 3, 0, TAU); ctx.fill();
+        ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = dn ? 2 : 5; ctx.shadowOffsetY = dn ? 1 : 3; const cap = ctx.createLinearGradient(0, jy - hr, 0, jy + hr); cap.addColorStop(0, hv ? '#4a5159' : '#3d434a'); cap.addColorStop(1, hv ? '#25292e' : '#1c1f23');
+        ctx.fillStyle = cap; ctx.beginPath(); ctx.arc(jx, jy + sk, hr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(jx, jy + sk, hr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+        ctx.strokeStyle = NEON_C; ctx.lineWidth = 1.8; ctx.globalAlpha = (1 - fo) * (hv ? 1 : .7); glow(NEON_C, hv ? 12 : 5); ctx.beginPath(); ctx.arc(jx, jy + sk, hr - 3, 0, TAU); ctx.stroke(); noGlow();
+        const lc = hv ? '#bff6fd' : '#7fe9f7', fz = clamp(hr * .3, 8, 12); ctx.globalAlpha = 1 - fo; ctx.fillStyle = lc; ctx.font = '400 ' + fz.toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (hv) glow(NEON_C, 6);
+        ctx.fillText('FULL', jx + .5, jy - hr * .14 + sk);
+        const aw = hr * .42, ay = jy + hr * .3 + sk, ah = Math.max(2.5, hr * .1); ctx.strokeStyle = lc; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(jx - aw, ay); ctx.lineTo(jx + aw, ay);
+        ctx.moveTo(jx - aw + ah, ay - ah); ctx.lineTo(jx - aw, ay); ctx.lineTo(jx - aw + ah, ay + ah); ctx.moveTo(jx + aw - ah, ay - ah); ctx.lineTo(jx + aw, ay); ctx.lineTo(jx + aw - ah, ay + ah); ctx.stroke(); noGlow(); ctx.lineCap = 'butt'; }
       if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } }
     // cue and play / pause, in the left deck's corner
     // a round button with depth: a dark well, the cap raised out of it (lit from above), a coloured ring that glows when on
@@ -633,7 +641,7 @@ class Component extends DCLogic {
       rootRef: this.rootRef,
       // the deck's controls
       deck: { jogDown: this.jogDown, jogMove: this.jogHover, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; this.rimHov = false; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
-        btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; }, full: this.goFull, leaveFull: this.leaveFull,
+        btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; }, full: this.goFull, leaveFull: this.leaveFull, fullDn: () => { this.fullDown = true; }, fullUp: () => { this.fullDown = false; }, fullOut: () => { this.btnHov = null; this.fullDown = false; },
         cpOn: i => () => this.padOn(4 + i), cpOff: i => () => this.padOff(4 + i), vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => this.padOn(i), off: () => this.padOff(i), go: k === 'home' ? this.goHome : this.GO[k] }]))
@@ -711,7 +719,7 @@ function View(v) {
         </div>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onPointerMove={v.deck?.jogMove} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
         {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={i < 3 ? nm + ' page: coming soon' : 'Spare pad'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
-        <button data-deck="full" type="button" aria-label="Full screen: only the wave" title="Full screen (F)" onClick={v.deck?.full} onMouseEnter={v.deck?.btnOn?.('full')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
+        <button data-deck="full" type="button" aria-label="Full screen: only the wave" title="Full screen (F)" onClick={v.deck?.full} onPointerDown={v.deck?.fullDn} onPointerUp={v.deck?.fullUp} onMouseEnter={v.deck?.btnOn?.('full')} onMouseLeave={v.deck?.fullOut} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />)}
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />

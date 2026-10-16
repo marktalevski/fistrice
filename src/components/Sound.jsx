@@ -259,8 +259,8 @@ class Component extends DCLogic {
           ctx.fillStyle = cy ? '#1d1828' : '#2f363d'; ctx.beginPath(); ctx.arc(xs, ky, 6.6, 0, TAU); ctx.fill();
           if (cy) { ctx.strokeStyle = r ? NEON_M : NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.lineWidth = 1.2; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 5; ctx.beginPath(); ctx.arc(xs, ky, 8.8, -Math.PI / 2 - 2.3, -Math.PI / 2 + ang); ctx.stroke(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1 - fo; } ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(xs, ky, 6.1, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
           ctx.strokeStyle = i < 4 ? cols[i] : PM; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(xs + Math.sin(ang) * 1.5, ky - Math.cos(ang) * 1.5); ctx.lineTo(xs + Math.sin(ang) * 5.4, ky - Math.cos(ang) * 5.4); ctx.stroke(); ctx.lineCap = 'butt'; });
-        const lit = i === 2 ? .65 + .35 * live : .22 + .78 * clamp(S.k, 0, 1); ctx.globalAlpha = (1 - fo) * lit; ctx.fillStyle = cols[i]; ctx.shadowColor = cols[i]; ctx.shadowBlur = 9 * lit;
-        ctx.beginPath(); ctx.arc(xs, yb + 16, 2.6, 0, TAU); ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
+        // no LED under the fader: the colour lives in the fader cap's stripe, which the menu dots squash into
+      }
       // an open channel lights a small meter window in the gap between its knobs and the next channel's
       for (let i = 0; i < 4; i++) { if (open[i] < 24) continue; const S = this.S[i], xs = X(i), ka = smooth(clamp((clamp(S.k, 0, 1) - .3) / .7, 0, 1)) * (1 - fo); if (ka <= .01) continue;
         const x0 = xs + 14, x1 = xs + SP + open[i] - 14, w = x1 - x0; ctx.globalAlpha = ka; ctx.fillStyle = '#0b0e11'; rrect(x0, 70, w, 64, 3); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rrect(x0 + .5, 70.5, w - 1, 63, 2.5); ctx.stroke();
@@ -322,11 +322,15 @@ class Component extends DCLogic {
     const bz = (P0, P1, C1, C2, u) => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * P0[0] + b * C1[0] + c * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c * C2[1] + d * P1[1]]; };
     this.dotPos = {};
     if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const S = this.S[i], k = KEYS[i], cap = [X(i) - SX, md === 'fader' && S.cy != null ? S.cy : yb - 14]; let p = cap, a = A ? 1 - smooth(clamp((t - 1.3) / .4, 0, 1)) : 1 - asm;
+      // with faders, each dot squashes into its cap's coloured stripe as it lands (and leaving, the stripe rounds back into the dot), so it stays solid throughout
+      const fm = md === 'fader' ? (A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm) : 0; if (md === 'fader') a = 1;
       if (A) { const f = A.nf[k] || (k === 'home' && A.nf.ink); if (f) p = bz(f, cap, [f[0] - 120, f[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
       if (O && O.k === 'dive') { const D = [W - 316 + OFF[k], 28]; p = bz(cap, D, [cap[0] - 80, cap[1] - 200], [D[0] - 40, D[1] + 160], easeIO(clamp((O.t - .85 - i * .05) / .9, 0, 1))); }
       this.dotPos[k] = p; if (a <= .01) continue;
       const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
-      ctx.globalAlpha = a; ctx.fillStyle = c0; ctx.beginPath(); ctx.arc(p[0], p[1], i < 4 ? 8 : 5.5, 0, TAU); ctx.fill(); }
+      const r0 = i < 4 ? 8 : 5.5, sw = (i < 4 ? 16 : 12) - 2, dw = 2 * r0 + (sw - 2 * r0) * fm, dh = 2 * r0 + (2 - 2 * r0) * fm;
+      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && look === 'stark' && (this.props.cyber ?? true)) { ctx.shadowColor = c0; ctx.shadowBlur = 8 * fm; }
+      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, dh / 2); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
     ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
   // ---- layout
   // the wave lies flat across the middle of the page and opens up and down while a piece plays

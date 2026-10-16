@@ -57,12 +57,13 @@ const planeWind = (sd, ph) => Array.from({ length: 15 }, (_, q) => { const u = q
 // the Muay Thai bag hangs from its ring at BAG_HOOK and has just been kicked from the left, so it's tipped by BAG_SWING (radians, the bottom to the right)
 const BAG_HOOK = [0, -1.27], BAG_SWING = -.1, BAG_ROT = ([x, y, w]) => { const dx = x - BAG_HOOK[0], dy = y - BAG_HOOK[1], c = Math.cos(BAG_SWING), s = Math.sin(BAG_SWING); return [BAG_HOOK[0] + dx * c - dy * s, BAG_HOOK[1] + dx * s + dy * c, w]; };
 // its coloured lines, before the swing: red, yellow and blue are strips of tape wrapped round its middle, slanting alternately like a criss-cross
-// repair, each ending at the bag's edge (Sound and Freediving's dots on the left, Journal's on the right); orange, green and purple are hand wraps
-// tied at the swivel, fluttering out to the left as the bag swings, their dots at the loose ends
+// repair, each ending at the bag's edge (Sound and Freediving's dots on the left, Journal's on the right); orange, green and purple are speed
+// streaks trailing behind it as it swings to the right: arcs about the hook, longer lower down where the bag moves fastest, running in to just
+// short of its left side so their dots lead into it
 const BAG_TAPE = (yc, slope, toLeft) => Array.from({ length: 13 }, (_, q) => { const a = toLeft ? q / 12 * Math.PI : Math.PI - q / 12 * Math.PI, x = Math.cos(a) * .37; return [x, yc + Math.sin(a) * .09 + slope * x]; });
-const BAG_WRAP = (ex, ey, amp, ph) => Array.from({ length: 13 }, (_, q) => { const u = q / 12, x = -.04 + (ex + .04) * u, y = -.98 + (ey + .98) * u * u + .05 * Math.sin(u * Math.PI) * -1, n = amp * Math.sin(u * Math.PI * 2.4 + ph) * u; return [x + n * .35, y + n]; });
+const BAG_STREAK = (r, span) => { const a0 = Math.asin(.36 / r) + .065; return Array.from({ length: 9 }, (_, q) => { const a = Math.PI / 2 + a0 + span * (1 - q / 8); return [BAG_HOOK[0] + Math.cos(a) * r, BAG_HOOK[1] + Math.sin(a) * r]; }); };
 const BAG_LINES = [{ li: 1, path: BAG_TAPE(-.2, .22, true) }, { li: 2, path: BAG_TAPE(.02, -.22, false) }, { li: 3, path: BAG_TAPE(.24, .22, true) },
-  { li: 4, path: BAG_WRAP(-.78, -.62, .06, 0) }, { li: 5, path: BAG_WRAP(-1.02, -.86, .07, 1.3) }, { li: 6, path: BAG_WRAP(-.9, -1.12, .05, 2.6) }];
+  { li: 6, path: BAG_STREAK(1.72, .2) }, { li: 5, path: BAG_STREAK(1.98, .26) }, { li: 4, path: BAG_STREAK(2.24, .32) }];
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },

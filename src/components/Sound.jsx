@@ -95,6 +95,9 @@ class Component extends DCLogic {
     this.hx = this.scrub ? this.scrub.x : null;
     const v = c && free ? (band ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE) : ''; if (r.style.cursor !== v) r.style.cursor = v; }
   seek(u) { const c = this.cur; if (!c) return; const off = clamp(u, 0, 1) * c.tr.dur; if (c.paused) { c.off = off; this.forceUpdate(); } else this.play(c.tr, off); }
+  // arriving from another page, once the dots have become faders the page tunes in like a radio finding its station:
+  // sig is the signal strength, rising with a few dropouts; u is the time since tuning began
+  tuneAt(t) { if (!this.arr) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
   recentScrub() { return performance.now() - (this.scrubAt || 0) < 350; }
   scrubDown = e => { if (e.button || !this.inBand(e.clientX, e.clientY, e.target)) return; e.preventDefault(); this.scrub = { x: e.clientX }; this.hx = e.clientX;
     // the playhead itself follows the pointer; a playing piece jumps along with it every few frames (rough, like dragging tape)
@@ -369,7 +372,7 @@ class Component extends DCLogic {
       if (!this.grainP) this.grainP = ctx.createPattern(this.grainC, 'repeat'); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = TH.grain; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     } else { ctx.fillStyle = TH.bg; ctx.fillRect(0, 0, W, H); }
     // stark: each album's photo, full height, multiplied into the grey so its white ground disappears and only the darks show; crossfades between albums
-    if (look === 'stark') { const ph = this.photos || (this.photos = {}), pr = Math.min(dpr, 1.5), pa = (this.props.photo ?? .9) * smooth(clamp((t - .2 - (this.arr ? .9 : 0)) / 1.2, 0, 1)) * (1 - fo);
+    if (look === 'stark') { const ph = this.photos || (this.photos = {}), pr = Math.min(dpr, 1.5), tn = this.tuneAt(t), pa = (this.props.photo ?? .9) * (this.arr ? (tn ? tn.sig : t < 1.6 ? 0 : 1) : smooth(clamp((t - .2) / 1.2, 0, 1))) * (1 - fo);
       this.albums.forEach((a, ai) => { if (!a.img) return; let P = ph[a.img]; if (!P) { P = ph[a.img] = { im: new Image(), k: 0 }; P.im.src = a.img; }
         const ok = P.im.complete && P.im.naturalWidth > 0; P.k += ((ai === this.state.album && ok ? 1 : 0) - P.k) * Math.min(1, dt * 2.4); if (P.k < .004 || !ok) return;
         // full height, pushed right against the panel; imgY lifts it so the subject sits in the open top right, above the track list
@@ -382,17 +385,21 @@ class Component extends DCLogic {
           // tinted copies for the cyberpunk colour split: green+blue lifted (darks print cyan), red+blue lifted (darks print magenta)
           const tint = rgb => { const t2 = document.createElement('canvas'); t2.width = cw; t2.height = chh; const tx = t2.getContext('2d'); tx.drawImage(P.c, 0, 0); tx.globalCompositeOperation = 'lighter'; tx.fillStyle = rgb; tx.fillRect(0, 0, cw, chh); return t2; }; P.cC = tint('rgb(0,255,255)'); P.cM = tint('rgb(255,0,255)'); }
         const al = pa * smooth(P.k); ctx.globalCompositeOperation = 'multiply';
-        if (cyber) { const gl = this.flipT0 != null ? clamp(1 - (t - this.flipT0) / .5, 0, 1) : 0, jx = 3 + gl * (8 + 12 * Math.random()), jy = gl * (Math.random() - .5) * 8;
+        if (cyber) { const gl = Math.max(this.flipT0 != null ? clamp(1 - (t - this.flipT0) / .5, 0, 1) : 0, tn ? (1 - tn.sig) * smooth(clamp(tn.u / .1, 0, 1)) : 0), jx = 3 + gl * (8 + 12 * Math.random()), jy = gl * (Math.random() - .5) * 8;
           ctx.globalAlpha = al * .75; ctx.drawImage(P.cC, ix - jx, iy + jy, iw, ih); ctx.drawImage(P.cM, ix + jx, iy - jy, iw, ih);
           if (gl > 0) { ctx.globalAlpha = al; for (let q = 0; q < 5; q++) { const sy = Math.random() * ih, sh = 4 + Math.random() * 34, sx = (Math.random() - .5) * 60 * gl, k2 = P.c.height / ih; ctx.drawImage(P.c, 0, sy * k2, P.c.width, sh * k2, ix + sx, iy + sy, iw, sh); } } }
         ctx.globalAlpha = al; ctx.drawImage(P.c, ix, iy, iw, ih); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; });
+      // static while tuning in: grain that thins out as the signal locks on
+      if (tn && tn.u > 0) { const sa = .5 * (1 - tn.sig) * smooth(clamp(tn.u / .12, 0, 1)); if (sa > .01) {
+        if (!this.staticC) { const c2 = document.createElement('canvas'); c2.width = c2.height = 160; const x2 = c2.getContext('2d'), im = x2.createImageData(160, 160); for (let q = 0; q < im.data.length; q += 4) { const v = Math.random() < .5 ? 20 : 235; im.data[q] = im.data[q + 1] = im.data[q + 2] = v; im.data[q + 3] = Math.random() * 255; } x2.putImageData(im, 0, 0); this.staticP = ctx.createPattern(c2, 'repeat'); this.staticC = c2; }
+        ctx.save(); ctx.globalAlpha = sa; ctx.translate(Math.random() * 160, Math.random() * 160); ctx.fillStyle = this.staticP; ctx.fillRect(-160, -160, this.wvOf() + 160, H + 160); ctx.restore(); } }
       // fine scanlines over the ground and photo
       if (cyber) { if (!this.scanP) { const sc = document.createElement('canvas'); sc.width = 1; sc.height = 3; const sx = sc.getContext('2d'); sx.fillStyle = 'rgba(0,0,0,.05)'; sx.fillRect(0, 0, 1, 1); this.scanP = ctx.createPattern(sc, 'repeat'); } ctx.globalAlpha = 1 - fo; ctx.fillStyle = this.scanP; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; } }
     // a soft light of the playing piece's colour round the playhead
     if (playX != null && look !== 'stark') { const rr = amp * 1.6, g = ctx.createRadialGradient(playX, yB, 0, playX, yB, rr), k = KINDS[c.tr.kind], col = (look === 'haze' ? k.tint : k.cs).slice(4, -1); g.addColorStop(0, 'rgba(' + col + ',' + (.1 + .16 * live) * (1 - fo) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)'); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = g; ctx.fillRect(playX - rr, yB - rr, rr * 2, rr * 2); ctx.globalCompositeOperation = 'source-over'; }
     // arrival. many: the red dot breaks into pieces that fly down and build the wave, left to right. haze: the red dot blooms into a soft light
     // that sinks to the baseline and cools, and the lines form out of it from the middle outwards
-    const arrD = this.arr ? .9 : 0, introDone = t > 3.4 + arrD, introG = look === 'many' ? (x => introDone ? 1 : smooth(clamp((t - arrD - (1.0 + .9 * x / W)) / .45, 0, 1))) : (x => introDone ? 1 : smooth(clamp((t - arrD - .3 - 1.1 * Math.abs(x / W - .5)) / .8, 0, 1)));
+    const arrD = this.arr ? .9 : 0, introDone = t > 3.4 + arrD, eqRise = x => { const h = (((Math.floor(x / 10) + 7) * 2654435761) >>> 0) % 1000 / 1000, k = clamp((t - 1.75 - h * .45) / .32, 0, 1); return k <= 0 ? 0 : k >= 1 ? 1 : 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2; }, introG = this.arr ? (x => introDone ? 1 : eqRise(x)) : look === 'many' ? (x => introDone ? 1 : smooth(clamp((t - arrD - (1.0 + .9 * x / W)) / .45, 0, 1))) : (x => introDone ? 1 : smooth(clamp((t - arrD - .3 - 1.1 * Math.abs(x / W - .5)) / .8, 0, 1)));
     // targets for each column: height, strength and which kind of piece it belongs to
     const pieces = look === 'many' || (look === 'stark' && (this.props.wave ?? 'pieces') === 'pieces'), g = pieces ? (W < 600 ? 8 : 10) : (W < 600 ? 3 : 4), n = Math.ceil(W / g);
     if (!this.disp || this.disp.length !== n) { this.disp = new Float32Array(n); this.alp = new Float32Array(n); this.colK = new Array(n).fill(null); }
@@ -458,10 +465,18 @@ class Component extends DCLogic {
     const pap = this.arr ? 1 - smooth(clamp((t - .2) / 1, 0, 1)) : this.out && this.out.k !== 'other' ? smooth(clamp((this.out.t - .25) / .7, 0, 1)) : 0;
     if (pap > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = pap; ctx.fillStyle = '#f5f3ee'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     this.drawStrings(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
-    const ta = smooth(clamp((t - 1.4 - (this.arr ? .5 : 0)) / .8, 0, 1)) * (1 - fo), el = this.contentRef.current;
-    if (el) { el.style.opacity = (ta * (1 - this.pf)).toFixed(3); el.style.pointerEvents = this.pf > .5 ? 'none' : ''; el.style.transform = 'translateY(' + ((1 - ta) * 8).toFixed(1) + 'px)'; }
+    const ta = (this.arr ? (t >= 1.7 ? 1 : 0) : smooth(clamp((t - 1.4) / .8, 0, 1))) * (1 - fo), el = this.contentRef.current;
+    if (el) { el.style.opacity = (ta * (1 - this.pf)).toFixed(3); el.style.pointerEvents = this.pf > .5 ? 'none' : ''; el.style.transform = 'translateY(' + ((1 - ta) * (this.arr ? 0 : 8)).toFixed(1) + 'px)'; this.typeIn(t); }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
+  // arriving: the album's labels and tracks type in, a character at a time, like a mixer readout; the album rail flickers on with the signal
+  typeIn(t) { if (this.typed) return; const sec = this.contentRef.current && this.contentRef.current.querySelectorAll('section')[this.state.album], rail = this.wheelRef.current; if (!sec) return;
+    const els = [];
+    if (this.arr) { const h2 = sec.querySelector('h2'), meta = h2 && h2.parentElement.querySelector('p'); if (meta) els.push([meta, .15]); if (h2) els.push([h2, .35]); sec.querySelectorAll('ol > li').forEach((li, i) => els.push([li, .6 + i * .12])); }
+    const u = t - 1.7, done = !this.arr || u > 2.2;
+    els.forEach(([e, d]) => { const n = Math.max(4, (e.textContent || '').trim().length), k = clamp((u - d) / clamp(n * .028, .25, .7), 0, 1), kq = Math.floor(k * n) / n; e.style.clipPath = done || k >= 1 ? '' : 'inset(0 ' + ((1 - kq) * 100).toFixed(2) + '% 0 0)'; });
+    if (rail) { const tn = this.tuneAt(t); rail.style.opacity = done || !tn ? '' : (tn.sig > .35 && Math.random() > .15 * (1 - tn.sig) ? 1 : .15).toString(); }
+    if (done) { this.typed = true; if (rail) rail.style.opacity = ''; } }
   renderVals() {
     const { W, H, album, playing, paused } = this.state, G = this.geom(W, H), n = this.albums.length;
     const trV = tr => { const k = KINDS[tr.kind], cur = playing === tr.id; return { mark: cur ? (paused ? '❙❙' : '▶') : pad2(tr.ti + 1), title: tr.title, kind: k.label, col: this.look === 'stark' ? THEMES.stark.ink : k.cs, date: fmtDate(tr.date), dur: fmtDur(tr.dur), state: cur ? (paused ? 'Paused' : 'Playing') : 'Play',

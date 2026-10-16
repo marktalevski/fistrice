@@ -1,6 +1,6 @@
 // The Sound page's DJ deck (after a Pioneer Opus-Quad): a controller running off the bottom of the screen, so only its top shows.
 // Left deck: a jog wheel that scrubs. Middle: the album clock (a flip counter in a tall display, the album names rolling round it), the main
-// screen (now playing over the album's track list), cue and play / pause, and the volume fader. Right deck: six numbered knobs (a combination
+// screen (now playing over the album's track list), and play / pause over the volume fader. Right deck: six numbered knobs (a combination
 // lock, for something to come) in a row under the beat pads, square, four wide and two tall: the four pages, three for the pages still to come
 // (orange, green, purple) and one spare. The menu dots fly into the pads.
 // It lives here so Home can drop its dots straight onto the pads when it hands over to Sound.
@@ -8,15 +8,15 @@ export const DECK_KEYS = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export function deckGeo(W, H) {
-  const hV = Math.round(clamp(H * .33, 200, 270)), x0 = 12, x1 = W - 12, w = x1 - x0, y0 = H - hV, cyM = y0 + hV / 2;
+  const hV = Math.round(clamp(H * .4, 220, 330)), x0 = 12, x1 = W - 12, w = x1 - x0, y0 = H - hV, cyM = y0 + hV / 2;
   // the mixer in the middle, a deck either side of it
   const Mw = Math.round(clamp(w * .46, 440, 640)), mx0 = Math.round((W - Mw) / 2), mx1 = mx0 + Mw, L = mx0 - x0;
   // left deck: the jog wheel, a whole circle, as large as the deck allows
   const jr = Math.round(clamp(Math.min((hV - 18) / 2, L / 2 - 10), 56, 170)), jog = [x0 + L / 2, y0 + hV / 2, jr];
-  // middle: clock, screen, then cue / play and the volume fader
+  // middle: clock, screen, then play / pause standing over the volume fader
   const clock = [mx0 + 16, Math.round(cyM - 42), 64, 84], clockScr = [mx0 + 8, y0 + 16, 80, hV - 32];
-  const vol = { x: mx1 - 26, y0: y0 + 34, y1: H - 22 }, bx = mx1 - 70, cue = [bx, Math.round(cyM - 28), 18], play = [bx, Math.round(cyM + 28), 18];
-  const scr = [mx0 + 96, y0 + 16, Mw - 96 - 104, hV - 32];
+  const play = [mx1 - 28, y0 + 38, 18], vol = { x: mx1 - 28, y0: y0 + 86, y1: H - 22 };
+  const scr = [mx0 + 96, y0 + 16, Mw - 96 - 60, hV - 32];
   // right deck: square beat pads above, four wide and two tall (the four pages, then the three to come and the spare), and the six knobs in a
   // row along the bottom
   const Rw = x1 - mx1 - 28, gap = 8, kc = Math.floor(Math.min(Rw / 6, 64)), s = Math.floor(Math.min((Rw - 3 * gap) / 4, (hV - 30 - kc - 10 - gap) / 2));
@@ -24,7 +24,7 @@ export function deckGeo(W, H) {
   const cell = n => [gx + (n % 4) * (s + gap), gy + Math.floor(n / 4) * (s + gap), s, s];
   const pads = [0, 1, 2, 3].map(cell), cpads = [4, 5, 6].map(cell), spare = cell(7);
   const kgx = mx1 + 14 + (Rw - 6 * kc) / 2, ky = H - 14 - kc / 2, knobs = [0, 1, 2, 3, 4, 5].map(i => [kgx + (i + .5) * kc, ky, kc * .25]);
-  return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, knobs, kc, cue, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8 };
+  return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, knobs, kc, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8 };
 }
 // where each menu dot lands: the centre of its beat pad
 export const padOf = (G, k) => { const i = DECK_KEYS.indexOf(k === 'ink' ? 'home' : k), p = i < 4 ? G.pads[i] : G.cpads[i - 4]; return [p[0] + p[2] / 2, p[1] + p[3] / 2]; };

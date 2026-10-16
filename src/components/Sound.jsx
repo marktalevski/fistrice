@@ -305,7 +305,7 @@ class Component extends DCLogic {
   // the middle's, each locking in with a clunk (and shaded while it is still turned away). The deck is drawn whole to a layer of its own and
   // laid in piece by piece; the dots have a layer over it. Otherwise the deck is simply drawn
   deckOut(ctx, W, H, t, dt, TH, live, fo) {
-    const A = this.arr, U = { r0: 1.9, r1: 2.35, m0: 2.25, m1: 2.8, l0: 2.7, l1: 3.25 };
+    const A = this.arr, U = { r0: 2.15, r1: 2.6, m0: 2.5, m1: 3.05, l0: 2.95, l1: 3.5 };
     if (!A || t > U.l1 + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
     const dpr = ctx.getTransform().a, pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
     const dk = this.unC || (this.unC = mk()), dt2 = this.unD || (this.unD = mk()); [dk, dt2].forEach(c => { if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; } });
@@ -370,8 +370,8 @@ class Component extends DCLogic {
     ctx.globalAlpha = 1 - fo;
     // the jog wheel, a whole circle. It turns with the record while a piece plays and under the hand while dragged;
     // the lit ring round it is how far the piece has got
-    if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0) + (this.arr && t > 2.95 && t < 3.7 ? dt * TAU * 2.4 * (1 - (t - 2.95) / .75) : 0);
-    if (this.arr && t > 2.3 && !this.knobSwept) { this.knobSwept = true; this.knobA = this.knobV.map(() => 150); }
+    if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0) + (this.arr && t > 3.2 && t < 3.95 ? dt * TAU * 2.4 * (1 - (t - 3.2) / .75) : 0);
+    if (this.arr && t > 2.55 && !this.knobSwept) { this.knobSwept = true; this.knobA = this.knobV.map(() => 150); }
     { const [jx, jy, jr] = G.jog;
       const rh = this.rimHov || this.rimDrag; ctx.strokeStyle = rh ? 'rgba(0,229,255,.35)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = rh ? 5 : 3; if (rh) glow(NEON_C, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke(); noGlow();
       // tick marks just outside the rim, like a dial, so it reads as somewhere to click: faint at rest, lit when pointed at
@@ -526,10 +526,10 @@ class Component extends DCLogic {
     const bz = (P0, P1, C1, C2, u2) => { const a = (1 - u2) ** 3, b = 3 * (1 - u2) ** 2 * u2, c2 = 3 * (1 - u2) * u2 * u2, d = u2 ** 3; return [a * P0[0] + b * C1[0] + c2 * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c2 * C2[1] + d * P1[1]]; };
     this.dotPos = {};
     const dc = this.dotsCtx || ctx;
-    if (A && t < 2.6 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
-      const fm = A ? smooth(clamp((t - 1.3 - i * .06) / .35, 0, 1)) : asm;
-      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) { const u = clamp((t - .2 - i * .07) / .75, 0, 1), ub = t - (.95 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
-      this.dotPos[k] = p; a *= A ? 1 - smooth(clamp((t - 2.2) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
+    if (A && t < 2.85 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
+      const fm = A ? smooth(clamp((t - 1.45 - i * .06) / .35, 0, 1)) : asm;
+      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) { const u = clamp((t - .2 - i * .07) / .9, 0, 1), ub = t - (1.1 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
+      this.dotPos[k] = p; a *= A ? 1 - smooth(clamp((t - 2.45) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
       const pp = A ? fm : 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
       const r0 = i < 4 ? 8 : 5.5, dw = 2 * r0 + (pd[2] - 2 * r0) * fm, dh = 2 * r0 + (pd[3] - 2 * r0) * fm, rad = r0 + (6 - r0) * fm;
       dc.globalAlpha = a; dc.fillStyle = c0; if (fm > 0 && cy) { dc.shadowColor = c0; dc.shadowBlur = 10 * fm; }

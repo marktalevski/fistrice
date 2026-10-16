@@ -24,6 +24,9 @@ const THEMES = {
 };
 // the cut-paper colours mixed in among a piece's own colour
 const PAL = ['rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(24,88,224)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)', 'rgb(244,138,172)', 'rgb(233,227,214)', 'rgb(110,200,230)'];
+// the paper inks in a ring (red, orange, yellow, green, sky, blue, purple, pink), and the colour u of the way round it, blended between two
+const INK_RING = [[232, 34, 44], [255, 118, 18], [255, 196, 0], [22, 168, 82], [110, 200, 230], [24, 88, 224], [138, 64, 214], [244, 138, 172]];
+const inkAt = u => { const n = INK_RING.length, x = ((u % 1) + 1) % 1 * n, i = Math.floor(x), f = x - i, a = INK_RING[i], b = INK_RING[(i + 1) % n], m = q => Math.round(a[q] + (b[q] - a[q]) * f); return 'rgb(' + m(0) + ',' + m(1) + ',' + m(2) + ')'; };
 // albums are just categories. Placeholder pieces: give one a src (an audio file next to this page) and it plays that file with its real waveform;
 // without one it plays a synthesised stand-in of its kind. dur is in seconds (taken from the file when there is one)
 const ALBUMS = [
@@ -152,7 +155,7 @@ class Component extends DCLogic {
   // the edge is plain
   rimCol(x) { const R = this.rgbP; if (!R || !(this.rgbK > .5)) return null; let best = null, bd = 1e9; const top = R.P.reduce((m, p) => Math.min(m, p[1]), 1e9);
     for (const p of R.P) { const dd = Math.abs(p[0] - x) + Math.abs(p[1] - top) * 4; if (dd < bd) { bd = dd; best = p; } }
-    return 'hsl(' + ((best[2] / R.len * 720 - this.rgbH + 3600) % 360).toFixed(0) + ',100%,' + (this.rgbLt || 52).toFixed(0) + '%)'; }
+    return inkAt(best[2] / R.len * .32 - this.rgbH); }
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
   cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
@@ -293,19 +296,19 @@ class Component extends DCLogic {
     if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10);
       ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
-    // while a piece plays the edge becomes an RGB strip (after Corsair's lighting): a rainbow running round it, quicker and brighter as the
-    // music gets louder, drawn as the same hard line as the plain edge. On pause it holds still where it is; it fades back to the plain edge once nothing is loaded
+    // while a piece plays the edge becomes an RGB strip (after Corsair's lighting), in the paper wave's own inks: about two and a half of them
+    // span the edge, drifting slowly round it (a touch quicker when the music is loud), drawn as the same hard line as the plain edge. On pause it holds still where it is; it fades back to the plain edge once nothing is loaded
     { const c = this.cur, on = c ? 1 : 0, run = c && !c.paused; this.rgbK = (this.rgbK || 0) + (on - (this.rgbK || 0)) * Math.min(1, dt * 3);
-      const lv = run ? clamp(this.live || 0, 0, 1) : 0; this.rgbLv = (this.rgbLv || 0) + (lv - (this.rgbLv || 0)) * Math.min(1, dt * 10); if (run) this.rgbH = ((this.rgbH || 0) + dt * (50 + 220 * this.rgbLv)) % 360;
+      const lv = run ? clamp(this.live || 0, 0, 1) : 0; this.rgbLv = (this.rgbLv || 0) + (lv - (this.rgbLv || 0)) * Math.min(1, dt * 10); if (run) this.rgbH = ((this.rgbH || 0) + dt * (.035 + .05 * this.rgbLv)) % 1;
       if (this.rgbK > .01) { const K = this.rgbK, L = this.rgbLv;
         // the edge as a polyline: up the left side, round the corner, along the top, round, and down the right
         if (!this.rgbP || this.rgbP.W !== W || this.rgbP.H !== H) { const P = [], r = 18, a = G.x0 + .5, b = G.x1 - .5, top = G.y0 + .5, add = (x, y) => P.push([x, y]);
           for (let y = H + 2; y > top + r; y -= 5) add(a, y); for (let q = 0; q <= 8; q++) { const t2 = Math.PI + q / 8 * Math.PI / 2; add(a + r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
           for (let x = a + r + 5; x < b - r; x += 5) add(x, top); for (let q = 0; q <= 8; q++) { const t2 = -Math.PI / 2 + q / 8 * Math.PI / 2; add(b - r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
           for (let y = top + r + 5; y <= H + 2; y += 5) add(b, y); let d = 0; P.forEach((p, i) => { if (i) d += Math.hypot(p[0] - P[i - 1][0], p[1] - P[i - 1][1]); p[2] = d; }); this.rgbP = { W, H, P, len: d }; }
-        const { P, len } = this.rgbP, lt = 52 + 14 * L; this.rgbLt = lt; const hue = d => (d / len * 720 - this.rgbH + 3600) % 360; ctx.lineCap = 'square';
+        const { P, len } = this.rgbP; ctx.lineCap = 'square';
         [[1.2, K]].forEach(([lw, al]) => { ctx.lineWidth = lw; ctx.globalAlpha = (1 - foFace) * al;
-          for (let i = 1; i < P.length; i++) { ctx.strokeStyle = 'hsl(' + hue(P[i][2]).toFixed(0) + ',100%,' + lt.toFixed(0) + '%)'; ctx.beginPath(); ctx.moveTo(P[i - 1][0], P[i - 1][1]); ctx.lineTo(P[i][0], P[i][1]); ctx.stroke(); } });
+          for (let i = 1; i < P.length; i++) { ctx.strokeStyle = inkAt(P[i][2] / len * .32 - this.rgbH); ctx.beginPath(); ctx.moveTo(P[i - 1][0], P[i - 1][1]); ctx.lineTo(P[i][0], P[i][1]); ctx.stroke(); } });
         ctx.lineCap = 'butt'; ctx.globalAlpha = 1 - foFace; } }
     ctx.globalAlpha = 1 - fo;
     // the jog wheel, a whole circle. It turns with the record while a piece plays and under the hand while dragged;

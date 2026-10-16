@@ -97,11 +97,7 @@ class Component extends DCLogic {
   seek(u) { const c = this.cur; if (!c) return; const off = clamp(u, 0, 1) * c.tr.dur; if (c.paused) { c.off = off; this.forceUpdate(); } else this.play(c.tr, off); }
   // arriving from another page, once the dots have become faders the page tunes in like a radio finding its station:
   // sig is the signal strength, rising with a few dropouts; u is the time since tuning began
-  tuneAt(t) { if (!this.arr || this.reveal !== 'tune' && this.reveal) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
-  // sweep: a playhead runs from the mixer to the left edge, revealing what's to its right; thump: a ring pushes out from the Sound fader, revealing what's inside
-  revealAt(t) { if (!this.arr || !this.reveal || this.reveal === 'tune') return null; const W = innerWidth, H = innerHeight;
-    if (this.reveal === 'sweep') { const k = clamp((t - 1.9) / .95, 0, 1); return { mode: 'sweep', on: t >= 1.9, done: k >= 1, x: k >= 1 ? -40 : (this.wvOf() + 4) * (1 - easeIO(k)) - 4 }; }
-    const c = this.capPos || [W - 120, H - 46], k = clamp((t - 1.7) / 1.1, 0, 1); return { mode: 'thump', on: t >= 1.7, done: k >= 1, cx: c[0], cy: c[1], r: Math.hypot(Math.max(c[0], W - c[0]), Math.max(c[1], H - c[1])) * 1.02 * (1 - (1 - k) ** 3), k }; }
+  tuneAt(t) { if (!this.arr) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
   recentScrub() { return performance.now() - (this.scrubAt || 0) < 350; }
   scrubDown = e => { if (e.button || !this.inBand(e.clientX, e.clientY, e.target)) return; e.preventDefault(); this.scrub = { x: e.clientX }; this.hx = e.clientX;
     // the playhead itself follows the pointer; a playing piece jumps along with it every few frames (rough, like dragging tape)
@@ -115,10 +111,7 @@ class Component extends DCLogic {
   get look() { const s = this.props.style ?? 'stark'; return THEMES[s] ? s : 'stark'; }
   componentDidMount() {
     // arriving from Home or Freediving: their menu dots are handed over and fly in to become this page's faders
-    if (/from=page/.test(location.search)) try { const nf = JSON.parse(sessionStorage.getItem('nav-from') || 'null'); if (nf || /reveal=/.test(location.search)) this.arr = { nf: nf || {} }; sessionStorage.removeItem('nav-from'); } catch (e) {}
-    // how the page comes in after arriving: 'tune' (radio tuning in), 'sweep' (a playhead sweeps it in), 'thump' (a speaker pulse rings it in).
-    // ?reveal=… picks one and it sticks for this tab, so it can be tried through the real Home → Sound hand-off
-    try { const q = new URLSearchParams(location.search).get('reveal'); if (q) sessionStorage.setItem('sound-reveal', q); this.reveal = q || sessionStorage.getItem('sound-reveal') || this.props.reveal || 'tune'; } catch (e) { this.reveal = this.props.reveal || 'tune'; }
+    if (/from=page/.test(location.search)) try { const nf = JSON.parse(sessionStorage.getItem('nav-from') || 'null'); if (nf) this.arr = { nf }; sessionStorage.removeItem('nav-from'); } catch (e) {}
     const r = rng(7), gc = document.createElement('canvas'); gc.width = gc.height = 220;
     { const x = gc.getContext('2d'), im = x.createImageData(220, 220); for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (r() - .5) * 150; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); }
     this.grainC = gc; this.lc = document.createElement('canvas');
@@ -298,8 +291,7 @@ class Component extends DCLogic {
         // faders keep their colour while a piece plays (the other strings dim towards Sound; these don't)
         const alpha = (1 - fo) * (i > 3 ? .7 : 1);
         const lo = ya + 14, hi = yb - 14; if (S.on) S.hold = clamp(S.ly, lo, hi); S.hold = clamp(S.hold ?? hi, lo, hi);
-        const kick = !this.arr ? 0 : this.reveal === 'sweep' ? 46 * Math.sin(Math.PI * clamp((t - 1.6 - i * .05) / .4, 0, 1)) : this.reveal === 'thump' && i === 2 ? 34 * Math.sin(Math.PI * clamp((t - 1.5) / .22, 0, 1)) : 0;
-        const tgt = S.hold - kick; S.cy = S.cy == null ? hi : S.cy + (tgt - S.cy) * Math.min(1, dt * (kick ? 24 : 10)); if (i === 2) this.capPos = [xs, S.cy];
+        const tgt = S.hold; S.cy = S.cy == null ? hi : S.cy + (tgt - S.cy) * Math.min(1, dt * 10);
         if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 10; q++) ctx.fillRect(xs - 9, ya + 10 + (yb - ya - 20) * q / 10, q % 5 ? 2 : 4, 1); ctx.fillStyle = cols[i]; }
         ctx.globalAlpha = alpha * .22; ctx.fillRect(xs - .75, ya, 1.5, yb - ya);
         ctx.globalAlpha = alpha * (.35 + .65 * Math.max(kk, i === 2 ? .75 : 0)); ctx.fillRect(xs - 1, S.cy, 2, yb - S.cy);
@@ -380,7 +372,7 @@ class Component extends DCLogic {
       if (!this.grainP) this.grainP = ctx.createPattern(this.grainC, 'repeat'); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = TH.grain; ctx.fillStyle = this.grainP; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     } else { ctx.fillStyle = TH.bg; ctx.fillRect(0, 0, W, H); }
     // stark: each album's photo, full height, multiplied into the grey so its white ground disappears and only the darks show; crossfades between albums
-    if (look === 'stark') { const ph = this.photos || (this.photos = {}), pr = Math.min(dpr, 1.5), tn = this.tuneAt(t), rv = this.revealAt(t), pa = (this.props.photo ?? .9) * (this.arr ? (rv ? (rv.on ? 1 : 0) : tn ? tn.sig : t < 1.6 ? 0 : 1) : smooth(clamp((t - .2) / 1.2, 0, 1))) * (1 - fo);
+    if (look === 'stark') { const ph = this.photos || (this.photos = {}), pr = Math.min(dpr, 1.5), tn = this.tuneAt(t), pa = (this.props.photo ?? .9) * (this.arr ? (tn ? tn.sig : t < 1.6 ? 0 : 1) : smooth(clamp((t - .2) / 1.2, 0, 1))) * (1 - fo);
       this.albums.forEach((a, ai) => { if (!a.img) return; let P = ph[a.img]; if (!P) { P = ph[a.img] = { im: new Image(), k: 0 }; P.im.src = a.img; }
         const ok = P.im.complete && P.im.naturalWidth > 0; P.k += ((ai === this.state.album && ok ? 1 : 0) - P.k) * Math.min(1, dt * 2.4); if (P.k < .004 || !ok) return;
         // full height, pushed right against the panel; imgY lifts it so the subject sits in the open top right, above the track list
@@ -392,11 +384,11 @@ class Component extends DCLogic {
           [[0, 0, fx, 0, 0, 0, fx, chh], [cw, 0, cw - fx, 0, cw - fx, 0, fx, chh], [0, 0, 0, fy, 0, 0, cw, fy], [0, chh, 0, chh - fy, 0, chh - fy, cw, fy]].forEach(([x0, y0, x1, y1, rx, ry, rw, rh]) => { const gg = px.createLinearGradient(x0, y0, x1, y1); gg.addColorStop(0, 'rgba(255,255,255,1)'); gg.addColorStop(1, 'rgba(255,255,255,0)'); px.fillStyle = gg; px.fillRect(rx, ry, rw, rh); });
           // tinted copies for the cyberpunk colour split: green+blue lifted (darks print cyan), red+blue lifted (darks print magenta)
           const tint = rgb => { const t2 = document.createElement('canvas'); t2.width = cw; t2.height = chh; const tx = t2.getContext('2d'); tx.drawImage(P.c, 0, 0); tx.globalCompositeOperation = 'lighter'; tx.fillStyle = rgb; tx.fillRect(0, 0, cw, chh); return t2; }; P.cC = tint('rgb(0,255,255)'); P.cM = tint('rgb(255,0,255)'); }
-        const al = pa * smooth(P.k); ctx.save(); if (rv && !rv.done) { ctx.beginPath(); if (rv.mode === 'sweep') ctx.rect(rv.x, 0, W, H); else ctx.arc(rv.cx, rv.cy, rv.r, 0, TAU); ctx.clip(); } ctx.globalCompositeOperation = 'multiply';
+        const al = pa * smooth(P.k); ctx.globalCompositeOperation = 'multiply';
         if (cyber) { const gl = Math.max(this.flipT0 != null ? clamp(1 - (t - this.flipT0) / .5, 0, 1) : 0, tn ? (1 - tn.sig) * smooth(clamp(tn.u / .1, 0, 1)) : 0), jx = 3 + gl * (8 + 12 * Math.random()), jy = gl * (Math.random() - .5) * 8;
           ctx.globalAlpha = al * .75; ctx.drawImage(P.cC, ix - jx, iy + jy, iw, ih); ctx.drawImage(P.cM, ix + jx, iy - jy, iw, ih);
           if (gl > 0) { ctx.globalAlpha = al; for (let q = 0; q < 5; q++) { const sy = Math.random() * ih, sh = 4 + Math.random() * 34, sx = (Math.random() - .5) * 60 * gl, k2 = P.c.height / ih; ctx.drawImage(P.c, 0, sy * k2, P.c.width, sh * k2, ix + sx, iy + sy, iw, sh); } } }
-        ctx.globalAlpha = al; ctx.drawImage(P.c, ix, iy, iw, ih); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.restore(); });
+        ctx.globalAlpha = al; ctx.drawImage(P.c, ix, iy, iw, ih); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; });
       // static while tuning in: grain that thins out as the signal locks on
       if (tn && tn.u > 0) { const sa = .5 * (1 - tn.sig) * smooth(clamp(tn.u / .12, 0, 1)); if (sa > .01) {
         if (!this.staticC) { const c2 = document.createElement('canvas'); c2.width = c2.height = 160; const x2 = c2.getContext('2d'), im = x2.createImageData(160, 160); for (let q = 0; q < im.data.length; q += 4) { const v = Math.random() < .5 ? 20 : 235; im.data[q] = im.data[q + 1] = im.data[q + 2] = v; im.data[q + 3] = Math.random() * 255; } x2.putImageData(im, 0, 0); this.staticP = ctx.createPattern(c2, 'repeat'); this.staticC = c2; }
@@ -407,7 +399,7 @@ class Component extends DCLogic {
     if (playX != null && look !== 'stark') { const rr = amp * 1.6, g = ctx.createRadialGradient(playX, yB, 0, playX, yB, rr), k = KINDS[c.tr.kind], col = (look === 'haze' ? k.tint : k.cs).slice(4, -1); g.addColorStop(0, 'rgba(' + col + ',' + (.1 + .16 * live) * (1 - fo) + ')'); g.addColorStop(1, 'rgba(' + col + ',0)'); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = g; ctx.fillRect(playX - rr, yB - rr, rr * 2, rr * 2); ctx.globalCompositeOperation = 'source-over'; }
     // arrival. many: the red dot breaks into pieces that fly down and build the wave, left to right. haze: the red dot blooms into a soft light
     // that sinks to the baseline and cools, and the lines form out of it from the middle outwards
-    const arrD = this.arr ? .9 : 0, introDone = t > 3.4 + arrD, eqRise = x => { const h = (((Math.floor(x / 10) + 7) * 2654435761) >>> 0) % 1000 / 1000, k = clamp((t - 1.75 - h * .45) / .32, 0, 1); return k <= 0 ? 0 : k >= 1 ? 1 : 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2; }, rvW = this.revealAt(t), introG = this.arr ? (x => introDone ? 1 : !rvW ? eqRise(x) : rvW.done ? 1 : rvW.mode === 'sweep' ? (x > rvW.x ? 1 + .35 * Math.exp(-(x - rvW.x) / 26) : 0) : (d => d < rvW.r ? 1 + .35 * Math.exp(-(rvW.r - d) / 34) : 0)(Math.hypot(x - rvW.cx, H / 2 - rvW.cy))) : look === 'many' ? (x => introDone ? 1 : smooth(clamp((t - arrD - (1.0 + .9 * x / W)) / .45, 0, 1))) : (x => introDone ? 1 : smooth(clamp((t - arrD - .3 - 1.1 * Math.abs(x / W - .5)) / .8, 0, 1)));
+    const arrD = this.arr ? .9 : 0, introDone = t > 3.4 + arrD, eqRise = x => { const h = (((Math.floor(x / 10) + 7) * 2654435761) >>> 0) % 1000 / 1000, k = clamp((t - 1.75 - h * .45) / .32, 0, 1); return k <= 0 ? 0 : k >= 1 ? 1 : 1 + 2.2 * (k - 1) ** 3 + 1.2 * (k - 1) ** 2; }, introG = this.arr ? (x => introDone ? 1 : eqRise(x)) : look === 'many' ? (x => introDone ? 1 : smooth(clamp((t - arrD - (1.0 + .9 * x / W)) / .45, 0, 1))) : (x => introDone ? 1 : smooth(clamp((t - arrD - .3 - 1.1 * Math.abs(x / W - .5)) / .8, 0, 1)));
     // targets for each column: height, strength and which kind of piece it belongs to
     const pieces = look === 'many' || (look === 'stark' && (this.props.wave ?? 'pieces') === 'pieces'), g = pieces ? (W < 600 ? 8 : 10) : (W < 600 ? 3 : 4), n = Math.ceil(W / g);
     if (!this.disp || this.disp.length !== n) { this.disp = new Float32Array(n); this.alp = new Float32Array(n); this.colK = new Array(n).fill(null); }
@@ -473,23 +465,15 @@ class Component extends DCLogic {
     const pap = this.arr ? 1 - smooth(clamp((t - .2) / 1, 0, 1)) : this.out && this.out.k !== 'other' ? smooth(clamp((this.out.t - .25) / .7, 0, 1)) : 0;
     if (pap > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = pap; ctx.fillStyle = '#f5f3ee'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     this.drawStrings(ctx, W, H, t, dt, TH, live, this.out && this.out.k !== 'other' ? 0 : fo);
-    const rv = this.revealAt(t);
-    if (rv && rv.mode === 'thump' && rv.on && !rv.done) { // the ring: a bright edge with a faint echo behind it, fading as it travels
-      const fade = 1 - rv.k; ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.lineWidth = 2; ctx.strokeStyle = NEON_C; ctx.shadowColor = NEON_C; ctx.shadowBlur = 14; ctx.globalAlpha = .9 * fade; ctx.beginPath(); ctx.arc(rv.cx, rv.cy, rv.r, 0, TAU); ctx.stroke();
-      ctx.strokeStyle = NEON_M; ctx.shadowColor = NEON_M; ctx.globalAlpha = .5 * fade; ctx.beginPath(); ctx.arc(rv.cx, rv.cy, Math.max(0, rv.r - 26 - 40 * rv.k), 0, TAU); ctx.stroke(); ctx.restore(); }
-    { const r0 = this.rootRef.current; if (r0) { const b = rv && rv.mode === 'thump' ? Math.sin(Math.PI * clamp((t - 1.62) / .2, 0, 1)) : 0; r0.style.transform = b > .001 ? 'scale(' + (1 + .012 * b).toFixed(4) + ')' : '';
-      if (rv && rv.mode === 'sweep' && rv.on && !rv.done) { if (!this.sweepEl) { const d = document.createElement('div'); d.style.cssText = 'position:absolute;top:0;bottom:0;left:0;width:2px;margin-left:-1px;z-index:6;pointer-events:none;background:' + NEON_M + ';box-shadow:0 0 12px 2px ' + NEON_M + ',0 0 30px 6px rgba(255,43,214,.35)'; r0.appendChild(d); this.sweepEl = d; } this.sweepEl.style.display = ''; this.sweepEl.style.transform = 'translateX(' + rv.x.toFixed(1) + 'px)'; }
-      else if (this.sweepEl) this.sweepEl.style.display = 'none'; } }
-    const ta = (this.arr ? (rv ? (rv.on ? 1 : 0) : t >= 1.7 ? 1 : 0) : smooth(clamp((t - 1.4) / .8, 0, 1))) * (1 - fo), el = this.contentRef.current;
-    if (el) el.style.clipPath = rv && !rv.done ? (rv.mode === 'sweep' ? 'inset(0 0 0 ' + Math.max(0, rv.x).toFixed(1) + 'px)' : 'circle(' + rv.r.toFixed(1) + 'px at ' + rv.cx.toFixed(1) + 'px ' + rv.cy.toFixed(1) + 'px)') : '';
+    const ta = (this.arr ? (t >= 1.7 ? 1 : 0) : smooth(clamp((t - 1.4) / .8, 0, 1))) * (1 - fo), el = this.contentRef.current;
     if (el) { el.style.opacity = (ta * (1 - this.pf)).toFixed(3); el.style.pointerEvents = this.pf > .5 ? 'none' : ''; el.style.transform = 'translateY(' + ((1 - ta) * (this.arr ? 0 : 8)).toFixed(1) + 'px)'; this.typeIn(t); }
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
   // arriving: the album's labels and tracks type in, a character at a time, like a mixer readout; the album rail flickers on with the signal
   typeIn(t) { if (this.typed) return; const sec = this.contentRef.current && this.contentRef.current.querySelectorAll('section')[this.state.album], rail = this.wheelRef.current; if (!sec) return;
     const els = [];
-    if (this.arr && !this.revealAt(t) && (this.reveal || 'tune') === 'tune') { const h2 = sec.querySelector('h2'), meta = h2 && h2.parentElement.querySelector('p'); if (meta) els.push([meta, .15]); if (h2) els.push([h2, .35]); sec.querySelectorAll('ol > li').forEach((li, i) => els.push([li, .6 + i * .12])); }
-    const u = t - 1.7, done = !this.arr || !els.length || u > 2.2;
+    if (this.arr) { const h2 = sec.querySelector('h2'), meta = h2 && h2.parentElement.querySelector('p'); if (meta) els.push([meta, .15]); if (h2) els.push([h2, .35]); sec.querySelectorAll('ol > li').forEach((li, i) => els.push([li, .6 + i * .12])); }
+    const u = t - 1.7, done = !this.arr || u > 2.2;
     els.forEach(([e, d]) => { const n = Math.max(4, (e.textContent || '').trim().length), k = clamp((u - d) / clamp(n * .028, .25, .7), 0, 1), kq = Math.floor(k * n) / n; e.style.clipPath = done || k >= 1 ? '' : 'inset(0 ' + ((1 - kq) * 100).toFixed(2) + '% 0 0)'; });
     if (rail) { const tn = this.tuneAt(t); rail.style.opacity = done || !tn ? '' : (tn.sig > .35 && Math.random() > .15 * (1 - tn.sig) ? 1 : .15).toString(); }
     if (done) { this.typed = true; if (rail) rail.style.opacity = ''; } }

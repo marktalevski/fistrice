@@ -105,25 +105,36 @@ class Component extends DCLogic {
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; this.jogScr = false;
       if (!moved) { this.playBtn(); return; } if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
-  // six numbered knobs, a combination lock: each turns through 0..9 and clicks into place on a number. Click a number to turn straight to it,
-  // click the knob to step it on,
-  // drag left / right or scroll over it to turn it either way. Set to 5 2 3 8 6 9 they open something (still to come: see onCombo)
+  // six numbered knobs, a combination lock: each turns through 0..9 and clicks into place on a number. Grab one and turn it round (like a
+  // real dial: the pointer leans toward the hand, then snaps to the next number with a click), click a number to turn straight to it, or
+  // scroll over it. Set to 5 2 3 8 6 9 they open something (still to come: see onCombo)
   knobV = [0, 0, 0, 0, 0, 0];
-  setKnob(i, v) { v = ((v % 10) + 10) % 10; if (this.knobV[i] === v) return; this.knobV[i] = v; this.knobAt = this.knobAt || []; this.knobAt[i] = this.t;
+  setKnob(i, v) { v = ((v % 10) + 10) % 10; const old = this.knobV[i]; if (old === v) return; this.knobV[i] = v; this.knobAt = this.knobAt || []; this.knobAt[i] = this.t;
+    this.knobKick = this.knobKick || []; this.knobKick[i] = { t: this.t, d: v > old ? 1 : -1 }; this.knobClick(); try { if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(4); } catch (e) {}
     if (this.knobV.join('') === '523869') this.onCombo(); }
   // the combination is set. What it opens is still to be decided; for now every number stays lit while it is set, so you can tell
   onCombo() { this.comboT = this.t; }
-  knobDown = i => e => { if (e.button) return; e.preventDefault();
-    // a click on one of the numbers round the knob turns it straight to that number
-    { const G = deckGeo(innerWidth, innerHeight), [kx, ky, kr] = G.knobs[i], dx = e.clientX - kx, dy = e.clientY - (ky + (this.deckSY || 0));
-      if (Math.hypot(dx, dy) > kr * 1.15) { const ang = Math.atan2(dx, -dy) * 180 / Math.PI, q = Math.round((ang + 150) / (300 / 9)); if (ang >= -168 && ang <= 168) { this.setKnob(i, clamp(q, 0, 9)); return; } } }
-    const x0 = e.clientX, v0 = this.knobV[i]; let moved = false; this.knobHeld = i;
-    const mv = ev => { const dv = Math.round((ev.clientX - x0) / 14); if (dv) moved = true; if (moved) this.setKnob(i, v0 + dv); };
-    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); this.knobHeld = null; if (!moved) this.setKnob(i, v0 + 1); };
+  // the detent's click: a short bright tick of noise over a tiny knock, through the volume
+  knobClick() { try { this.ensureAC(); const ac = this.ac; if (ac.state === "suspended" && ac.resume) ac.resume(); const now = ac.currentTime, n = Math.floor(ac.sampleRate * .012), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let q = 0; q < n; q++) d[q] = (Math.random() * 2 - 1) * Math.exp(-q / (n * .16));
+    const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain(), o = ac.createOscillator(), og = ac.createGain(); src.buffer = b; bp.type = 'bandpass'; bp.frequency.value = 3400; bp.Q.value = 1.4;
+    g.gain.value = .35; src.connect(bp); bp.connect(g); g.connect(this.vol); o.frequency.value = 1900; og.gain.setValueAtTime(.06, now); og.gain.exponentialRampToValueAtTime(.0001, now + .02); o.connect(og); og.connect(this.vol);
+    src.start(now); o.start(now); o.stop(now + .03); } catch (e) {} }
+  knobDown = i => e => { if (e.button) return; e.preventDefault(); const el = e.currentTarget;
+    const G = deckGeo(innerWidth, innerHeight), [kx, ky, kr] = G.knobs[i], cy0 = ky + (this.deckSY || 0), angOf = p => Math.atan2(p.clientX - kx, -(p.clientY - cy0)) * 180 / Math.PI;
+    // pressed on a number: a click (no turn) goes straight to it
+    const d0 = Math.hypot(e.clientX - kx, e.clientY - cy0), a0 = angOf(e), num = d0 > kr * 1.15 && a0 >= -168 && a0 <= 168 ? clamp(Math.round((a0 + 150) / (300 / 9)), 0, 9) : null;
+    let last = a0, raw = -150 + this.knobV[i] * 300 / 9, turned = 0; this.knobHeld = i; this.knobRaw = this.knobRaw || []; this.knobRaw[i] = raw;
+    el.style.cursor = 'grabbing'; document.body.style.cursor = 'grabbing';
+    // turning: the hand's angle round the knob's centre, unwrapped, moves the dial (between its stops at 0 and 9); it settles on the nearest number
+    const mv = ev => { if (Math.hypot(ev.clientX - kx, ev.clientY - cy0) < 4) return; const a = angOf(ev); let dd = a - last; if (dd > 180) dd -= 360; if (dd < -180) dd += 360; last = a;
+      turned += Math.abs(dd); raw = clamp(raw + dd, -150, 150); this.knobRaw[i] = raw; this.setKnob(i, Math.round((raw + 150) / (300 / 9))); };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); this.knobHeld = null; this.knobRaw[i] = null; el.style.cursor = 'grab'; document.body.style.cursor = '';
+      if (turned < 4 && num != null) this.setKnob(i, num); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   knobMove = i => e => { const G = deckGeo(innerWidth, innerHeight), [kx, ky, kr] = G.knobs[i], dx = e.clientX - kx, dy = e.clientY - (ky + (this.deckSY || 0)), d = Math.hypot(dx, dy), ang = Math.atan2(dx, -dy) * 180 / Math.PI;
     const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
-    const cur = q == null ? 'ew-resize' : 'pointer'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
+    const cur = this.knobHeld === i ? 'grabbing' : 'grab'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
   // Kirby on the screen: resting while nothing plays, dancing while a piece does. A pad under the pointer sets him off on a little turn,
   // picked at random (never the same twice running); a resting one (sleep, yawn) he keeps to afterwards if nothing is playing
@@ -338,7 +349,8 @@ class Component extends DCLogic {
     // points at is lit. When the combination is set they all flash once
     { const comboOn = this.knobV.join('') === '523869', comboK = comboOn ? 1 : 0;
       if (!this.knobA) this.knobA = this.knobV.map(() => 0);
-      G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], tgt = -150 + v * 300 / 9; this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 18);
+      G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], rw = this.knobRaw && this.knobRaw[i], tgt = -150 + v * 300 / 9 + (rw != null ? (rw - (-150 + v * 300 / 9)) * .3 : 0); this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 34);
+        const kk = this.knobKick && this.knobKick[i], kA = this.knobA[i] + (kk ? kk.d * 6 * Math.exp(-(t - kk.t) * 24) * Math.cos((t - kk.t) * 60) : 0);
         const hv = this.knobHov === i || this.knobHeld === i, fzk0 = clamp(kr * .48, 5.5, 8), nr = kr + fzk0 * .7 + 1.8, nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
         ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; ctx.beginPath(); ctx.arc(kx, ky + 1.5, kr + 3, 0, TAU); ctx.fill();
         const fzk = fzk0; ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -351,8 +363,8 @@ class Component extends DCLogic {
         ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(kx, ky, kr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
         ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(kx, ky, kr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
         // fine grip lines round the cap's edge
-        ctx.strokeStyle = 'rgba(0,0,0,.35)'; for (let q = 0; q < 24; q++) { const a = q / 24 * TAU + this.knobA[i] * Math.PI / 180; ctx.beginPath(); ctx.moveTo(kx + Math.sin(a) * kr * .82, ky - Math.cos(a) * kr * .82); ctx.lineTo(kx + Math.sin(a) * kr * .97, ky - Math.cos(a) * kr * .97); ctx.stroke(); }
-        const pa = this.knobA[i] * Math.PI / 180; ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(kx + Math.sin(pa) * kr * .25, ky - Math.cos(pa) * kr * .25); ctx.lineTo(kx + Math.sin(pa) * kr * .78, ky - Math.cos(pa) * kr * .78); ctx.stroke(); ctx.lineCap = 'butt'; }); }
+        ctx.strokeStyle = 'rgba(0,0,0,.35)'; for (let q = 0; q < 24; q++) { const a = q / 24 * TAU + kA * Math.PI / 180; ctx.beginPath(); ctx.moveTo(kx + Math.sin(a) * kr * .82, ky - Math.cos(a) * kr * .82); ctx.lineTo(kx + Math.sin(a) * kr * .97, ky - Math.cos(a) * kr * .97); ctx.stroke(); }
+        const pa = kA * Math.PI / 180; ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(kx + Math.sin(pa) * kr * .25, ky - Math.cos(pa) * kr * .25); ctx.lineTo(kx + Math.sin(pa) * kr * .78, ky - Math.cos(pa) * kr * .78); ctx.stroke(); ctx.lineCap = 'butt'; }); }
     // the album's photo, cropped square, for the screen
     const thumb = (x, y, sz) => { const P = this.photos && al.img && this.photos[al.img]; ctx.fillStyle = '#1b1e22'; ctx.fillRect(x, y, sz, sz);
       if (P && P.c) { const iw = P.c.width, ih = P.c.height, side = Math.min(iw, ih) * .7; ctx.globalAlpha = (1 - fo) * .95; ctx.drawImage(P.c, (iw - side) * (al.imgX ?? 1) * .9, (ih - side) * .3, side, side, x, y, sz, sz); ctx.globalAlpha = 1 - fo; }
@@ -700,7 +712,7 @@ function View(v) {
         {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={i < 3 ? nm + ' page: coming soon' : 'Spare pad'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="full" type="button" aria-label="Full screen: only the wave" title="Full screen (F)" onClick={v.deck?.full} onMouseEnter={v.deck?.btnOn?.('full')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}
+        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />)}
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>

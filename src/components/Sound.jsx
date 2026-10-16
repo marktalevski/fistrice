@@ -309,7 +309,8 @@ class Component extends DCLogic {
     if (O) { asm = 1 - smooth(clamp(O.t / .45, 0, 1)); slide = easeIO(clamp((O.t - .3) / .8, 0, 1)); }
     this.fK = (this.fK || 0) + ((this.focus ? 1 : 0) - (this.fK || 0)) * Math.min(1, dt * 2.2); const fz = easeIO(clamp(this.fK, 0, 1));
     { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && (this.scrub || performance.now() - (this.fMove || 0) < 2200);
-      if (ex) { const o = (awake ? 1 : 0).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
+      // the exit pill stays, faded right down, while the mouse is still
+      if (ex) { const o = (awake ? 1 : .18).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
       if (R) { const c = this.cur, cu = !this.focus || this.fK < .5 ? '' : this.scrub ? CUR_SCRUB : !awake ? 'none' : !c ? '' : this.nearHead(this.fmx) ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE; if (R.style.cursor !== cu) R.style.cursor = cu; } }
     const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
     if (this.wheelRef.current) { const o = (1 - fo).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
@@ -757,7 +758,7 @@ function View(v) {
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>
-      {/* leaving full screen: a pill centred at the bottom, the controller's dark glass with a cyan edge; it shows while the mouse moves */}
+      {/* leaving full screen: a pill centred at the bottom, the controller's dark glass with a cyan edge; bright while the mouse moves, faint while it is still */}
       <button data-full-exit="1" type="button" aria-label="Leave full screen" title="Leave full screen (Esc)" onClick={v.deck?.leaveFull} style={sty("position:fixed;left:50%;bottom:22px;transform:translateX(-50%);height:32px;padding:0 18px;border-radius:16px;border:1px solid rgba(0,229,255,.75);background:#17121f;box-shadow:0 0 10px rgba(0,229,255,.35);color:#7fe9f7;font-family:Michroma, sans-serif;font-size:10px;letter-spacing:.16em;white-space:nowrap;opacity:0;pointer-events:none;cursor:pointer;transition:opacity .4s;display:flex;align-items:center;gap:10px")}>
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7fe9f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" /></svg>EXIT<span style={sty("opacity:.55")}>·</span>ESC
       </button>

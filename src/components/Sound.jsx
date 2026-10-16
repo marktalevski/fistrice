@@ -147,6 +147,11 @@ class Component extends DCLogic {
   padOn(i) { if (this.padHov !== i) { let f; do f = KIRBY_REACTS[Math.floor(Math.random() * KIRBY_REACTS.length)]; while (f === this.kReact); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
   padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
+  // the controller's accent: the song's ink (the lit edge's colour), blended in as the edge lights; cyan with nothing loaded. Strokes and
+  // glows take it a little brightened (acc), text a lighter tint so it reads on the dark glass (accL)
+  accent() { const k = clamp(this.rgbK || 0, 0, 1), ink = this.rgbC || [0, 229, 255], mix = (a, b, u) => a.map((v, q) => Math.round(v + (b[q] - v) * u));
+    const base = mix([0, 229, 255], mix(ink, [255, 255, 255], .22), k), lt = mix(base, [255, 255, 255], .5);
+    return { rgb: base, acc: 'rgb(' + base.join(',') + ')', accL: 'rgb(' + lt.join(',') + ')', accL2: 'rgb(' + mix(base, [255, 255, 255], .75).join(',') + ')', a: al => 'rgba(' + base.join(',') + ',' + al + ')' }; }
   // the lit edge's colour (the playhead takes it too); null when
   // the edge is plain
   rimCol() { return this.rgbK > .5 && this.rgbC ? 'rgb(' + this.rgbC.map(Math.round).join(',') + ')' : null; }
@@ -277,6 +282,7 @@ class Component extends DCLogic {
   // (scrolling back). The others sit further out in order, the album before above and the one after below
   wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; const G = deckGeo(innerWidth, innerHeight), [bx0, by0, bw0, bh0] = G.clockScr, st = box.style;
     const v2 = [bx0 + 'px', (by0 + (this.deckSY || 0)).toFixed(1) + 'px', bw0 + 'px', bh0 + 'px']; if (st.left !== v2[0]) st.left = v2[0]; if (st.top !== v2[1]) st.top = v2[1]; if (st.width !== v2[2]) st.width = v2[2]; if (st.height !== v2[3]) st.height = v2[3];
+    { const A = this.acc; if (A) { const v1 = A.accL, v2 = A.a(.6), v3 = A.acc, v4 = A.a(.75); if (box.style.getPropertyValue('--accL') !== v1) { box.style.setProperty('--accL', v1); box.style.setProperty('--accG', v2); box.style.setProperty('--acc', v3); box.style.setProperty('--accG2', v4); } } }
     const cur = this.state.album, dir = this.albDir || 1, near = 56, step = Math.min(22, (bh0 / 2 - near - 8) / 1.5), half = bh0 / 2; this.wy = this.wy || {};
     box.querySelectorAll('[data-wi]').forEach(el => { const j = +el.getAttribute('data-wi'), d = j - cur;
       // slot: the current name on its side; the neighbours stepping outwards (the ones on the current name's side go beyond it)
@@ -284,7 +290,7 @@ class Component extends DCLogic {
       const prev2 = this.wy[j] ?? y; this.wy[j] = prev2 + (y - prev2) * Math.min(1, dt * 7); const yy = this.wy[j];
       const op = d === 0 ? 1 : clamp(1 - (Math.abs(yy) - near) / (step * 2.4), 0, 1) * .5, inside = Math.abs(yy) < half - 6;
       el.style.top = (half + yy).toFixed(1) + 'px'; el.style.opacity = (inside ? op : 0).toFixed(3); el.style.pointerEvents = inside && op > .2 ? '' : 'none';
-      el.style.color = d === 0 ? '#7fe9f7' : '#5d8a92'; el.style.textShadow = d === 0 ? '0 0 6px rgba(0,229,255,.6)' : 'none'; el.style.fontSize = d === 0 ? '9px' : '8px'; }); }
+      el.style.color = d === 0 ? 'var(--accL, #7fe9f7)' : '#5d8a92'; el.style.textShadow = d === 0 ? '0 0 6px var(--accG, rgba(0,229,255,.6))' : 'none'; el.style.fontSize = d === 0 ? '9px' : '8px'; }); }
   // the album counter flips like a clock: the old number's top folds down, then the new number's bottom lands
   flipTick() { const A = this.flapA.current, B = this.flapB.current; if (!A || !B) return; const ft = this.flipT0 == null ? 2 : (this.t - this.flipT0) / .6;
     if (ft >= 1) { if (A.style.visibility !== 'hidden') { A.style.visibility = B.style.visibility = 'hidden'; } if (this.flipPrev != null && this.flipPrev !== this.state.album) { this.flipPrev = this.state.album; this.forceUpdate(); } return; }
@@ -332,6 +338,7 @@ class Component extends DCLogic {
     if (this.wheelRef.current) { const o = smooth(e(U.m1 - .1, U.m1 + .2)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
   }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
+    const AC = this.accent(), NEON_C = AC.acc, NEON_M = AC.acc; this.acc = AC;
     const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
       cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
       LAB = ['#f2f2f0', 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'];
@@ -342,6 +349,7 @@ class Component extends DCLogic {
     this.fK = (this.fK || 0) + ((this.focus ? 1 : 0) - (this.fK || 0)) * Math.min(1, dt * 2.2); const fz = easeIO(clamp(this.fK, 0, 1));
     { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && (this.scrub || performance.now() - (this.fMove || 0) < 2200);
       // the exit pill stays, faded right down, while the mouse is still
+      if (ex && this.acc) { const A = this.acc; if (ex.style.color !== A.accL) { ex.style.color = A.accL; ex.style.borderColor = A.a(.75); ex.style.boxShadow = '0 0 10px ' + A.a(.35); } }
       if (ex) { const o = (!this.focus ? 0 : awake ? 1 : .18).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
       if (R) { const c = this.cur, cu = !this.focus || this.fK < .5 ? '' : this.scrub ? CUR_SCRUB : !awake ? 'none' : !c ? '' : this.nearHead(this.fmx) ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE; if (R.style.cursor !== cu) R.style.cursor = cu; } }
     const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
@@ -373,9 +381,9 @@ class Component extends DCLogic {
     if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0) + (this.arr && t > 3.2 && t < 3.95 ? dt * TAU * 2.4 * (1 - (t - 3.2) / .75) : 0);
     if (this.arr && t > 2.55 && !this.knobSwept) { this.knobSwept = true; this.knobA = this.knobV.map(() => 150); }
     { const [jx, jy, jr] = G.jog;
-      const rh = this.rimHov || this.rimDrag; ctx.strokeStyle = rh ? 'rgba(0,229,255,.35)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = rh ? 5 : 3; if (rh) glow(NEON_C, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke(); noGlow();
+      const rh = this.rimHov || this.rimDrag; ctx.strokeStyle = rh ? AC.a(.35) : 'rgba(255,255,255,.08)'; ctx.lineWidth = rh ? 5 : 3; if (rh) glow(NEON_C, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke(); noGlow();
       // tick marks just outside the rim, like a dial, so it reads as somewhere to click: faint at rest, lit when pointed at
-      ctx.strokeStyle = rh ? 'rgba(0,229,255,.75)' : 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; if (rh) glow(NEON_C, 4);
+      ctx.strokeStyle = rh ? AC.a(.75) : 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; if (rh) glow(NEON_C, 4);
       ctx.beginPath(); for (let q = 0; q < 48; q++) { const a = q / 48 * TAU, l = q % 12 === 0 ? 5 : q % 6 === 0 ? 3.5 : 2, r0 = jr + 13;
         ctx.moveTo(jx + Math.sin(a) * r0, jy - Math.cos(a) * r0); ctx.lineTo(jx + Math.sin(a) * (r0 + l), jy - Math.cos(a) * (r0 + l)); } ctx.stroke(); noGlow();
       if (c) { ctx.strokeStyle = cy ? NEON_M : 'rgb(255,150,40)'; glow(NEON_M, 10); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, -Math.PI / 2, -Math.PI / 2 + u * TAU); ctx.stroke(); noGlow(); }
@@ -394,7 +402,7 @@ class Component extends DCLogic {
         ctx.fillStyle = cap; ctx.beginPath(); ctx.arc(jx, jy + sk, hr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
         ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(jx, jy + sk, hr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
         ctx.strokeStyle = NEON_C; ctx.lineWidth = 1.8; ctx.globalAlpha = (1 - fo) * (hv ? 1 : .7); glow(NEON_C, hv ? 12 : 5); ctx.beginPath(); ctx.arc(jx, jy + sk, hr - 3, 0, TAU); ctx.stroke(); noGlow();
-        const lc = hv ? '#bff6fd' : '#7fe9f7', fz = clamp(hr * .26, 7.5, 10.5); ctx.globalAlpha = 1 - fo; ctx.fillStyle = lc; ctx.font = '400 ' + fz.toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (hv) glow(NEON_C, 6);
+        const lc = hv ? AC.accL2 : AC.accL, fz = clamp(hr * .26, 7.5, 10.5); ctx.globalAlpha = 1 - fo; ctx.fillStyle = lc; ctx.font = '400 ' + fz.toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (hv) glow(NEON_C, 6);
         // the word and its arrow both run up the diagonal, the arrow a short two-way one under the word
         ctx.save(); ctx.translate(jx, jy + sk); ctx.rotate(-Math.PI / 4); ctx.fillText('FULL', .5, -hr * .13);
         const a = hr * .3, ay = hr * .3, ah = Math.max(2.5, hr * .11); ctx.strokeStyle = lc; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
@@ -415,9 +423,9 @@ class Component extends DCLogic {
     // a piece of black glass with a fine edge (and scanlines in the cyber style)
     const glass = ([gx, gy, gw, gh], body) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(gx, gy, gw, gh, 5); ctx.fill(); ctx.save(); rr(gx, gy, gw, gh, 5); ctx.clip(); if (body) body(gx, gy, gw, gh);
       if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = gy + 1; q < gy + gh; q += 2) ctx.fillRect(gx, q, gw, 1); } ctx.restore(); ctx.globalAlpha = 1 - fo;
-      ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(gx + .5, gy + .5, gw - 1, gh - 1, 4.5); ctx.stroke(); };
+      ctx.strokeStyle = cy ? AC.a(.45) : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(gx + .5, gy + .5, gw - 1, gh - 1, 4.5); ctx.stroke(); };
     // the album clock's tall display: the flip counter (a real element) sits in the middle of it and the album names roll through it
-    glass(G.clockScr, (gx, gy, gw, gh) => { ctx.fillStyle = 'rgba(0,229,255,.05)'; ctx.fillRect(gx, gy, gw, gh); ctx.font = '400 6.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM', gx + gw / 2, gy + 9); });
+    glass(G.clockScr, (gx, gy, gw, gh) => { ctx.fillStyle = AC.a(.05); ctx.fillRect(gx, gy, gw, gh); ctx.font = '400 6.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM', gx + gw / 2, gy + 9); });
     { const [kx, ky, kw, kh] = G.clock; ctx.fillStyle = '#060708'; rr(kx - 3, ky - 2, kw + 6, kh + 6, 8); ctx.fill(); }
     // the six numbered knobs: a dark well, the numbers 0..9 round it, a raised cap with a pointer that clicks to each number; the number it
     // points at is lit. When the combination is set they all flash once
@@ -430,8 +438,8 @@ class Component extends DCLogic {
         const fzk = fzk0; ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
         for (let q = 0; q <= 9; q++) { const mq = ctx.measureText(String(q)), dx = (mq.actualBoundingBoxLeft - mq.actualBoundingBoxRight) / 2, dy = (mq.actualBoundingBoxAscent - mq.actualBoundingBoxDescent) / 2; const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0, nx = kx + Math.sin(a) * nr, ny = ky - Math.cos(a) * nr;
           // the number under the pointer gets a small ring, so it reads as something to press
-          if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,229,255,.16)'; ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .62, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
-          ctx.globalAlpha = (1 - fo) * (lit || q === nh ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? 'rgba(0,229,255,' + (.4 + .6 * comboK) + ')' : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
+          if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = AC.a(.16); ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .62, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
+          ctx.globalAlpha = (1 - fo) * (lit || q === nh ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? AC.a(.4 + .6 * comboK) : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
           if (q === nh && !on) ctx.fillStyle = '#ffffff'; ctx.fillText(String(q), nx + dx, ny + dy); noGlow(); }
         ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, ky - kr, 0, ky + kr); kg.addColorStop(0, hv ? '#4c535b' : '#40464d'); kg.addColorStop(1, hv ? '#24282d' : '#1d2024');
         ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(kx, ky, kr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
@@ -446,7 +454,7 @@ class Component extends DCLogic {
     // the main screen: the piece playing (its title, kind and time, a thin line for how far it has got) over the album's pieces, which you pick from
     { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 5); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 5); ctx.clip();
       thumb(sx + 10, sy + 10, 34); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width; this.kTxtR = sx + 54 + Math.max(Math.min(tw, room), 135);
+      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? AC.accL : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width; this.kTxtR = sx + 54 + Math.max(Math.min(tw, room), 135);
         ctx.save(); ctx.beginPath(); ctx.rect(sx + 54, sy + 10, room, 18); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + 54, sy + 23); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + 54 - o, sy + 23); ctx.fillText(ttl, sx + 54 - o + L, sy + 23); } ctx.restore(); noGlow();
         // the time, under the title: where you are, then what is left (and PAUSED when it is)
         ctx.textAlign = 'left'; ctx.font = '400 11px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, sx + 54, sy + 41); const tnw = ctx.measureText(tnow).width;
@@ -456,16 +464,16 @@ class Component extends DCLogic {
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1); }
       ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; const tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 12, sy + 59);
       this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;
-        if (on || hv) { ctx.fillStyle = on ? (cy ? 'rgba(0,229,255,.13)' : 'rgba(255,255,255,.09)') : 'rgba(255,255,255,.05)'; ctx.fillRect(rx, ry + .5, rw, rh - 1); }
+        if (on || hv) { ctx.fillStyle = on ? (cy ? AC.a(.13) : 'rgba(255,255,255,.09)') : 'rgba(255,255,255,.05)'; ctx.fillRect(rx, ry + .5, rw, rh - 1); }
         if (on) { ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(rx, ry + rh - 1.5, rw * u, 1); }
         // the rows share the screen's height, and their type grows with them
-        const fz2 = clamp(rh * .34, 9, 12.5); ctx.textAlign = 'left'; ctx.font = '400 ' + fz2.toFixed(1) + 'px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 8, mid);
+        const fz2 = clamp(rh * .34, 9, 12.5); ctx.textAlign = 'left'; ctx.font = '400 ' + fz2.toFixed(1) + 'px ' + mono; ctx.fillStyle = on ? (cy ? AC.accL : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 8, mid);
         // the length on the right; the title takes the rest
         ctx.font = '400 ' + (fz2 - .5).toFixed(1) + 'px ' + mono; const gp = 14, wD = ctx.measureText('00:00').width, xDur = rx + rw - 8, tEnd = xDur - wD - gp;
         ctx.textAlign = 'right'; ctx.fillStyle = PM; ctx.fillText(fmtDur(tr.dur), xDur, mid);
         ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 32, ry, tEnd - rx - 32, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 32, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
-      ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
+      ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? AC.a(.45) : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // Kirby, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. His notes and
       // stars take the edge's ink while it is lit
       { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = KIRBY_W * kp, ky = sy + 50 - KIRBY_H * kp - 2;
@@ -687,7 +695,7 @@ class Component extends DCLogic {
       hasNext: ai < n - 1, next: ai < n - 1 ? '↓ ' + this.albums[ai + 1].title : '', goNext: this.goAlbum(ai + 1) }; });
     const segs = this.strip ? this.segsOf(album, W, G.m).map(sg => ({ ...trV(sg.tr), left: Math.round(sg.x0), width: Math.round(sg.x1 - sg.x0), top: Math.round(G.yB - 96), height: 122 })) : [];
     return {
-      th: (() => { const T = THEMES[this.look], cy = this.look === 'stark' && (this.props.cyber ?? true); return { ...T, titleSh: cy ? '2px 0 0 rgba(255,43,214,.85), -2px 0 0 rgba(0,229,255,.85)' : 'none', cardInk: cy ? NEON_C : '#f2f2f0', cardSh: cy ? '0 0 8px rgba(0,229,255,.75), 1px 0 0 ' + NEON_M : 'none' }; })(),
+      th: (() => { const T = THEMES[this.look], cy = this.look === 'stark' && (this.props.cyber ?? true); return { ...T, titleSh: cy ? '2px 0 0 rgba(255,43,214,.85), -2px 0 0 rgba(0,229,255,.85)' : 'none', cardInk: cy ? 'var(--acc, ' + NEON_C + ')' : '#f2f2f0', cardSh: cy ? '0 0 8px var(--accG2, rgba(0,229,255,.75)), 1px 0 0 var(--acc, ' + NEON_M + ')' : 'none' }; })(),
       // what scrolling up / down leads to: the album above at the top edge, the one below at the bottom edge
       flapA: this.flapA, flapB: this.flapB, flipTo: pad2(album + 1), flipFrom: pad2((this.flipPrev ?? album) + 1),
       wheelRef: this.wheelRef, wheelItems: this.albums.map((a, ai) => ({ i: ai, num: pad2(ai + 1), title: a.title, go: this.goAlbum(ai) })),
@@ -745,7 +753,7 @@ function View(v) {
           {(v.wheelItems || []).map((ab, $index) => (
             <React.Fragment key={$index}>
               {"\n            "}
-              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);max-width:74px;overflow:hidden;text-overflow:ellipsis;opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:2px 3px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:none;color:#7fe9f7;text-shadow:0 0 6px rgba(0,229,255,.6);will-change:transform, opacity")}>
+              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);max-width:74px;overflow:hidden;text-overflow:ellipsis;opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:2px 3px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:none;color:var(--accL, #7fe9f7);text-shadow:0 0 6px var(--accG, rgba(0,229,255,.6));will-change:transform, opacity")}>
                 {ab?.title}
               </button>
               {"\n          "}
@@ -793,7 +801,7 @@ function View(v) {
       </div>
       {/* leaving full screen: a pill centred at the bottom, the controller's dark glass with a cyan edge; bright while the mouse moves, faint while it is still */}
       <button data-full-exit="1" type="button" aria-label="Leave full screen" title="Leave full screen (Esc)" onClick={v.deck?.leaveFull} style={sty("position:fixed;left:50%;bottom:22px;transform:translateX(-50%);height:32px;padding:0 18px;border-radius:16px;border:1px solid rgba(0,229,255,.75);background:#17121f;box-shadow:0 0 10px rgba(0,229,255,.35);color:#7fe9f7;font-family:Michroma, sans-serif;font-size:10px;letter-spacing:.16em;white-space:nowrap;opacity:0;pointer-events:none;cursor:pointer;transition:opacity .4s;display:flex;align-items:center;gap:10px")}>
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7fe9f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" /></svg>EXIT<span style={sty("opacity:.55")}>·</span>ESC
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" /></svg>EXIT<span style={sty("opacity:.55")}>·</span>ESC
       </button>
       {"\n    "}
     </div>

@@ -26,6 +26,12 @@ const THEMES = {
 // the cut-paper colours mixed in among a piece's own colour
 const PAL = ['rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(24,88,224)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)', 'rgb(244,138,172)', 'rgb(233,227,214)', 'rgb(110,200,230)'];
 // the paper inks the deck's lit edge picks from (all the wave's colours but the cream)
+// pointers over the wave in full screen: a pause sign while a piece plays, a play sign while it is paused, and a drag sign over the
+// playhead (black with a white edge so they read on any ground)
+const svgCur = body => "url(\"data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><g fill='#0c0c0c' stroke='#fff' stroke-width='1.5' stroke-linejoin='round'>" + body + "</g></svg>") + "\") 16 16, pointer";
+const CUR_PAUSE = svgCur("<rect x='8.5' y='7' width='5.5' height='18' rx='1'/><rect x='18' y='7' width='5.5' height='18' rx='1'/>");
+const CUR_PLAY = svgCur("<path d='M10 6.5 L25 16 L10 25.5 Z'/>");
+const CUR_SCRUB = svgCur("<rect x='14.5' y='4' width='3' height='24' rx='1'/><path d='M3.5 16 L11 10.5 L11 21.5 Z'/><path d='M28.5 16 L21 10.5 L21 21.5 Z'/>");
 const INKS = [[232, 34, 44], [255, 118, 18], [255, 196, 0], [22, 168, 82], [110, 200, 230], [24, 88, 224], [138, 64, 214], [244, 138, 172]];
 // albums are just categories. Placeholder pieces: give one a src (an audio file next to this page) and it plays that file with its real waveform;
 // without one it plays a synthesised stand-in of its kind. dur is in seconds (taken from the file when there is one)
@@ -145,7 +151,8 @@ class Component extends DCLogic {
   // the edge is plain
   rimCol() { return this.rgbK > .5 && this.rgbC ? 'rgb(' + this.rgbC.map(Math.round).join(',') + ')' : null; }
   // full screen: the controller slides away and the photo fades, leaving only the wave and its playhead, centred on the page (and the
-  // browser goes full screen too, where it can). Esc, F, a click anywhere, or the corner key that shows when the mouse moves bring it back
+  // browser goes full screen too, where it can). There the wave's own pointers come back: a click plays / pauses, and the playhead can be
+  // dragged. Esc, F, or the corner key that shows when the mouse moves bring the controller back
   goFull = () => { this.focus = true; this.fMove = performance.now(); this.fAt = performance.now(); const d = document.documentElement; try { const p = d.requestFullscreen && d.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
   leaveFull = () => { this.focus = false; try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {} };
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
@@ -176,20 +183,28 @@ class Component extends DCLogic {
       if (k === 'ArrowDown' || k === 'PageDown') { e.preventDefault(); this.step(1); } else if (k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); this.step(-1); }
       else if (k === ' ' && this.cur && !/BUTTON|^A$/.test(tg)) { e.preventDefault(); this.toggle(); } else if (k === 'Escape') { if (this.focus) this.leaveFull(); else this.stop(); }
       else if ((k === 'f' || k === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) { if (this.focus) this.leaveFull(); else this.goFull(); } };
-    // full screen: the browser's own exit (its Esc) leaves it too; moving the mouse shows the corner key; a click anywhere leaves
+    // full screen: the browser's own exit (its Esc) leaves it too; moving the mouse shows the corner key and the pointer
     this.onFsc = () => { if (document.fullscreenElement) this.fsOn = true; else if (this.fsOn) { this.fsOn = false; if (this.focus) this.leaveFull(); } };
-    this.onFMove = () => { this.fMove = performance.now(); };
-    this.onFClick = e => { if (this.focus && performance.now() - (this.fAt || 0) > 400 && !(e.target && e.target.closest && e.target.closest('[data-full-exit]'))) this.leaveFull(); };
+    this.onFMove = e => { this.fMove = performance.now(); this.fmx = e.clientX; };
+    const onExit = e => e.target && e.target.closest && e.target.closest('[data-full-exit]');
+    // near the playhead (within 9px): grab it and drag; a playing piece jumps along every few frames, like dragging tape
+    this.nearHead = x => { const c = this.cur; return !!c && x != null && Math.abs(x - this.posOf() / c.tr.dur * this.wvOf()) < 9; };
+    this.onFDown = e => { if (!this.focus || this.fK < .5 || e.button || onExit(e) || !this.nearHead(e.clientX)) return; e.preventDefault(); this.scrub = { x: e.clientX };
+      const mv = ev => { this.scrub.x = clamp(ev.clientX, 0, this.wvOf()); this.fmx = ev.clientX; this.fMove = performance.now(); const now = performance.now(), c = this.cur;
+        if (c && !c.paused && now - (this.scrub.at || 0) > 70) { this.scrub.at = now; const sc = this.scrub; this.scrub = null; this.seek(sc.x / this.wvOf()); this.scrub = sc; } };
+      const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const u = this.scrub.x / this.wvOf(); this.scrub = null; this.scrubAt = performance.now(); this.seek(u); };
+      addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+    this.onFClick = e => { if (!this.focus || performance.now() - (this.fAt || 0) < 400 || onExit(e) || performance.now() - (this.scrubAt || 0) < 350 || this.nearHead(e.clientX)) return; if (this.cur) this.toggle(); };
     this.onTS = e => { this.ty = e.touches[0].clientY; }; this.onTE = e => { if (this.ty == null) return; const dy = this.ty - e.changedTouches[0].clientY; this.ty = null; if (Math.abs(dy) > 50) this.step(dy > 0 ? 1 : -1); };
     this.onPM = e => { this.mxT = e.clientX / innerWidth * 2 - 1; };
-    addEventListener('resize', this.onResize); addEventListener('wheel', this.onWheel, { passive: true }); addEventListener('keydown', this.onKey); document.addEventListener('fullscreenchange', this.onFsc); addEventListener('pointermove', this.onFMove); addEventListener('click', this.onFClick); addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchend', this.onTE); addEventListener('pointermove', this.onPM);
+    addEventListener('resize', this.onResize); addEventListener('wheel', this.onWheel, { passive: true }); addEventListener('keydown', this.onKey); document.addEventListener('fullscreenchange', this.onFsc); addEventListener('pointermove', this.onFMove); addEventListener('click', this.onFClick); addEventListener('pointerdown', this.onFDown); addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchend', this.onTE); addEventListener('pointermove', this.onPM);
     // pieces with a file: decode it for its real waveform and length
     this.albums.forEach(a => a.tracks.forEach(tr => { if (!tr.src) return; const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
       fetch(tr.src).then(res => res.arrayBuffer()).then(b => new OAC(1, 1, 44100).decodeAudioData(b)).then(buf => { tr.buf = buf; tr.dur = buf.duration; tr.env = envFromBuf(buf); a.mix = mixOf(a.tracks); this.forceUpdate(); }).catch(() => {}); }));
     if (import.meta.env.DEV) window.__sound = this; // a handle for checking the page in development; not in the built site
     this.raf = requestAnimationFrame(this.tick);
   }
-  componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); document.removeEventListener('fullscreenchange', this.onFsc); removeEventListener('pointermove', this.onFMove); removeEventListener('click', this.onFClick); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); document.removeEventListener('fullscreenchange', this.onFsc); removeEventListener('pointermove', this.onFMove); removeEventListener('click', this.onFClick); removeEventListener('pointerdown', this.onFDown); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
   componentDidUpdate(prev) { if (prev.style !== this.props.style) { this.t = 0; this.disp = null; this.listBottom = 0; } }
   step(d) { this.goAlbum(this.state.album + d)(); }
   goAlbum = a => () => { a = clamp(a, 0, this.albums.length - 1); if (a === this.state.album) return; this.albDir = a > this.state.album ? 1 : -1; if (this.strip && this.cur) this.stop(); this.flipPrev = this.state.album; this.flipT0 = this.t; this.setState({ album: a, hover: null }); };
@@ -214,7 +229,7 @@ class Component extends DCLogic {
   stop() { this.stopNodes(); this.cur = null; this.live = 0; if (this.state.playing) this.setState({ playing: null, paused: false }); }
   toggle() { const c = this.cur; if (!c) return; if (c.paused) this.play(c.tr, c.off); else { c.off = this.ac.currentTime - c.t0; this.stopNodes(); c.paused = true; this.setState({ paused: true }); } }
   click(tr) { if (this.cur && this.cur.tr.id === tr.id) this.toggle(); else this.play(tr); }
-  posOf() { const c = this.cur; if (!c) return 0; if (this.jog) return this.jog.pos; return c.paused ? c.off : clamp(this.ac.currentTime - c.t0, 0, c.tr.dur); }
+  posOf() { const c = this.cur; if (!c) return 0; if (this.jog) return this.jog.pos; if (this.scrub) return clamp(this.scrub.x / this.wvOf(), 0, 1) * c.tr.dur; return c.paused ? c.off : clamp(this.ac.currentTime - c.t0, 0, c.tr.dur); }
   audioTick() { const c = this.cur; if (!c || c.paused) return; const ac = this.ac, now = ac.currentTime, pos = now - c.t0, tr = c.tr;
     if (pos >= tr.dur) { const nx = this.albums[tr.ai].tracks[tr.ti + 1]; if (nx) this.play(nx); else this.stop(); return; }
     const e = envAt(tr.env, pos / tr.dur), N = c.N;
@@ -281,9 +296,9 @@ class Component extends DCLogic {
     if (A) { asm = smooth(clamp((t - 1.1) / .6, 0, 1)); slide = 1 - easeIO(clamp((t - .3) / 1, 0, 1)); }
     if (O) { asm = 1 - smooth(clamp(O.t / .45, 0, 1)); slide = easeIO(clamp((O.t - .3) / .8, 0, 1)); }
     this.fK = (this.fK || 0) + ((this.focus ? 1 : 0) - (this.fK || 0)) * Math.min(1, dt * 2.2); const fz = easeIO(clamp(this.fK, 0, 1));
-    { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && performance.now() - (this.fMove || 0) < 2200;
+    { const R = this.rootRef.current, ex = R && R.querySelector('[data-full-exit]'), awake = this.focus && (this.scrub || performance.now() - (this.fMove || 0) < 2200);
       if (ex) { const o = (awake ? 1 : 0).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
-      if (R) { const cu = this.focus && !awake && this.fK > .9 ? 'none' : ''; if (R.style.cursor !== cu) R.style.cursor = cu; } }
+      if (R) { const c = this.cur, cu = !this.focus || this.fK < .5 ? '' : this.scrub ? CUR_SCRUB : !awake ? 'none' : !c ? '' : this.nearHead(this.fmx) ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE; if (R.style.cursor !== cu) R.style.cursor = cu; } }
     const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
     if (this.wheelRef.current) { const o = (1 - fo).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
     const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
@@ -333,10 +348,12 @@ class Component extends DCLogic {
         ctx.fillStyle = cap; ctx.beginPath(); ctx.arc(jx, jy + sk, hr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
         ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(jx, jy + sk, hr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
         ctx.strokeStyle = NEON_C; ctx.lineWidth = 1.8; ctx.globalAlpha = (1 - fo) * (hv ? 1 : .7); glow(NEON_C, hv ? 12 : 5); ctx.beginPath(); ctx.arc(jx, jy + sk, hr - 3, 0, TAU); ctx.stroke(); noGlow();
-        const lc = hv ? '#bff6fd' : '#7fe9f7', fz = clamp(hr * .3, 8, 12); ctx.globalAlpha = 1 - fo; ctx.fillStyle = lc; ctx.font = '400 ' + fz.toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (hv) glow(NEON_C, 6);
-        ctx.fillText('FULL', jx + .5, jy - hr * .14 + sk);
-        const aw = hr * .42, ay = jy + hr * .3 + sk, ah = Math.max(2.5, hr * .1); ctx.strokeStyle = lc; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(jx - aw, ay); ctx.lineTo(jx + aw, ay);
-        ctx.moveTo(jx - aw + ah, ay - ah); ctx.lineTo(jx - aw, ay); ctx.lineTo(jx - aw + ah, ay + ah); ctx.moveTo(jx + aw - ah, ay - ah); ctx.lineTo(jx + aw, ay); ctx.lineTo(jx + aw - ah, ay + ah); ctx.stroke(); noGlow(); ctx.lineCap = 'butt'; }
+        const lc = hv ? '#bff6fd' : '#7fe9f7', fz = clamp(hr * .26, 7.5, 10.5); ctx.globalAlpha = 1 - fo; ctx.fillStyle = lc; ctx.font = '400 ' + fz.toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (hv) glow(NEON_C, 6);
+        // the word and its arrow both run up the diagonal, the arrow a short two-way one under the word
+        ctx.save(); ctx.translate(jx, jy + sk); ctx.rotate(-Math.PI / 4); ctx.fillText('FULL', .5, -hr * .13);
+        const a = hr * .3, ay = hr * .3, ah = Math.max(2.5, hr * .11); ctx.strokeStyle = lc; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+        ctx.moveTo(-a, ay); ctx.lineTo(a, ay); ctx.moveTo(-a + ah, ay - ah); ctx.lineTo(-a, ay); ctx.lineTo(-a + ah, ay + ah); ctx.moveTo(a - ah, ay - ah); ctx.lineTo(a, ay); ctx.lineTo(a - ah, ay + ah);
+        ctx.stroke(); ctx.restore(); noGlow(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter'; }
       if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } }
     // cue and play / pause, in the left deck's corner
     // a round button with depth: a dark well, the cap raised out of it (lit from above), a coloured ring that glows when on

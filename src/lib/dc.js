@@ -61,7 +61,8 @@ export function page(Logic, View, defaults = {}) {
       this.setState(s => ({ v: s.v + 1 }), cb);
     }
     componentDidMount() { this.logic.componentDidMount(); }
-    componentDidUpdate(prev) { this.logic.componentDidUpdate(prev); }
+    // the logic compares against props as it sees them, defaults included (Sound restarts when prev.style differs)
+    componentDidUpdate(prev) { this.logic.componentDidUpdate({ ...defaults, ...prev }); }
     componentWillUnmount() { this.logic.componentWillUnmount(); }
     render() { return View({ ...this.logic.props, ...(this.logic.renderVals() || {}) }); }
   };

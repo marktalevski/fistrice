@@ -285,6 +285,8 @@ class Component extends DCLogic {
       if (md === 'fader') {
         // a fader: thin track, lit below the cap; the cap rests at its own level, rides the music on Sound, and follows the pointer on hover
         // caps start at the bottom, follow the pointer while hovered and stay where they were left
+        // faders keep their colour while a piece plays (the other strings dim towards Sound; these don't)
+        const alpha = (1 - fo) * (i > 3 ? .7 : 1);
         const lo = ya + 14, hi = yb - 14; if (S.on) S.hold = clamp(S.ly, lo, hi); S.hold = clamp(S.hold ?? hi, lo, hi);
         const tgt = S.hold; S.cy = S.cy == null ? hi : S.cy + (tgt - S.cy) * Math.min(1, dt * 10);
         if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 10; q++) ctx.fillRect(xs - 9, ya + 10 + (yb - ya - 20) * q / 10, q % 5 ? 2 : 4, 1); ctx.fillStyle = cols[i]; }

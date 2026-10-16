@@ -89,8 +89,8 @@ class Component extends DCLogic {
   // sig is the signal strength, rising with a few dropouts; u is the time since tuning began
   tuneAt(t) { if (!this.arr) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
   // ---- the deck's controls
-  // jog wheel: drag it round to scrub, a turn is six seconds of the piece (clockwise forward); a playing piece jumps along every few frames, like tape
-  jogDown = e => { const c = this.cur; if (!c || e.button) return; e.preventDefault(); const [jx, jy] = this.jogC || [0, 0];
+  // jog wheels (either one): drag round to scrub, a turn is six seconds of the piece (clockwise forward); a playing piece jumps along every few frames, like tape
+  jogDown = e => { const c = this.cur; if (!c || e.button) return; e.preventDefault(); const [jx, jy] = (this.jogCs || {})[e.currentTarget.getAttribute('data-deck')] || [0, 0];
     let a0 = Math.atan2(e.clientY - jy, e.clientX - jx); this.jog = { pos: this.posOf(), at: 0 };
     const mv = ev => { const a = Math.atan2(ev.clientY - jy, ev.clientX - jx); let d = a - a0; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; a0 = a; this.jogA = (this.jogA || 0) + d;
       const cc = this.cur; if (!cc || !this.jog) return; this.jog.pos = clamp(this.jog.pos + d / TAU * 6, 0, cc.tr.dur); const now = performance.now();
@@ -196,16 +196,16 @@ class Component extends DCLogic {
   flipTick() { const A = this.flapA.current, B = this.flapB.current; if (!A || !B) return; const ft = this.flipT0 == null ? 2 : (this.t - this.flipT0) / .6;
     if (ft >= 1) { if (A.style.visibility !== 'hidden') { A.style.visibility = B.style.visibility = 'hidden'; } if (this.flipPrev != null && this.flipPrev !== this.state.album) { this.flipPrev = this.state.album; this.forceUpdate(); } return; }
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
-  // ---- the deck: a DJ controller along the bottom (geometry in lib/deck.js). Its hit areas are real elements laid over the drawing
+  // ---- the deck: a DJ controller running off the bottom of the screen (geometry in lib/deck.js). Its hit areas are real elements over the drawing
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
-    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), jog2: R.querySelector('[data-deck="jog2"]'), cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
     const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; };
-    const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr * 2); this.jogC = [jx, jy + SY];
+    this.jogCs = {}; [['jog', G.jog], ['jog2', G.jog2]].forEach(([k, [jx, jy, jr]]) => { put(this.dk[k], jx - jr, jy - jr, jr * 2, jr); this.jogCs[k] = [jx, jy + SY]; });
     [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); });
     this.dk.fad.forEach((el, i) => put(el, G.faders[i] - G.sp / 2 + 2, G.fy0 - 6, G.sp - 4, G.fy1 - G.fy0 + 12)); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
-    const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace",
+    const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
       cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
       LAB = ['#f2f2f0', 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'];
     // asm: how built the deck is (its controls); slide: how far it has dropped away below the screen
@@ -215,77 +215,108 @@ class Component extends DCLogic {
     const SY = slide * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
     const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     const glow = (c, b) => { if (cy) { ctx.shadowColor = c; ctx.shadowBlur = b; } }, noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
-    const c = this.cur, playing = !!c && !c.paused, pos = this.posOf(), u = c ? clamp(pos / c.tr.dur, 0, 1) : 0, kc = c ? KINDS[c.tr.kind].cs : PM;
+    const c = this.cur, playing = !!c && !c.paused, pos = this.posOf(), u = c ? clamp(pos / c.tr.dur, 0, 1) : 0, kc = c ? KINDS[c.tr.kind].cs : PM, al = this.albums[this.state.album];
     for (let i = 0; i < 7; i++) { const S = this.S[i]; S.k += ((this.padHov === i ? 1 : 0) - S.k) * Math.min(1, dt * 8); }
     ctx.save(); ctx.translate(0, SY); ctx.globalAlpha = 1 - foFace;
-    // the body: a dark controller with a neon seam round it
-    const face = ctx.createLinearGradient(0, G.y0, 0, G.y1); face.addColorStop(0, cy ? '#151020' : '#1b1b1b'); face.addColorStop(1, cy ? '#08070d' : '#0c0c0c');
-    ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10; ctx.fillStyle = face; rr(G.x0, G.y0, G.w, G.h, 16); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
-    if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10); rr(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1, 16); ctx.stroke(); noGlow();
-      ctx.save(); rr(G.x0, G.y0, G.w, G.h, 16); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.045)'; for (let gy = G.y0 + 8; gy < G.y1; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
-    else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, G.h - 1, 16); ctx.stroke(); }
+    // the body: only its top is on screen, the rest runs on below the edge
+    const face = ctx.createLinearGradient(0, G.y0, 0, H); face.addColorStop(0, cy ? '#17121f' : '#1d1d1f'); face.addColorStop(1, cy ? '#0a0910' : '#111112');
+    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = -2; ctx.fillStyle = face; rr(G.x0, G.y0, G.w, H - G.y0 + 40, [18, 18, 0, 0]); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
+    // the mixer section is a shade darker, set between the two decks
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(G.mx0, G.y0, G.mx1 - G.mx0, H - G.y0); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(G.mx0, G.y0 + 1, 1, H - G.y0); ctx.fillRect(G.mx1 - 1, G.y0 + 1, 1, H - G.y0);
+    if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10);
+      ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow();
+      ctx.save(); rr(G.x0, G.y0, G.w, H - G.y0, [18, 18, 0, 0]); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.04)'; for (let gy = G.y0 + 8; gy < H; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
+    else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
     ctx.globalAlpha = 1 - fo;
-    // the jog wheel: turns with the record while a piece plays and under the hand while dragged; the ring round it is how far the piece has got
-    const [jx, jy, jr] = G.jog; if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
-    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(jx, jy, jr + 7, 0, TAU); ctx.stroke();
-    if (c) { ctx.strokeStyle = cy ? NEON_M : kc; glow(NEON_M, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 7, -Math.PI / 2, -Math.PI / 2 + u * TAU); ctx.stroke(); noGlow(); }
-    ctx.fillStyle = '#2a2e33'; ctx.beginPath(); ctx.arc(jx, jy, jr, 0, TAU); ctx.fill();
-    const rim = ctx.createLinearGradient(jx - jr, jy - jr, jx + jr, jy + jr); rim.addColorStop(0, '#737b83'); rim.addColorStop(.5, '#2b3036'); rim.addColorStop(1, '#5c636a'); ctx.strokeStyle = rim; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(jx, jy, jr - 2.5, 0, TAU); ctx.stroke();
-    ctx.fillStyle = '#101214'; ctx.beginPath(); ctx.arc(jx, jy, jr * .84, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1; for (let q = .38; q < .82; q += .055) { ctx.beginPath(); ctx.arc(jx, jy, jr * q, 0, TAU); ctx.stroke(); }
-    ctx.save(); ctx.translate(jx, jy); ctx.rotate(this.jogA || 0); ctx.fillStyle = 'rgba(255,255,255,.055)';
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .84, -.35, .35); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .84, Math.PI - .25, Math.PI + .25); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -jr * .42); ctx.lineTo(0, -jr * .8); ctx.stroke(); ctx.lineCap = 'butt'; ctx.restore();
-    ctx.fillStyle = c ? kc : '#2f343a'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.fillStyle = '#0c0c0c'; ctx.beginPath(); ctx.arc(jx, jy, 3, 0, TAU); ctx.fill();
-    if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .86, 0, TAU); ctx.stroke(); noGlow(); }
-    // cue and play / pause
+    // the jog wheels: only their top halves show above the edge. They turn with the record while a piece plays and under the hand while dragged;
+    // the lit ring round each is how far the piece has got
+    if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
+    const jogAt = ([jx, jy, jr]) => {
+      ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke();
+      if (c) { ctx.strokeStyle = cy ? NEON_M : 'rgb(255,150,40)'; glow(NEON_M, 10); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, Math.PI, Math.PI + u * Math.PI); ctx.stroke(); noGlow(); }
+      ctx.fillStyle = '#2a2e33'; ctx.beginPath(); ctx.arc(jx, jy, jr, 0, TAU); ctx.fill();
+      const rim = ctx.createLinearGradient(jx - jr, jy - jr, jx + jr, jy); rim.addColorStop(0, '#7a828a'); rim.addColorStop(.5, '#2b3036'); rim.addColorStop(1, '#60676e'); ctx.strokeStyle = rim; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(jx, jy, jr - 3, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#0f1113'; ctx.beginPath(); ctx.arc(jx, jy, jr * .86, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.045)'; ctx.lineWidth = 1; for (let q = .34; q < .84; q += .045) { ctx.beginPath(); ctx.arc(jx, jy, jr * q, 0, TAU); ctx.stroke(); }
+      ctx.save(); ctx.translate(jx, jy); ctx.rotate(this.jogA || 0); ctx.fillStyle = 'rgba(255,255,255,.05)';
+      for (const a of [0, Math.PI]) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .86, a - .3, a + .3); ctx.closePath(); ctx.fill(); }
+      ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -jr * .5); ctx.lineTo(0, -jr * .82); ctx.stroke(); ctx.lineCap = 'butt'; ctx.restore();
+      // the centre: a small display ring in the piece's colour
+      ctx.fillStyle = '#16191c'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.strokeStyle = c ? kc : '#3a4047'; ctx.lineWidth = 3; if (c) glow(kc, 10); ctx.beginPath(); ctx.arc(jx, jy, jr * .24, 0, TAU); ctx.stroke(); noGlow();
+      if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } };
+    jogAt(G.jog); jogAt(G.jog2);
+    // cue and play / pause, in the left deck's corner
     const btn = ([bx, by, br], col, lit, hov, icon) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = hov ? '#2a2f34' : '#1f2327'; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.globalAlpha = (1 - fo) * (lit ? 1 : hov ? .85 : .5); if (lit) glow(col, 12); ctx.beginPath(); ctx.arc(bx, by, br - 1, 0, TAU); ctx.stroke(); noGlow();
       ctx.fillStyle = lit ? col : '#cfd3d6'; ctx.globalAlpha = 1 - fo; icon(bx, by); };
     btn(G.cue, 'rgb(255,170,40)', !!c && c.paused, this.btnHov === 'cue', (bx, by) => { ctx.font = '600 8.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CUE', bx, by + .5); });
     btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { if (playing) { ctx.fillRect(bx - 5, by - 6, 3.5, 12); ctx.fillRect(bx + 1.5, by - 6, 3.5, 12); } else { ctx.beginPath(); ctx.moveTo(bx - 4, by - 7); ctx.lineTo(bx + 7, by); ctx.lineTo(bx - 4, by + 7); ctx.closePath(); ctx.fill(); } });
-    // the screen: the playing piece (scrolling if long), its time and progress; pointing at a pad shows that page's little pixel face instead
-    { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 3); ctx.fill(); ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.07)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 2.5); ctx.stroke();
-      ctx.save(); rr(sx, sy, sw, sh, 3); ctx.clip(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      const hp = this.padHov != null && this.padHov < 4 ? this.padHov : -1, hk = hp >= 0 ? clamp(this.S[hp].k, 0, 1) : 0;
-      if (hk > .02) { ctx.globalAlpha = (1 - fo) * hk; const fp = 2.4, fx = sx + 10, fy = sy + (sh - 10 * fp) / 2; ctx.fillStyle = LAB[hp];
-        FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); ctx.font = '400 10px Michroma, sans-serif'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + sh / 2 + .5); }
-      ctx.globalAlpha = (1 - fo) * (1 - hk); const tx = sx + 10, room = sw - 20;
-      if (c) { const ttl = c.tr.title.toUpperCase(), tm = fmtDur(pos) + ' / ' + fmtDur(c.tr.dur) + (c.paused ? '  PAUSED' : ''); ctx.font = '400 9.5px ' + mono; const tmw = ctx.measureText(tm).width;
-        ctx.fillStyle = cy ? NEON_M : PM; ctx.textAlign = 'right'; ctx.fillText(tm, sx + sw - 10, sy + 13); ctx.textAlign = 'left';
-        ctx.font = '500 11px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const tw = ctx.measureText(ttl).width, troom = room - tmw - 16;
-        ctx.save(); ctx.beginPath(); ctx.rect(tx, sy, troom, sh); ctx.clip(); if (tw <= troom) ctx.fillText(ttl, tx, sy + 13); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, tx - o, sy + 13); ctx.fillText(ttl, tx - o + L, sy + 13); } ctx.restore(); noGlow();
-        ctx.fillStyle = cy ? 'rgba(0,229,255,.18)' : 'rgba(255,255,255,.12)'; ctx.fillRect(tx, sy + 25, room, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(tx, sy + 25, room * u, 1.5); noGlow(); }
-      else { ctx.font = '400 9.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('STANDBY  ·  PRESS ▶ OR PICK A PIECE', tx, sy + sh / 2); }
-      if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.35)'; for (let sy2 = sy + 1; sy2 < sy + sh; sy2 += 2) ctx.fillRect(sx, sy2, sw, 1); }
-      ctx.restore(); ctx.globalAlpha = 1 - fo; }
-    // a knob and a fader per channel. The menu dots land on the fader caps; Sound's fader is the volume and its knob twitches with the level
+    // a screen: black glass, a fine edge, scanlines in the cyber style
+    const glass = ([sx, sy, sw, sh], body) => { ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 4); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 4); ctx.clip(); body(sx, sy, sw, sh);
+      if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); } ctx.restore(); ctx.globalAlpha = 1 - fo;
+      ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 3.5); ctx.stroke(); };
+    // the album's photo, cropped square, for the screens
+    const thumb = (x, y, sz) => { const P = this.photos && al.img && this.photos[al.img]; ctx.fillStyle = '#1b1e22'; ctx.fillRect(x, y, sz, sz);
+      if (P && P.c) { const iw = P.c.width, ih = P.c.height, side = Math.min(iw, ih) * .7; ctx.globalAlpha = (1 - fo) * .95; ctx.drawImage(P.c, (iw - side) * (al.imgX ?? 1) * .9, (ih - side) * .3, side, side, x, y, sz, sz); ctx.globalAlpha = 1 - fo; }
+      ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, sz - 1, sz - 1); };
+    // waveform colours, rekordbox style: quiet parts blue, louder ones warming through orange to white
+    const wcol = e => e < .45 ? 'rgb(40,120,255)' : e < .7 ? 'rgb(255,150,40)' : 'rgb(255,236,214)', grain = q => { const x = Math.sin(q * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+    // a sliver of the piece at time tm: its loudness, broken up into the little peaks a real waveform has
+    const sliver = (env, tm, dur) => { const e = envAt(env, tm / dur), q = Math.floor(tm * 22); return e * (.42 + .58 * (.5 * grain(q) + .5 * grain(q * .5 | 0))); };
+    // the main screen: a close-up of the piece's waveform scrolling under a fixed playhead, the piece and its time, and the whole piece in miniature
+    glass(G.scr, (sx, sy, sw, sh) => {
+      const wh = Math.round(sh * .36), wy = sy + 4 + wh / 2, cxp = sx + sw * .5, env = c ? c.tr.env : al.mix, dur = c ? c.tr.dur : al.tracks.reduce((a2, q) => a2 + q.dur, 0);
+      ctx.globalAlpha = (1 - fo) * (c ? 1 : .45);
+      const pps = sw / 14; for (let px = 0; px < sw; px += 2) { const tm = (c ? pos : dur * .02) + (px - sw / 2) / pps; if (tm < 0 || tm > dur) continue; const e = sliver(env, tm, dur), hh = Math.max(1, e * wh / 2);
+        ctx.fillStyle = wcol(e); ctx.fillRect(sx + px, wy - hh, 1.4, hh * 2); ctx.fillStyle = 'rgba(40,120,255,.55)'; ctx.fillRect(sx + px, wy - hh * .45, 1.4, hh * .9); }
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#ffffff'; ctx.fillRect(cxp - .5, sy + 3, 1, wh + 2); ctx.beginPath(); ctx.moveTo(cxp - 4, sy + 3); ctx.lineTo(cxp + 4, sy + 3); ctx.lineTo(cxp, sy + 8); ctx.closePath(); ctx.fill();
+      // the piece: its album's photo, title and kind on the left, the time large on the right
+      const iy = sy + wh + 9, isz = clamp(sh - wh - 30, 20, 30); thumb(sx + 8, iy, isz);
+      ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      if (c) { ctx.font = '500 10.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - isz - 120, tw = ctx.measureText(ttl).width;
+        ctx.save(); ctx.beginPath(); ctx.rect(sx + isz + 16, iy - 2, room, 16); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + isz + 16, iy + 10); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + isz + 16 - o, iy + 10); ctx.fillText(ttl, sx + isz + 16 - o + L, iy + 10); } ctx.restore(); noGlow();
+        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = KINDS[c.tr.kind].cs; ctx.fillText('● ' + KINDS[c.tr.kind].label.toUpperCase() + (c.paused ? '   PAUSED' : ''), sx + isz + 16, iy + Math.max(26, isz));
+        ctx.textAlign = 'right'; ctx.font = '400 17px ' + mich; ctx.fillStyle = '#f2f2f0'; const ds = Math.floor(pos * 10) % 10; ctx.fillText(fmtDur(pos) + '.' + ds, sx + sw - 10, iy + 15);
+        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)), sx + sw - 10, iy + Math.max(26, isz)); }
+      else { ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText(al.title.toUpperCase(), sx + isz + 16, iy + 11); ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('STANDBY · PRESS ▶ OR PICK A PIECE', sx + isz + 16, iy + Math.max(26, isz)); }
+      // the whole piece in miniature: played part bright, a marker where you are
+      const oy = sy + sh - 9, ow = sw - 16; for (let px = 0; px < ow; px += 2) { const e = sliver(env, px / ow * dur, dur), hh = Math.max(.6, e * 4.5); ctx.globalAlpha = (1 - fo) * (c && px / ow <= u ? .95 : .35); ctx.fillStyle = wcol(e); ctx.fillRect(sx + 8 + px, oy - hh, 1.4, hh * 2); }
+      ctx.globalAlpha = 1 - fo; if (c) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 8 + ow * u - .5, oy - 6, 1, 12); } });
+    // the album screen across the top of the right deck: which album, how many pieces, how long
+    glass(G.ascr, (sx, sy, sw, sh) => { const n2 = this.albums.length, tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); thumb(sx + 5, sy + 5, sh - 10);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM ' + pad2(this.state.album + 1) + ' / ' + pad2(n2), sx + sh + 4, sy + 11);
+      ctx.font = '400 10px ' + mich; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 5); ctx.fillText(al.title.toUpperCase(), sx + sh + 4, sy + 24); noGlow();
+      ctx.textAlign = 'right'; ctx.font = '400 8px ' + mono; ctx.fillStyle = PM; ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 8, sy + 11); ctx.fillText('SCROLL ▲▼', sx + sw - 8, sy + 24); });
+    // the page pads: a row of hot-cue pads across the top of the left deck, always labelled, lit in their page's colour; Sound's stays lit
+    ctx.font = (G.pads[0][2] < 76 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    G.pads.forEach(([px, py, pw, ph], i) => { const lit = Math.max(i === 2 ? 1 : 0, clamp(this.S[i].k, 0, 1)), col = cols[i];
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#26292e'; rr(px, py, pw, ph, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(px + 3, py + 2, pw - 6, 1);
+      ctx.globalAlpha = (1 - fo) * (.14 + .76 * lit); ctx.fillStyle = col; if (lit > .3) glow(col, 14 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 3); ctx.fill(); noGlow();
+      ctx.globalAlpha = 1 - fo; ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 4); ctx.stroke();
+      ctx.fillStyle = lit > .5 ? '#0c0c0c' : LAB[i]; ctx.fillText(names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
+    // pointing at a pad: the page's little pixel face shows on the main screen's waveform
+    { const hp = this.padHov != null && this.padHov < 4 ? this.padHov : -1, hk = hp >= 0 ? clamp(this.S[hp].k, 0, 1) : 0;
+      if (hk > .02) { const [sx, sy, sw, sh] = G.scr, wh = Math.round(sh * .36), fp = 2.6, fw = 12 * fp + 12 + 110; ctx.globalAlpha = (1 - fo) * hk * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - fw / 2 - 8, sy + 4, fw + 16, wh, 3); ctx.fill();
+        ctx.globalAlpha = (1 - fo) * hk; ctx.fillStyle = LAB[hp]; const fx = sx + sw / 2 - fw / 2, fy = sy + 4 + (wh - 10 * fp) / 2; FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5));
+        ctx.font = '400 10px ' + mich; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + 4 + wh / 2); ctx.globalAlpha = 1 - fo; } }
+    // a knob and a fader per channel under the main screen. The menu dots land on the fader caps; Sound's fader is the volume
     const lo = G.lo, hi = G.hi;
-    ctx.font = '500 8px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (let i = 0; i < 7; i++) { const S = this.S[i], xs = G.faders[i], big = i < 4, ky = G.knobY;
       const base = -2.3 + 4.6 * rng(i * 31 + 3)(), ang = base + (i === 2 ? .35 * live * Math.sin(t * 9) : .9 * easeIO(clamp(S.k, 0, 1)));
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(xs, ky + 1, 7.2, 0, TAU); ctx.fill(); ctx.fillStyle = cy ? '#1d1828' : '#2f363d'; ctx.beginPath(); ctx.arc(xs, ky, 6.6, 0, TAU); ctx.fill();
       if (cy) { ctx.strokeStyle = i % 2 ? NEON_M : NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.lineWidth = 1.2; glow(ctx.strokeStyle, 5); ctx.beginPath(); ctx.arc(xs, ky, 8.8, -Math.PI / 2 - 2.3, -Math.PI / 2 + ang); ctx.stroke(); noGlow(); ctx.globalAlpha = 1 - fo; }
       ctx.strokeStyle = i < 4 ? cols[i] : PM; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(xs + Math.sin(ang) * 1.5, ky - Math.cos(ang) * 1.5); ctx.lineTo(xs + Math.sin(ang) * 5.4, ky - Math.cos(ang) * 5.4); ctx.stroke(); ctx.lineCap = 'butt';
-      // the fader: slot, scale, lit below the cap, the cap with its coloured stripe
       S.hold = clamp(S.hold ?? (i === 2 ? lo + (hi - lo) * .15 : hi), lo, hi); S.cy = S.cy == null ? hi : S.cy + (S.hold - S.cy) * Math.min(1, dt * (S.drag ? 30 : 10));
       const alpha = (1 - fo) * (i > 3 ? .7 : 1);
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(xs - 3, G.fy0, 6, G.fy1 - G.fy0, 3); ctx.fill();
-      if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 8; q++) ctx.fillRect(xs - 10, lo + (hi - lo) * q / 8, q % 4 ? 2 : 4, 1); }
+      if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 6; q++) ctx.fillRect(xs - 10, lo + (hi - lo) * q / 6, q % 3 ? 2 : 4, 1); }
       ctx.fillStyle = cols[i]; ctx.globalAlpha = alpha * .22; ctx.fillRect(xs - .75, G.fy0, 1.5, G.fy1 - G.fy0);
       ctx.globalAlpha = alpha * (.35 + .65 * Math.max(clamp(S.k, 0, 1), i === 2 ? .75 : 0)); ctx.fillRect(xs - 1, S.cy, 2, G.fy1 - S.cy);
-      const cw = big ? 18 : 14, ch = big ? 22 : 18, cg = ctx.createLinearGradient(0, S.cy - ch / 2, 0, S.cy + ch / 2); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
+      const cw = big ? 18 : 14, ch = big ? 18 : 15, cg = ctx.createLinearGradient(0, S.cy - ch / 2, 0, S.cy + ch / 2); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
       ctx.globalAlpha = Math.max(alpha, .5) * (1 - fo); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(xs - cw / 2, S.cy - ch / 2, cw, ch); noGlow(); ctx.shadowOffsetY = 0;
-      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(xs - cw / 2 + 2, S.cy - ch / 2 + 3, cw - 4, 1); ctx.fillRect(xs - cw / 2 + 2, S.cy + ch / 2 - 4, cw - 4, 1);
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(xs - cw / 2 + 2, S.cy - ch / 2 + 3, cw - 4, 1);
       ctx.fillStyle = cols[i]; glow(cols[i], 8); ctx.fillRect(xs - cw / 2 + 1, S.cy - 1, cw - 2, 2); noGlow(); }
     this.volume = clamp(1 - (this.S[2].hold - lo) / (hi - lo), 0, 1);
-    // the page pads: always labelled, lit in their page's colour; Sound's stays lit, the others light up under the pointer
-    ctx.font = (W < 760 ? '400 7.5px' : '400 8.5px') + ' Michroma, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    G.pads.forEach(([px, py, pw, ph], i) => { const lit = Math.max(i === 2 ? 1 : 0, clamp(this.S[i].k, 0, 1)), col = cols[i];
-      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#22262b'; rr(px, py, pw, ph, 5); ctx.fill();
-      ctx.globalAlpha = (1 - fo) * (.16 + .74 * lit); ctx.fillStyle = col; if (lit > .3) glow(col, 14 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 4); ctx.fill(); noGlow();
-      ctx.globalAlpha = 1 - fo; ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 5); ctx.stroke();
-      ctx.fillStyle = lit > .5 ? '#0c0c0c' : LAB[i]; ctx.fillText(names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
     ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
     // arriving / leaving, each channel is a dot: arriving, the dots fly in from where the last page left them and settle on the fader caps;
     // leaving, the caps turn back into dots (and for Freediving they fly up into that page's menu)
@@ -623,7 +654,8 @@ function View(v) {
         </a>
       </div>
       <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
-        <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
+        <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:999px 999px 0 0;pointer-events:auto;cursor:grab;touch-action:none")} />
+        <div data-deck="jog2" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:999px 999px 0 0;pointer-events:auto;cursor:grab;touch-action:none")} />
         <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.fader || []).map((fd, i) => <div key={i} data-fader={i} onPointerDown={fd} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />)}

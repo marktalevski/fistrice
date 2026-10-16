@@ -1,17 +1,20 @@
-// The Sound page's DJ deck, a controller along the bottom of the screen (after the DDJ-FLX4): a jog wheel with cue and play / pause on the
-// left, a mixer in the middle (screen, then a knob and a fader per channel) and four page pads on the right. It lives here so Home can drop
-// its menu dots straight into the deck's faders when it hands over to Sound.
+// The Sound page's DJ deck (after a Pioneer Opus-Quad): a controller running off the bottom of the screen, so only its top shows.
+// Two jog wheels, half hidden below the edge, either of which scrubs; cue and play / pause in the left deck's corner; the four page pads as a
+// row of hot-cue pads across the top of the left deck; a small album screen across the top of the right one; and in the middle the main
+// screen (waveform, time) over a knob and a fader per channel. It lives here so Home can drop its menu dots straight into the deck's faders.
 export const DECK_KEYS = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export function deckGeo(W, H) {
-  const h = H < 660 ? 150 : 176, w = Math.min(W - 24, 1080), x0 = Math.round((W - w) / 2), y0 = Math.round(H - h - 12), x1 = x0 + w, y1 = y0 + h, cyM = y0 + h / 2;
-  // jog wheel and its two buttons
-  const jr = Math.round(h / 2 - 20), jog = [x0 + 26 + jr, cyM, jr], bx = jog[0] + jr + 36, cue = [bx, cyM - 26, 16], play = [bx, cyM + 26, 16];
-  // four page pads, two by two
-  const pw = W < 760 ? 74 : 96, ph = Math.round((h - 56) / 2), px0 = x1 - 20 - pw * 2 - 8, py0 = y0 + Math.round((h - ph * 2 - 8) / 2);
-  const pads = [0, 1, 2, 3].map(i => [px0 + (i % 2) * (pw + 8), py0 + Math.floor(i / 2) * (ph + 8), pw, ph]);
-  // the mixer between them: the screen across the top, a knob row, then the faders
-  const mx0 = bx + 40, mx1 = px0 - 26, scr = [mx0, y0 + 14, mx1 - mx0, 34], knobY = y0 + 66, fy0 = y0 + 84, fy1 = y1 - 14, sp = (mx1 - mx0) / 7;
-  const faders = DECK_KEYS.map((k, i) => mx0 + sp * (i + .5));
-  return { x0, y0, x1, y1, w, h, jog, cue, play, pads, scr, knobY, faders, fy0, fy1, sp, lo: fy0 + 10, hi: fy1 - 10 };
+  const hV = Math.round(clamp(H * .29, 170, 222)), x0 = 12, x1 = W - 12, w = x1 - x0, y0 = H - hV;
+  // the mixer in the middle, a deck either side of it
+  const Mw = Math.round(clamp(w * .4, 300, 470)), mx0 = Math.round((W - Mw) / 2), mx1 = mx0 + Mw, L = mx0 - x0;
+  const jr = Math.round(clamp(Math.min(hV - 58, L / 2 - 36), 56, 200)), jy = H + 6;
+  const jog = [x0 + 62 + jr, jy, jr], jog2 = [x1 - 62 - jr, jy, jr];
+  const cue = [x0 + 32, H - 70, 16], play = [x0 + 32, H - 28, 16];
+  const pw = Math.floor((L - 28 - 3 * 6) / 4), pads = [0, 1, 2, 3].map(i => [x0 + 14 + i * (pw + 6), y0 + 14, pw, 30]);
+  const ascr = [mx1 + 14, y0 + 12, x1 - mx1 - 28, 34];
+  const scr = [mx0 + 12, y0 + 12, Mw - 24, Math.round(clamp(hV * .44, 80, 96))];
+  const knobY = scr[1] + scr[3] + 16, fy0 = knobY + 16, fy1 = H - 10, sp = (Mw - 24) / 7, faders = DECK_KEYS.map((k, i) => mx0 + 12 + sp * (i + .5));
+  return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, jog2, cue, play, pads, ascr, scr, knobY, faders, fy0, fy1, sp, lo: fy0 + 8, hi: fy1 - 8 };
 }

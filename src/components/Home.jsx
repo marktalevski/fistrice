@@ -56,10 +56,13 @@ const wisp = (x, y0, y1, amp, ph) => Array.from({ length: 13 }, (_, q) => { cons
 const planeWind = (sd, ph) => Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = sd * (1.27 + .13 * u + .05 * Math.sin(u * Math.PI * 3 + ph) * u), y = .33 + .8 * u; return [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2]; });
 // the Muay Thai bag hangs from its ring at BAG_HOOK and has just been kicked from the left, so it's tipped by BAG_SWING (radians, the bottom to the right)
 const BAG_HOOK = [0, -1.27], BAG_SWING = -.1, BAG_ROT = ([x, y, w]) => { const dx = x - BAG_HOOK[0], dy = y - BAG_HOOK[1], c = Math.cos(BAG_SWING), s = Math.sin(BAG_SWING); return [BAG_HOOK[0] + dx * c - dy * s, BAG_HOOK[1] + dx * s + dy * c, w]; };
-// its coloured lines, before the swing: red, yellow and blue burst off the left side where the shin landed (Sound, Journal and Freediving's
-// dots at their outer ends); orange, green and purple trace the arc the bottom of the bag has just swung through, ending near it
-const BAG_LINES = [{ li: 1, path: [[-.5, -.63], [-.68, -.79], [-.84, -.93], [-.97, -1.05]] }, { li: 2, path: [[-.52, -.44], [-.75, -.46], [-.95, -.48], [-1.12, -.5]] }, { li: 3, path: [[-.5, -.26], [-.68, -.2], [-.85, -.13], [-1.0, -.06]] },
-  ...[[4, 2.25, .4], [5, 2.0, .38], [6, 1.75, .3]].map(([li, r, sw]) => ({ li, path: Array.from({ length: 9 }, (_, q) => { const a = Math.PI / 2 + .32 + sw - q / 8 * sw; return [BAG_HOOK[0] + Math.cos(a) * r, BAG_HOOK[1] + Math.sin(a) * r]; }) }))];
+// its coloured lines, before the swing: red, yellow and blue are strips of tape wrapped round its middle, slanting alternately like a criss-cross
+// repair, each ending at the bag's edge (Sound and Freediving's dots on the left, Journal's on the right); orange, green and purple are hand wraps
+// tied at the swivel, fluttering out to the left as the bag swings, their dots at the loose ends
+const BAG_TAPE = (yc, slope, toLeft) => Array.from({ length: 13 }, (_, q) => { const a = toLeft ? q / 12 * Math.PI : Math.PI - q / 12 * Math.PI, x = Math.cos(a) * .37; return [x, yc + Math.sin(a) * .09 + slope * x]; });
+const BAG_WRAP = (ex, ey, amp, ph) => Array.from({ length: 13 }, (_, q) => { const u = q / 12, x = -.04 + (ex + .04) * u, y = -.98 + (ey + .98) * u * u + .05 * Math.sin(u * Math.PI) * -1, n = amp * Math.sin(u * Math.PI * 2.4 + ph) * u; return [x + n * .35, y + n]; });
+const BAG_LINES = [{ li: 1, path: BAG_TAPE(-.2, .22, true) }, { li: 2, path: BAG_TAPE(.02, -.22, false) }, { li: 3, path: BAG_TAPE(.24, .22, true) },
+  { li: 4, path: BAG_WRAP(-.78, -.62, .06, 0) }, { li: 5, path: BAG_WRAP(-1.02, -.86, .07, 1.3) }, { li: 6, path: BAG_WRAP(-.9, -1.12, .05, 2.6) }];
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -503,7 +506,7 @@ class Component extends DCLogic {
             const da2 = da - dS * .18, m = Math.max(2, Math.ceil(Math.abs(da2) / .05)), rEnd = best[2] - ringR(best[1]); for (let q = 1; q <= m; q++) { const u = q / m, a = aW + da2 * u, r = ringR(a) + rEnd * u; seg.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } }
           const sm = avg(avg(avg(seg, 3), 3), 3); sm[0] = e; sm[sm.length - 1] = E; for (let q = 1; q < sm.length; q++) arc.push(sm[q]); }
         for (let q = n0; q < arc.length; q++) { z.push(.3); cw.push(1); wl.push(1); } }
-      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'hangul' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'plane' || this.shapeName === 'spring'))) {
+      if (L.page && !(CPp && (this.shapeName === 'wave' || this.shapeName === 'lotus' || this.shapeName === 'octopus' || this.shapeName === 'headphones' || this.shapeName === 'maple' || this.shapeName === 'samurai' || this.shapeName === 'hangul' || this.shapeName === 'book' || this.shapeName === 'mountain' || this.shapeName === 'plane' || this.shapeName === 'spring' || this.shapeName === 'muaythai'))) {
         if (rev) { arc.reverse(); z.reverse(); cw.reverse(); wl.reverse(); }
         { const S0 = this.stations[L.page], lim = Math.floor(arc.length * .45); let popped = 0;
           while (arc.length > 12 && popped < lim) { const e1 = arc[arc.length - 1], p1 = arc[arc.length - 5], tx = e1[0] - p1[0], ty = e1[1] - p1[1], tl = Math.hypot(tx, ty) || 1, sx = S0[0] - e1[0], sy = S0[1] - e1[1], sl = Math.hypot(sx, sy) || 1;

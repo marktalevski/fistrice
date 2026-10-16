@@ -2,7 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
-import { deckGeo, DECK_KEYS } from '../lib/deck.js';
+import { deckGeo, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
 const COL = [232, 34, 44];
@@ -102,9 +102,12 @@ class Component extends DCLogic {
   // cue: back to the start of the piece (a paused piece stays paused there)
   cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
   // faders can be pushed up and down; Sound's is the volume
-  faderDown = i => e => { if (e.button) return; e.preventDefault(); const set = y => { const G = deckGeo(innerWidth, innerHeight); this.S[i].hold = clamp(y - (this.deckSY || 0), G.lo, G.hi); };
-    set(e.clientY); this.S[i].drag = 1; const mv = ev => set(ev.clientY), up = () => { this.S[i].drag = 0; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
+  // the volume fader beside the screen
+  volDown = e => { if (e.button) return; e.preventDefault(); const set = y => { const G = deckGeo(innerWidth, innerHeight); this.volHold = clamp(y - (this.deckSY || 0), G.lo, G.hi); };
+    set(e.clientY); this.volDrag = 1; const mv = ev => set(ev.clientY), up = () => { this.volDrag = 0; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+  // the track list on the centre screen: where each row sits (shared by the drawing and the row buttons over it)
+  rowsOf(G) { const [sx, sy, sw, sh] = G.scr, n = this.albums[this.state.album].tracks.length, top = sy + 90, rh = clamp((sh - 94) / Math.max(1, n), 14, 22); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
   t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
   albums = ALBUMS.map((a, ai) => { const tracks = a.tracks.map((tr, ti) => ({ ...tr, id: ai + '-' + ti, ai, ti, env: envOf(tr) })); return { ...a, tracks, mix: mixOf(tracks) }; });
   strip = false;
@@ -184,26 +187,26 @@ class Component extends DCLogic {
     if (this.vol) this.vol.gain.setTargetAtTime(this.volume ?? .85, this.ac.currentTime, .05);
     this.audioTick(); this.draw(dt); this.flipTick(); this.wheelTick(dt);
   };
-  // album names sit round an unseen drum centred on the counter: neighbours just above and below, further ones smaller and squashed;
-  // changing album rolls the drum, so the next name turns in behind the counter and the old one turns out the other side
+  // the album clock on the left deck: the flip counter, and beside it the album names on a little drum (the one shown level with the counter,
+  // its neighbours rolled just above and below); changing album rolls the drum
   wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; this.wh = this.wh == null ? this.state.album : this.wh + (this.state.album - this.wh) * Math.min(1, dt * 5);
-    const sec = this.contentRef.current && this.contentRef.current.querySelectorAll('section')[this.state.album], h2 = sec && sec.querySelector('h2');
-    if (h2) { const ty = h2.getBoundingClientRect().top - sec.getBoundingClientRect().top + h2.offsetHeight / 2; this.railY = this.railY == null ? ty : this.railY + (ty - this.railY) * Math.min(1, dt * 8); box.style.top = this.railY.toFixed(1) + 'px'; }
-    box.querySelectorAll('[data-wi]').forEach(el => { const d = +el.getAttribute('data-wi') - this.wh, a = d * .5, y = Math.sin(clamp(a, -1.5, 1.5)) * 150, sc = Math.cos(clamp(a, -1.5, 1.5));
-      const op = smooth(clamp((Math.abs(y) - 40) / 18, 0, 1)) * clamp((1.45 - Math.abs(a)) / .35, 0, 1) * (.35 + .65 * sc);
-      el.style.transform = 'translate(-50%, -50%) translateY(' + y.toFixed(1) + 'px) scaleY(' + sc.toFixed(3) + ')'; el.style.opacity = op.toFixed(3); el.style.pointerEvents = op > .4 ? '' : 'none'; }); }
+    const G = deckGeo(innerWidth, innerHeight), [cx0, cy0] = G.clock, st = box.style, L2 = cx0 + 'px', T2 = (cy0 + 42 + (this.deckSY || 0)).toFixed(1) + 'px'; if (st.left !== L2) st.left = L2; if (st.top !== T2) st.top = T2;
+    box.querySelectorAll('[data-wi]').forEach(el => { const d = +el.getAttribute('data-wi') - this.wh, y = clamp(d, -1.6, 1.6) * 18, op = clamp(1.25 - Math.abs(d), 0, 1) * (Math.abs(d) < .5 ? 1 : .55);
+      el.style.transform = 'translate(0, -50%) translateY(' + y.toFixed(1) + 'px) scale(' + (1 - .12 * Math.min(1, Math.abs(d))).toFixed(3) + ')'; el.style.opacity = op.toFixed(3); el.style.pointerEvents = op > .3 ? '' : 'none';
+      el.style.color = Math.abs(d) < .5 ? '#00e5ff' : '#c3c8cc'; }); }
   // the album counter flips like a clock: the old number's top folds down, then the new number's bottom lands
   flipTick() { const A = this.flapA.current, B = this.flapB.current; if (!A || !B) return; const ft = this.flipT0 == null ? 2 : (this.t - this.flipT0) / .6;
     if (ft >= 1) { if (A.style.visibility !== 'hidden') { A.style.visibility = B.style.visibility = 'hidden'; } if (this.flipPrev != null && this.flipPrev !== this.state.album) { this.flipPrev = this.state.album; this.forceUpdate(); } return; }
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
   // ---- the deck: a DJ controller running off the bottom of the screen (geometry in lib/deck.js). Its hit areas are real elements over the drawing
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
-    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')), fad: [...R.querySelectorAll('[data-fader]')] };
-    const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; };
-    this.jogCs = {}; [['jog', G.jog]].forEach(([k, [jx, jy, jr]]) => { put(this.dk[k], jx - jr, jy - jr, jr * 2, jr); this.jogCs[k] = [jx, jy + SY]; });
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
+    const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; if (st.display === 'none') st.display = ''; };
+    this.jogCs = {}; const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr); this.jogCs.jog = [jx, jy + SY];
     [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = G.cpads[i]; put(el, p[0], p[1], p[2], p[3]); });
-    this.dk.fad.forEach((el, i) => put(el, G.faders[i] - G.sp / 2 + 2, G.fy0 - 6, G.sp - 4, G.fy1 - G.fy0 + 12)); }
+    put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
+    const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
     const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
       cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
@@ -213,6 +216,7 @@ class Component extends DCLogic {
     if (A) { asm = smooth(clamp((t - 1.1) / .6, 0, 1)); slide = 1 - easeIO(clamp((t - .3) / 1, 0, 1)); }
     if (O) { asm = 1 - smooth(clamp(O.t / .45, 0, 1)); slide = easeIO(clamp((O.t - .3) / .8, 0, 1)); }
     const SY = slide * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
+    if (this.wheelRef.current) { const o = (1 - fo).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
     const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     const glow = (c, b) => { if (cy) { ctx.shadowColor = c; ctx.shadowBlur = b; } }, noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
     const c = this.cur, playing = !!c && !c.paused, pos = this.posOf(), u = c ? clamp(pos / c.tr.dur, 0, 1) : 0, kc = c ? KINDS[c.tr.kind].cs : PM, al = this.albums[this.state.album];
@@ -221,17 +225,16 @@ class Component extends DCLogic {
     // the body: only its top is on screen, the rest runs on below the edge
     const face = ctx.createLinearGradient(0, G.y0, 0, H); face.addColorStop(0, cy ? '#17121f' : '#1d1d1f'); face.addColorStop(1, cy ? '#0a0910' : '#111112');
     ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 28; ctx.shadowOffsetY = -2; ctx.fillStyle = face; rr(G.x0, G.y0, G.w, H - G.y0 + 40, [18, 18, 0, 0]); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
-    // the mixer section is a shade darker, set between the two decks
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(G.mx0, G.y0, G.mx1 - G.mx0, H - G.y0); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(G.mx0, G.y0 + 1, 1, H - G.y0); ctx.fillRect(G.mx1 - 1, G.y0 + 1, 1, H - G.y0);
     if (cy) { const sg = ctx.createLinearGradient(G.x0, 0, G.x1, 0); sg.addColorStop(0, NEON_M); sg.addColorStop(1, NEON_C); ctx.strokeStyle = sg; ctx.lineWidth = 1.2; glow(NEON_M, 10);
       ctx.beginPath(); ctx.moveTo(G.x0 + .5, H + 2); ctx.lineTo(G.x0 + .5, G.y0 + 18); ctx.arcTo(G.x0 + .5, G.y0 + .5, G.x0 + 18, G.y0 + .5, 18); ctx.lineTo(G.x1 - 18, G.y0 + .5); ctx.arcTo(G.x1 - .5, G.y0 + .5, G.x1 - .5, G.y0 + 18, 18); ctx.lineTo(G.x1 - .5, H + 2); ctx.stroke(); noGlow();
       ctx.save(); rr(G.x0, G.y0, G.w, H - G.y0, [18, 18, 0, 0]); ctx.clip(); ctx.fillStyle = 'rgba(0,229,255,.04)'; for (let gy = G.y0 + 8; gy < H; gy += 14) ctx.fillRect(G.x0, gy, G.w, 1); ctx.restore(); }
     else { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(G.x0 + .5, G.y0 + .5, G.w - 1, H - G.y0 + 40, [18, 18, 0, 0]); ctx.stroke(); }
     ctx.globalAlpha = 1 - fo;
-    // the jog wheel: only its top half shows above the edge. They turn with the record while a piece plays and under the hand while dragged;
-    // the lit ring round each is how far the piece has got
+    // the jog wheel: only its top half shows above the edge. It turns with the record while a piece plays and under the hand while dragged;
+    // the lit ring round it is how far the piece has got
     if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
-    const jogAt = ([jx, jy, jr]) => {
+    { const [jx, jy, jr] = G.jog;
       ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke();
       if (c) { ctx.strokeStyle = cy ? NEON_M : 'rgb(255,150,40)'; glow(NEON_M, 10); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, Math.PI, Math.PI + u * Math.PI); ctx.stroke(); noGlow(); }
       ctx.fillStyle = '#2a2e33'; ctx.beginPath(); ctx.arc(jx, jy, jr, 0, TAU); ctx.fill();
@@ -241,116 +244,93 @@ class Component extends DCLogic {
       ctx.save(); ctx.translate(jx, jy); ctx.rotate(this.jogA || 0); ctx.fillStyle = 'rgba(255,255,255,.05)';
       for (const a of [0, Math.PI]) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, jr * .86, a - .3, a + .3); ctx.closePath(); ctx.fill(); }
       ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(0, -jr * .5); ctx.lineTo(0, -jr * .82); ctx.stroke(); ctx.lineCap = 'butt'; ctx.restore();
-      // the centre: a small display ring in the piece's colour
       ctx.fillStyle = '#16191c'; ctx.beginPath(); ctx.arc(jx, jy, jr * .3, 0, TAU); ctx.fill(); ctx.strokeStyle = c ? kc : '#3a4047'; ctx.lineWidth = 3; if (c) glow(kc, 10); ctx.beginPath(); ctx.arc(jx, jy, jr * .24, 0, TAU); ctx.stroke(); noGlow();
-      if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } };
-    jogAt(G.jog);
+      if (c && (this.jog || this.jogHov)) { ctx.strokeStyle = cy ? NEON_C : 'rgba(255,255,255,.35)'; glow(NEON_C, 8); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(jx, jy, jr * .88, 0, TAU); ctx.stroke(); noGlow(); } }
     // cue and play / pause, in the left deck's corner
     const btn = ([bx, by, br], col, lit, hov, icon) => { ctx.globalAlpha = 1 - fo; ctx.fillStyle = hov ? '#2a2f34' : '#1f2327'; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.globalAlpha = (1 - fo) * (lit ? 1 : hov ? .85 : .5); if (lit) glow(col, 12); ctx.beginPath(); ctx.arc(bx, by, br - 1, 0, TAU); ctx.stroke(); noGlow();
       ctx.fillStyle = lit ? col : '#cfd3d6'; ctx.globalAlpha = 1 - fo; icon(bx, by); };
     btn(G.cue, 'rgb(255,170,40)', !!c && c.paused, this.btnHov === 'cue', (bx, by) => { ctx.font = '600 8.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('CUE', bx, by + .5); });
     btn(G.play, 'rgb(40,220,120)', playing, this.btnHov === 'play', (bx, by) => { if (playing) { ctx.fillRect(bx - 5, by - 6, 3.5, 12); ctx.fillRect(bx + 1.5, by - 6, 3.5, 12); } else { ctx.beginPath(); ctx.moveTo(bx - 4, by - 7); ctx.lineTo(bx + 7, by); ctx.lineTo(bx - 4, by + 7); ctx.closePath(); ctx.fill(); } });
-    // a screen: black glass, a fine edge, scanlines in the cyber style
-    const glass = ([sx, sy, sw, sh], body) => { ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 4); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 4); ctx.clip(); body(sx, sy, sw, sh);
-      if (cy) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); } ctx.restore(); ctx.globalAlpha = 1 - fo;
-      ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 3.5); ctx.stroke(); };
-    // the album's photo, cropped square, for the screens
+    // the album clock's bed (the flip counter and its names are real elements laid on it)
+    { const [kx, ky, kw, kh] = G.clock; ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(kx - 3, ky - 3, kw + 6, kh + 6, 8); ctx.fill(); }
+    // the album's photo, cropped square, for the screen
     const thumb = (x, y, sz) => { const P = this.photos && al.img && this.photos[al.img]; ctx.fillStyle = '#1b1e22'; ctx.fillRect(x, y, sz, sz);
       if (P && P.c) { const iw = P.c.width, ih = P.c.height, side = Math.min(iw, ih) * .7; ctx.globalAlpha = (1 - fo) * .95; ctx.drawImage(P.c, (iw - side) * (al.imgX ?? 1) * .9, (ih - side) * .3, side, side, x, y, sz, sz); ctx.globalAlpha = 1 - fo; }
       ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, sz - 1, sz - 1); };
-    // waveform colours, rekordbox style: quiet parts blue, louder ones warming through orange to white
+    // waveform colours, rekordbox style: quiet parts blue, louder ones warming through orange to white, broken into little peaks
     const wcol = e => e < .45 ? 'rgb(40,120,255)' : e < .7 ? 'rgb(255,150,40)' : 'rgb(255,236,214)', grain = q => { const x = Math.sin(q * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
-    // a sliver of the piece at time tm: its loudness, broken up into the little peaks a real waveform has
     const sliver = (env, tm, dur) => { const e = envAt(env, tm / dur), q = Math.floor(tm * 22); return e * (.42 + .58 * (.5 * grain(q) + .5 * grain(q * .5 | 0))); };
-    // the main screen: a close-up of the piece's waveform scrolling under a fixed playhead, the piece and its time, and the whole piece in miniature
-    glass(G.scr, (sx, sy, sw, sh) => {
-      const wh = Math.round(sh * .36), wy = sy + 4 + wh / 2, cxp = sx + sw * .5, env = c ? c.tr.env : al.mix, dur = c ? c.tr.dur : al.tracks.reduce((a2, q) => a2 + q.dur, 0);
-      ctx.globalAlpha = (1 - fo) * (c ? 1 : .45);
-      const pps = sw / 14; for (let px = 0; px < sw; px += 2) { const tm = (c ? pos : dur * .02) + (px - sw / 2) / pps; if (tm < 0 || tm > dur) continue; const e = sliver(env, tm, dur), hh = Math.max(1, e * wh / 2);
+    // the main screen: what is playing (a scrolling close-up of its waveform under a fixed playhead, the piece, its time, the whole piece in
+    // miniature) over the album and its track list, which you pick from
+    { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 4); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 4); ctx.clip();
+      const env = c ? c.tr.env : al.mix, dur = c ? c.tr.dur : al.tracks.reduce((a2, q) => a2 + q.dur, 0), wy = sy + 17, wh = 26, cxp = sx + sw / 2;
+      ctx.globalAlpha = (1 - fo) * (c ? 1 : .4); const pps = sw / 14;
+      for (let px = 0; px < sw; px += 2) { const tm = (c ? pos : dur * .02) + (px - sw / 2) / pps; if (tm < 0 || tm > dur) continue; const e = sliver(env, tm, dur), hh = Math.max(1, e * wh / 2);
         ctx.fillStyle = wcol(e); ctx.fillRect(sx + px, wy - hh, 1.4, hh * 2); ctx.fillStyle = 'rgba(40,120,255,.55)'; ctx.fillRect(sx + px, wy - hh * .45, 1.4, hh * .9); }
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#ffffff'; ctx.fillRect(cxp - .5, sy + 3, 1, wh + 2); ctx.beginPath(); ctx.moveTo(cxp - 4, sy + 3); ctx.lineTo(cxp + 4, sy + 3); ctx.lineTo(cxp, sy + 8); ctx.closePath(); ctx.fill();
-      // the piece: its album's photo, title and kind on the left, the time large on the right
-      const iy = sy + wh + 9, isz = clamp(sh - wh - 30, 20, 30); thumb(sx + 8, iy, isz);
-      ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-      if (c) { ctx.font = '500 10.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - isz - 120, tw = ctx.measureText(ttl).width;
-        ctx.save(); ctx.beginPath(); ctx.rect(sx + isz + 16, iy - 2, room, 16); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + isz + 16, iy + 10); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + isz + 16 - o, iy + 10); ctx.fillText(ttl, sx + isz + 16 - o + L, iy + 10); } ctx.restore(); noGlow();
-        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = KINDS[c.tr.kind].cs; ctx.fillText('● ' + KINDS[c.tr.kind].label.toUpperCase() + (c.paused ? '   PAUSED' : ''), sx + isz + 16, iy + Math.max(26, isz));
-        ctx.textAlign = 'right'; ctx.font = '400 17px ' + mich; ctx.fillStyle = '#f2f2f0'; const ds = Math.floor(pos * 10) % 10; ctx.fillText(fmtDur(pos) + '.' + ds, sx + sw - 10, iy + 15);
-        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)), sx + sw - 10, iy + Math.max(26, isz)); }
-      else { ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText(al.title.toUpperCase(), sx + isz + 16, iy + 11); ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('STANDBY · PRESS ▶ OR PICK A PIECE', sx + isz + 16, iy + Math.max(26, isz)); }
-      // the whole piece in miniature: played part bright, a marker where you are
-      const oy = sy + sh - 9, ow = sw - 16; for (let px = 0; px < ow; px += 2) { const e = sliver(env, px / ow * dur, dur), hh = Math.max(.6, e * 4.5); ctx.globalAlpha = (1 - fo) * (c && px / ow <= u ? .95 : .35); ctx.fillStyle = wcol(e); ctx.fillRect(sx + 8 + px, oy - hh, 1.4, hh * 2); }
-      ctx.globalAlpha = 1 - fo; if (c) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 8 + ow * u - .5, oy - 6, 1, 12); } });
-    // the browse screen on the right deck: the album, then its pieces as a list with the one playing lit and its progress under it
-    glass(G.ascr, (sx, sy, sw, sh) => { const n2 = this.albums.length, tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0), hh = 30; thumb(sx + 6, sy + 5, hh - 10);
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM ' + pad2(this.state.album + 1) + ' / ' + pad2(n2), sx + hh + 2, sy + 10);
-      ctx.font = '400 9.5px ' + mich; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 5); ctx.fillText(al.title.toUpperCase(), sx + hh + 2, sy + 21); noGlow();
-      ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 8, sy + 10); ctx.fillText('SCROLL ▲▼', sx + sw - 8, sy + 21);
-      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 6, sy + hh, sw - 12, 1);
-      const rowH = clamp((sh - hh - 6) / Math.max(1, al.tracks.length), 13, 20);
-      al.tracks.forEach((tr, k) => { const ry = sy + hh + 4 + k * rowH, on = c && c.tr.id === tr.id, mid = ry + rowH / 2; if (ry + rowH > sy + sh) return;
-        if (on) { ctx.fillStyle = cy ? 'rgba(0,229,255,.12)' : 'rgba(255,255,255,.08)'; ctx.fillRect(sx + 4, ry, sw - 8, rowH - 1); ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(sx + 4, ry + rowH - 2, (sw - 8) * u, 1); }
-        ctx.textAlign = 'left'; ctx.font = '400 8px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), sx + 8, mid);
-        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(sx + 30, mid, 2.5, 0, TAU); ctx.fill();
-        ctx.fillStyle = on ? '#f2f2f0' : '#c3c8cc'; ctx.save(); ctx.beginPath(); ctx.rect(sx + 38, ry, sw - 90, rowH); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), sx + 38, mid); ctx.restore();
-        ctx.textAlign = 'right'; ctx.fillStyle = PM; ctx.fillText(fmtDur(tr.dur), sx + sw - 8, mid); }); });
-    // the page pads: a row of hot-cue pads across the top of the left deck, always labelled, lit in their page's colour; Sound's stays lit
-    ctx.font = (G.pads[0][2] < 76 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    G.pads.forEach(([px, py, pw, ph], i) => { const lit = Math.max(i === 2 ? 1 : 0, clamp(this.S[i].k, 0, 1)), col = cols[i];
-      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#26292e'; rr(px, py, pw, ph, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(px + 3, py + 2, pw - 6, 1);
-      ctx.globalAlpha = (1 - fo) * (.14 + .76 * lit); ctx.fillStyle = col; if (lit > .3) glow(col, 14 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 3); ctx.fill(); noGlow();
-      ctx.globalAlpha = 1 - fo; ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 4); ctx.stroke();
-      ctx.fillStyle = lit > .5 ? '#0c0c0c' : LAB[i]; ctx.fillText(names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
-    // three more pads on the right for the pages still to come: orange, green and purple. Dim until there is a page behind them
-    ctx.font = (G.cpads[0][2] < 76 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    G.cpads.forEach(([px, py, pw, ph], i) => { const k = clamp(this.S[4 + i].k, 0, 1), col = cols[4 + i];
-      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#26292e'; rr(px, py, pw, ph, 4); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(px + 3, py + 2, pw - 6, 1);
-      ctx.globalAlpha = (1 - fo) * (.1 + .3 * k); ctx.fillStyle = col; rr(px + 2, py + 2, pw - 4, ph - 4, 3); ctx.fill();
-      ctx.globalAlpha = (1 - fo) * (.55 + .45 * k); ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 4); ctx.stroke();
-      ctx.fillStyle = col; ctx.fillText('SOON', px + pw / 2, py + ph / 2 + .5); ctx.globalAlpha = 1 - fo; });
-    // pointing at a pad: the page's little pixel face shows on the main screen's waveform (the pads still to come just say so)
-    { const cp = this.padHov != null && this.padHov >= 4 ? this.padHov : -1, ck = cp >= 0 ? clamp(this.S[cp].k, 0, 1) : 0;
-      if (ck > .02) { const [sx, sy, sw, sh] = G.scr, wh = Math.round(sh * .36); ctx.globalAlpha = (1 - fo) * ck * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - 90, sy + 4, 180, wh, 3); ctx.fill();
-        ctx.globalAlpha = (1 - fo) * ck; ctx.fillStyle = cols[cp]; ctx.font = '400 10px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('A PAGE · COMING SOON', sx + sw / 2, sy + 4 + wh / 2); ctx.globalAlpha = 1 - fo; } }
-    { const hp = this.padHov != null && this.padHov < 4 ? this.padHov : -1, hk = hp >= 0 ? clamp(this.S[hp].k, 0, 1) : 0;
-      if (hk > .02) { const [sx, sy, sw, sh] = G.scr, wh = Math.round(sh * .36), fp = 2.6, fw = 12 * fp + 12 + 110; ctx.globalAlpha = (1 - fo) * hk * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - fw / 2 - 8, sy + 4, fw + 16, wh, 3); ctx.fill();
-        ctx.globalAlpha = (1 - fo) * hk; ctx.fillStyle = LAB[hp]; const fx = sx + sw / 2 - fw / 2, fy = sy + 4 + (wh - 10 * fp) / 2; FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5));
-        ctx.font = '400 10px ' + mich; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + 4 + wh / 2); ctx.globalAlpha = 1 - fo; } }
-    // a knob and a fader per channel under the main screen. The menu dots land on the fader caps; Sound's fader is the volume
-    const lo = G.lo, hi = G.hi;
-    for (let i = 0; i < 7; i++) { const S = this.S[i], xs = G.faders[i], big = i < 4, ky = G.knobY;
-      const base = -2.3 + 4.6 * rng(i * 31 + 3)(), ang = base + (i === 2 ? .35 * live * Math.sin(t * 9) : .9 * easeIO(clamp(S.k, 0, 1)));
-      ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.arc(xs, ky + 1, 7.2, 0, TAU); ctx.fill(); ctx.fillStyle = cy ? '#1d1828' : '#2f363d'; ctx.beginPath(); ctx.arc(xs, ky, 6.6, 0, TAU); ctx.fill();
-      if (cy) { ctx.strokeStyle = i % 2 ? NEON_M : NEON_C; ctx.globalAlpha = (1 - fo) * .85; ctx.lineWidth = 1.2; glow(ctx.strokeStyle, 5); ctx.beginPath(); ctx.arc(xs, ky, 8.8, -Math.PI / 2 - 2.3, -Math.PI / 2 + ang); ctx.stroke(); noGlow(); ctx.globalAlpha = 1 - fo; }
-      ctx.strokeStyle = i < 4 ? cols[i] : PM; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(xs + Math.sin(ang) * 1.5, ky - Math.cos(ang) * 1.5); ctx.lineTo(xs + Math.sin(ang) * 5.4, ky - Math.cos(ang) * 5.4); ctx.stroke(); ctx.lineCap = 'butt';
-      S.hold = clamp(S.hold ?? (i === 2 ? lo + (hi - lo) * .15 : hi), lo, hi); S.cy = S.cy == null ? hi : S.cy + (S.hold - S.cy) * Math.min(1, dt * (S.drag ? 30 : 10));
-      const alpha = (1 - fo) * (i > 3 ? .7 : 1);
-      ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(xs - 3, G.fy0, 6, G.fy1 - G.fy0, 3); ctx.fill();
-      if (big) { ctx.globalAlpha = alpha * .35; ctx.fillStyle = PM; for (let q = 0; q <= 6; q++) ctx.fillRect(xs - 10, lo + (hi - lo) * q / 6, q % 3 ? 2 : 4, 1); }
-      ctx.fillStyle = cols[i]; ctx.globalAlpha = alpha * .22; ctx.fillRect(xs - .75, G.fy0, 1.5, G.fy1 - G.fy0);
-      ctx.globalAlpha = alpha * (.35 + .65 * Math.max(clamp(S.k, 0, 1), i === 2 ? .75 : 0)); ctx.fillRect(xs - 1, S.cy, 2, G.fy1 - S.cy);
-      const cw = big ? 18 : 14, ch = big ? 18 : 15, cg = ctx.createLinearGradient(0, S.cy - ch / 2, 0, S.cy + ch / 2); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
-      ctx.globalAlpha = Math.max(alpha, .5) * (1 - fo); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(xs - cw / 2, S.cy - ch / 2, cw, ch); noGlow(); ctx.shadowOffsetY = 0;
-      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(xs - cw / 2 + 2, S.cy - ch / 2 + 3, cw - 4, 1);
-      ctx.fillStyle = cols[i]; glow(cols[i], 8); ctx.fillRect(xs - cw / 2 + 1, S.cy - 1, cw - 2, 2); noGlow(); }
-    this.volume = clamp(1 - (this.S[2].hold - lo) / (hi - lo), 0, 1);
+      thumb(sx + 8, sy + 34, 22); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      if (c) { ctx.font = '500 10.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 150, tw = ctx.measureText(ttl).width;
+        ctx.save(); ctx.beginPath(); ctx.rect(sx + 38, sy + 32, room, 16); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + 38, sy + 43); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + 38 - o, sy + 43); ctx.fillText(ttl, sx + 38 - o + L, sy + 43); } ctx.restore(); noGlow();
+        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = KINDS[c.tr.kind].cs; ctx.fillText('● ' + KINDS[c.tr.kind].label.toUpperCase() + (c.paused ? '   PAUSED' : ''), sx + 38, sy + 55);
+        ctx.textAlign = 'right'; ctx.font = '400 16px ' + mich; ctx.fillStyle = '#f2f2f0'; ctx.fillText(fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10), sx + sw - 10, sy + 48);
+        ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)), sx + sw - 10, sy + 58); }
+      else { ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('STANDBY', sx + 38, sy + 43); ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 38, sy + 55); }
+      const oy = sy + 64, ow = sw - 16; for (let px = 0; px < ow; px += 2) { const e = sliver(env, px / ow * dur, dur), hh = Math.max(.6, e * 3.5); ctx.globalAlpha = (1 - fo) * (c && px / ow <= u ? .95 : .35); ctx.fillStyle = wcol(e); ctx.fillRect(sx + 8 + px, oy - hh, 1.4, hh * 2); }
+      ctx.globalAlpha = 1 - fo; if (c) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 8 + ow * u - .5, oy - 5, 1, 10); }
+      // the album and its pieces
+      const n2 = this.albums.length, tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0);
+      ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 6, sy + 72, sw - 12, 1);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('ALBUM ' + pad2(this.state.album + 1) + ' / ' + pad2(n2), sx + 10, sy + 81);
+      ctx.font = '400 9.5px ' + mich; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 5); ctx.fillText(al.title.toUpperCase(), sx + 82, sy + 81); noGlow();
+      ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 10, sy + 81);
+      this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;
+        if (on || hv) { ctx.fillStyle = on ? (cy ? 'rgba(0,229,255,.13)' : 'rgba(255,255,255,.09)') : 'rgba(255,255,255,.05)'; ctx.fillRect(rx, ry + .5, rw, rh - 1); }
+        if (on) { ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(rx, ry + rh - 1.5, rw * u, 1); }
+        ctx.textAlign = 'left'; ctx.font = '400 8.5px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 6, mid);
+        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(rx + 30, mid, 2.6, 0, TAU); ctx.fill();
+        ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.save(); ctx.beginPath(); ctx.rect(rx + 38, ry, rw - 196, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 38, mid); ctx.restore();
+        ctx.textAlign = 'right'; ctx.fillStyle = PM; ctx.fillText(KINDS[tr.kind].label.toUpperCase(), rx + rw - 122, mid); ctx.fillText(fmtDate(tr.date).toUpperCase(), rx + rw - 46, mid); ctx.fillText(fmtDur(tr.dur), rx + rw - 6, mid); });
+      if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
+      ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 3.5); ctx.stroke();
+      // pointing at a pad: the page's little pixel face on the waveform (the pads still to come just say so)
+      const hp = this.padHov, hk = hp != null ? clamp(this.S[hp].k, 0, 1) : 0;
+      if (hk > .02) { const fp = 2.2, fw = hp < 4 ? 12 * fp + 12 + 104 : 170; ctx.globalAlpha = (1 - fo) * hk * .92; ctx.fillStyle = '#04030a'; rr(sx + sw / 2 - fw / 2 - 8, sy + 3, fw + 16, 28, 3); ctx.fill(); ctx.globalAlpha = (1 - fo) * hk;
+        ctx.font = '400 9.5px ' + mich; ctx.textBaseline = 'middle';
+        if (hp < 4) { ctx.fillStyle = LAB[hp]; const fx = sx + sw / 2 - fw / 2, fy = sy + 17 - 5 * fp; FACE(hp, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); ctx.textAlign = 'left'; ctx.fillText('→ ' + names[hp].toUpperCase(), fx + 12 * fp + 12, sy + 17); }
+        else { ctx.fillStyle = cols[hp]; ctx.textAlign = 'center'; ctx.fillText('A PAGE · COMING SOON', sx + sw / 2, sy + 17); } ctx.globalAlpha = 1 - fo; } }
+    // the volume fader, standing beside the screen
+    { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo + (hi - lo) * .15, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
+      ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);
+      ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(V.x - 3, V.y0, 6, V.y1 - V.y0, 3); ctx.fill(); ctx.globalAlpha = (1 - fo) * .35; ctx.fillStyle = PM; for (let q = 0; q <= 6; q++) ctx.fillRect(V.x - 11, lo + (hi - lo) * q / 6, q % 3 ? 2 : 4, 1);
+      ctx.globalAlpha = (1 - fo) * .85; ctx.fillStyle = cols[2]; glow(cols[2], 6); ctx.fillRect(V.x - 1, this.volY, 2, V.y1 - this.volY); noGlow();
+      const cg = ctx.createLinearGradient(0, this.volY - 10, 0, this.volY + 10); cg.addColorStop(0, '#59626b'); cg.addColorStop(.5, '#3a4249'); cg.addColorStop(1, '#262c31');
+      ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; ctx.fillStyle = cg; ctx.fillRect(V.x - 10, this.volY - 10, 20, 20); noGlow(); ctx.shadowOffsetY = 0;
+      ctx.fillStyle = cols[2]; glow(cols[2], 8); ctx.fillRect(V.x - 9, this.volY - 1, 18, 2); noGlow();
+      this.volume = clamp(1 - (this.volHold - lo) / (hi - lo), 0, 1); }
+    // the beat pads, square: the four pages (Sound's stays lit), and the three for pages still to come. A pad flashes as its dot lands in it
+    const flash = i => A ? Math.sin(Math.PI * clamp((t - 1.4 - i * .06) / .7, 0, 1)) : 0;
+    ctx.font = (G.pads[0][2] < 70 ? '400 7px ' : '400 8px ') + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    [...G.pads, ...G.cpads].forEach(([px, py, pw, ph], i) => { const soon = i > 3, col = cols[i], k = clamp(this.S[i].k, 0, 1), lit = clamp(Math.max(i === 2 ? 1 : 0, soon ? .25 + .4 * k : k, flash(i)), 0, 1);
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#26292e'; rr(px, py, pw, ph, 6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(px + 4, py + 2, pw - 8, 1);
+      ctx.globalAlpha = (1 - fo) * (.12 + .78 * lit); ctx.fillStyle = col; if (lit > .3 && !soon) glow(col, 16 * lit); rr(px + 3, py + 3, pw - 6, ph - 6, 4); ctx.fill(); noGlow();
+      ctx.globalAlpha = (1 - fo) * (soon ? .6 + .4 * k : 1); ctx.strokeStyle = col; ctx.lineWidth = 1; rr(px + .5, py + .5, pw - 1, ph - 1, 6); ctx.stroke();
+      ctx.globalAlpha = 1 - fo; ctx.fillStyle = !soon && lit > .5 ? '#0c0c0c' : soon ? col : LAB[i]; ctx.fillText(soon ? 'SOON' : names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); });
     ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
-    // arriving / leaving, each channel is a dot: arriving, the dots fly in from where the last page left them and settle on the fader caps;
-    // leaving, the caps turn back into dots (and for Freediving they fly up into that page's menu)
+    // arriving / leaving, each page is a dot: arriving, the dots fly in from where the last page left them and open out into their beat pads;
+    // leaving, the pads close back into dots (and for Freediving they fly up into that page's menu)
     const OFF = { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 };
     const bz = (P0, P1, C1, C2, u2) => { const a = (1 - u2) ** 3, b = 3 * (1 - u2) ** 2 * u2, c2 = 3 * (1 - u2) * u2 * u2, d = u2 ** 3; return [a * P0[0] + b * C1[0] + c2 * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c2 * C2[1] + d * P1[1]]; };
     this.dotPos = {};
-    if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const S = this.S[i], k = DECK_KEYS[i], cap = [G.faders[i], S.cy ?? hi]; let p = cap, a = 1;
-      // each dot squashes into its cap's coloured stripe as it lands (and leaving, the stripe rounds back into the dot), so it stays solid throughout
+    if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
       const fm = A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm;
       if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) p = A.nf.low ? bz(f2, cap, [f2[0], f2[1] + (cap[1] - f2[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f2, cap, [f2[0] - 120, f2[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
       if (O && O.k === 'dive') { const D = [W - 316 + OFF[k], 28]; p = bz(cap, D, [cap[0] - 80, cap[1] - 200], [D[0] - 40, D[1] + 160], easeIO(clamp((O.t - .85 - i * .05) / .9, 0, 1))); }
-      this.dotPos[k] = p; if (a <= .01) continue;
+      this.dotPos[k] = p; a *= 1 - .9 * fm * fm; if (a <= .01) continue;
       const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
-      const r0 = i < 4 ? 8 : 5.5, sw = (i < 4 ? 18 : 14) - 2, dw = 2 * r0 + (sw - 2 * r0) * fm, dh = 2 * r0 + (2 - 2 * r0) * fm;
-      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && cy) { ctx.shadowColor = c0; ctx.shadowBlur = 8 * fm; }
-      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, dh / 2); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); noGlow(); }
+      const r0 = i < 4 ? 8 : 5.5, dw = 2 * r0 + (pd[2] - 2 * r0) * fm, dh = 2 * r0 + (pd[3] - 2 * r0) * fm, rad = r0 + (6 - r0) * fm;
+      ctx.globalAlpha = a; ctx.fillStyle = c0; if (fm > 0 && cy) { ctx.shadowColor = c0; ctx.shadowBlur = 10 * fm; }
+      ctx.beginPath(); if (fm <= 0) ctx.arc(p[0], p[1], r0, 0, TAU); else if (ctx.roundRect) ctx.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, rad); else ctx.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); ctx.fill(); noGlow(); }
     ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
   // ---- layout
   // the wave lies flat across the middle of the page and opens up and down while a piece plays
@@ -523,7 +503,8 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
-        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, fader: [0, 1, 2, 3, 4, 5, 6].map(i => this.faderDown(i)) },
+        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown,
+        rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
   }
@@ -537,87 +518,29 @@ function View(v) {
       {"\n      \n  \n      "}
       <canvas ref={v.canvasRef} style={sty("position:absolute;inset:0;width:100%;height:100%;pointer-events:none")} />
       {"\n      \n  \n      \n      "}
-      <div ref={v.contentRef} style={sty("position:absolute;left:0;right:0;top:0;height:var(--ch);overflow:hidden;opacity:0")}>
-        {"\n        "}
-        <div style={sty(`position:absolute;left:0;right:0;top:0;transform:${v.albumY ?? ''};transition:transform .9s cubic-bezier(.65,0,.2,1)`)}>
-          {"\n          "}
-          {(v.albums || []).map((al, $index) => (
-            <React.Fragment key={$index}>
-              {"\n            "}
-              <section aria-label={al?.title} style={sty("position:relative;height:var(--ch)")}>
-                {"\n              "}
-                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);right:40px;bottom:calc(50% + 30px);display:flex;flex-direction:column;align-items:flex-start;gap:clamp(8px, 1.6vh, 14px)")}>
-                  {"\n                "}
-                  <p style={sty(`margin:0;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${v.th?.muted ?? ''};background:${v.th?.labBg ?? ''};padding:${v.th?.chipPad ?? ''};border-radius:3px`)}>
-                    {al?.meta}
-                  </p>
-                  {"\n                "}
-                  <h2 style={sty(`margin:0;font-family:${v.th?.disp ?? ''};font-style:${v.th?.dispStyle ?? ''};font-weight:${v.th?.dispW ?? ''};text-transform:${v.th?.dispCase ?? ''};font-size:${v.th?.dispSize ?? ''};line-height:.95;letter-spacing:${v.th?.dispLs ?? ''};text-shadow:${v.th?.titleSh ?? ''};background:${v.th?.labBg ?? ''};padding:${v.th?.labPad ?? ''};border-radius:${v.th?.labRad ?? ''};box-shadow:${v.th?.labSh ?? ''}`)}>
-                    {al?.title}
-                  </h2>
-                  {"\n              "}
-                </div>
-                {"\n              "}
-                <div style={sty("position:absolute;left:calc(clamp(26px, 5vw, 56px) + 76px);top:calc(50% + 30px);width:min(820px, max(280px, calc(100% - clamp(26px, 5vw, 56px) - 196px)));display:flex;flex-direction:column;align-items:flex-start;gap:12px")}>
-                  {"\n                "}
-                  <ol style={sty(`list-style:none;margin:0;width:100%;box-sizing:border-box;background:${v.th?.listBg ?? ''};padding:${v.th?.listPad ?? ''};border-radius:${v.th?.listRad ?? ''};display:flex;flex-direction:column;border-top:1px solid color-mix(in srgb, currentColor 18%, transparent)`)}>
-                    {"\n                "}
-                    {(al?.tracks || []).map((tr, $index) => (
-                      <React.Fragment key={$index}>
-                        {"\n                  "}
-                        <li style={sty($index < (al?.tracks || []).length - 1 ? "border-bottom:1px solid color-mix(in srgb, currentColor 18%, transparent)" : "")}>
-                          {"\n                    "}
-                          <button type="button" onClick={tr?.play} onMouseEnter={tr?.on} onMouseLeave={tr?.off} onFocus={tr?.on} onBlur={tr?.off} aria-label={`${tr?.state ?? ''}: ${tr?.title ?? ''}`} style={sty("width:100%;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:20px;row-gap:4px;padding:clamp(7px, 1.6vh, 14px) 6px;box-sizing:border-box;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit")} style-hover="background:color-mix(in srgb, currentColor 7%, transparent)">
-                            {"\n                      "}
-                            <span style={sty(`margin:0;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${v.th?.muted ?? ''};color:inherit;width:28px;flex:none`)}>
-                              {tr?.mark}
-                            </span>
-                            {"\n                      "}
-                            <span style={sty(`flex:1 1 240px;min-width:0;font-size:${v.th?.trSize ?? ''};text-transform:${v.th?.trCase ?? ''};letter-spacing:${v.th?.trLs ?? ''};line-height:1.25`)}>
-                              {tr?.title}
-                            </span>
-                            {"\n                      "}
-                            <span style={sty(`display:flex;align-items:baseline;gap:20px;flex:none;margin:0;font-family:'JetBrains Mono', monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${v.th?.muted ?? ''}`)}>
-                              {"\n                        "}
-                              <span style={sty("display:flex;align-items:center;gap:7px")}>
-                                <span style={sty(`width:8px;height:8px;border-radius:50%;background:${tr?.col ?? ''}`)} />
-                                {tr?.kind}
-                              </span>
-                              {"\n                        "}
-                              <span>
-                                {tr?.date}
-                              </span>
-                              {"\n                        "}
-                              <span style={sty("min-width:40px;text-align:right")}>
-                                {tr?.dur}
-                              </span>
-                              {"\n                      "}
-                            </span>
-                            {"\n                    "}
-                          </button>
-                          {"\n                  "}
-                        </li>
-                        {"\n                "}
-                      </React.Fragment>
-                    ))}
-                    {"\n              "}
-                  </ol>
-                  {"\n              "}
-                </div>
-                {"\n            "}
-              </section>
-              {"\n          "}
-            </React.Fragment>
-          ))}
-          {"\n        "}
-        </div>
-        {"\n        "}
-        <div ref={v.wheelRef} style={sty("position:absolute;left:18px;top:50%;width:64px;height:0")}>
+      <div ref={v.contentRef} style={sty("display:none")} />
+      {"\n      \n      \n      \n  \n      "}
+      <div role="navigation" aria-label="Pages" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
+        <a href={BASE + "?from=dive"} onClick={v.pad?.home?.go} aria-label="Home" data-navk="home" onMouseEnter={v.pad?.home?.on} onMouseLeave={v.pad?.home?.off} onFocus={v.pad?.home?.on} onBlur={v.pad?.home?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
+          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
+        </a>
+        <a href={BASE + "freediving/"} onClick={v.pad?.freediving?.go} aria-label="Freediving" data-navk="freediving" onMouseEnter={v.pad?.freediving?.on} onMouseLeave={v.pad?.freediving?.off} onFocus={v.pad?.freediving?.on} onBlur={v.pad?.freediving?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
+          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
+        </a>
+        <a href={BASE + "sound/"} onClick={v.pad?.sound?.go} aria-current="page" aria-label="Sound" data-navk="sound" onMouseEnter={v.pad?.sound?.on} onMouseLeave={v.pad?.sound?.off} onFocus={v.pad?.sound?.on} onBlur={v.pad?.sound?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:default")}>
+          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
+        </a>
+        <a href={BASE + "journal/"} onClick={v.pad?.journal?.go} aria-label="Journal" data-navk="journal" onMouseEnter={v.pad?.journal?.on} onMouseLeave={v.pad?.journal?.off} onFocus={v.pad?.journal?.on} onBlur={v.pad?.journal?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
+          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
+        </a>
+      </div>
+      <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
+        <div ref={v.wheelRef} style={sty("position:absolute;left:-200px;top:0;width:64px;height:0;pointer-events:auto")}>
           {"\n          "}
           {(v.wheelItems || []).map((ab, $index) => (
             <React.Fragment key={$index}>
               {"\n            "}
-              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty(`position:absolute;left:50%;top:0;transform:translate(-50%, -50%);opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:5px 9px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;background:${v.th?.labBg ?? ''};color:${v.th?.ink ?? ''};box-shadow:${v.th?.labSh ?? ''};will-change:transform, opacity`)}>
+              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:76px;top:0;transform:translate(0, -50%);transform-origin:0 50%;opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:3px 4px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:#c3c8cc;will-change:transform, opacity")}>
                 {ab?.title}
               </button>
               {"\n          "}
@@ -655,29 +578,12 @@ function View(v) {
           </div>
           {"\n        "}
         </div>
-        {"\n\n\n      "}
-      </div>
-      {"\n      \n      \n      \n  \n      "}
-      <div role="navigation" aria-label="Pages" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
-        <a href={BASE + "?from=dive"} onClick={v.pad?.home?.go} aria-label="Home" data-navk="home" onMouseEnter={v.pad?.home?.on} onMouseLeave={v.pad?.home?.off} onFocus={v.pad?.home?.on} onBlur={v.pad?.home?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </a>
-        <a href={BASE + "freediving/"} onClick={v.pad?.freediving?.go} aria-label="Freediving" data-navk="freediving" onMouseEnter={v.pad?.freediving?.on} onMouseLeave={v.pad?.freediving?.off} onFocus={v.pad?.freediving?.on} onBlur={v.pad?.freediving?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </a>
-        <a href={BASE + "sound/"} onClick={v.pad?.sound?.go} aria-current="page" aria-label="Sound" data-navk="sound" onMouseEnter={v.pad?.sound?.on} onMouseLeave={v.pad?.sound?.off} onFocus={v.pad?.sound?.on} onBlur={v.pad?.sound?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:default")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </a>
-        <a href={BASE + "journal/"} onClick={v.pad?.journal?.go} aria-label="Journal" data-navk="journal" onMouseEnter={v.pad?.journal?.on} onMouseLeave={v.pad?.journal?.off} onFocus={v.pad?.journal?.on} onBlur={v.pad?.journal?.off} style={sty("position:absolute;left:-200px;top:0;display:block;border-radius:5px;pointer-events:auto;cursor:pointer")}>
-          <span data-navdot="1" style={sty("position:absolute;left:50%;top:50%;width:1px;height:1px")} />
-        </a>
-      </div>
-      <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:999px 999px 0 0;pointer-events:auto;cursor:grab;touch-action:none")} />
         {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        {(v.deck?.fader || []).map((fd, i) => <div key={i} data-fader={i} onPointerDown={fd} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />)}
+        <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
+        {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>
       {"\n    "}
     </div>

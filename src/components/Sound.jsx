@@ -742,8 +742,9 @@ function View(v) {
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>
-      <button data-full-exit="1" type="button" aria-label="Leave full screen" title="Leave full screen (Esc)" onClick={v.deck?.leaveFull} style={sty("position:fixed;right:18px;bottom:18px;width:34px;height:34px;border-radius:6px;border:1px solid rgba(0,0,0,.18);background:rgba(255,255,255,.55);opacity:0;pointer-events:none;cursor:pointer;transition:opacity .4s;display:flex;align-items:center;justify-content:center;padding:0")}>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#3a3d40" strokeWidth="1.4"><path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" /></svg>
+      {/* leaving full screen: a pill centred at the bottom, the controller's dark glass with a cyan edge; it shows while the mouse moves */}
+      <button data-full-exit="1" type="button" aria-label="Leave full screen" title="Leave full screen (Esc)" onClick={v.deck?.leaveFull} style={sty("position:fixed;left:50%;bottom:22px;transform:translateX(-50%);height:32px;padding:0 18px;border-radius:16px;border:1px solid rgba(0,229,255,.75);background:#17121f;box-shadow:0 0 10px rgba(0,229,255,.35);color:#7fe9f7;font-family:Michroma, sans-serif;font-size:10px;letter-spacing:.16em;white-space:nowrap;opacity:0;pointer-events:none;cursor:pointer;transition:opacity .4s;display:flex;align-items:center;gap:10px")}>
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#7fe9f7" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 1v4H1M9 1v4h4M5 13V9H1M9 13V9h4" /></svg>EXIT<span style={sty("opacity:.55")}>·</span>ESC
       </button>
       {"\n    "}
     </div>

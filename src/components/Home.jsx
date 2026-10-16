@@ -31,7 +31,7 @@ const miniWave = (x0, y0, w, h, o = {}) => { const [s, T] = miniFit(x0, y0, w, h
 // [line, start x, start y (on the water), width, height, options] in unit coordinates; li 3 (blue) rides the big wave instead
 // the small waves sit in one row under the big one, evenly spaced and alternately high and low (blue rides the big wave)
 const WAVES = [[3, -1.6, .66, 1.6, 1.0, {}], ...[1, 4, 5, 2, 6].map((li, k) => [li, -2.25 + k * .85, k % 2 ? 1.74 : 1.52, .6, 1, {}])];
-const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai'];
+const SHAPES = ['enso', 'spiral', 'triforce', 'triskele', 'wave', 'maple', 'octopus', 'hangul', 'spring', 'mountain', 'vinyl', 'camera', 'book', 'onsen', 'lotus', 'coffee', 'headphones', 'plane', 'gameboy', 'longfins', 'egg', 'samurai', 'muaythai'];
 // page: which section this colour leads to (blue → freediving)
 // hover fade, like watercolour bleeding into paper: every other line washes from the start of its stroke to its tail, all in step.
 // seconds for the wash to cross a stroke, opacity reached, width of the wet edge (share of the stroke), how much that edge wanders
@@ -54,6 +54,12 @@ const finPt = (sx, rot, [x, y]) => [sx + x * Math.cos(rot) - y * Math.sin(rot), 
 const wisp = (x, y0, y1, amp, ph) => Array.from({ length: 13 }, (_, q) => { const u = q / 12; return [x + amp * Math.sin(u * Math.PI * 2.2 + ph) * (.35 + .65 * u), y0 + (y1 - y0) * u]; });
 // the plane's wind: a wavy stream blowing back off a wingtip (sd -1 port, 1 starboard), in the plane's tilted frame
 const planeWind = (sd, ph) => Array.from({ length: 15 }, (_, q) => { const u = q / 14, x = sd * (1.27 + .13 * u + .05 * Math.sin(u * Math.PI * 3 + ph) * u), y = .33 + .8 * u; return [(x - y) * Math.SQRT1_2, (x + y) * Math.SQRT1_2]; });
+// the Muay Thai bag hangs from its ring at BAG_HOOK and has just been kicked from the left, so it's tipped by BAG_SWING (radians, the bottom to the right)
+const BAG_HOOK = [0, -1.27], BAG_SWING = -.1, BAG_ROT = ([x, y, w]) => { const dx = x - BAG_HOOK[0], dy = y - BAG_HOOK[1], c = Math.cos(BAG_SWING), s = Math.sin(BAG_SWING); return [BAG_HOOK[0] + dx * c - dy * s, BAG_HOOK[1] + dx * s + dy * c, w]; };
+// its coloured lines, before the swing: red, yellow and blue burst off the left side where the shin landed (Sound, Journal and Freediving's
+// dots at their outer ends); orange, green and purple trace the arc the bottom of the bag has just swung through, ending near it
+const BAG_LINES = [{ li: 1, path: [[-.5, -.63], [-.68, -.79], [-.84, -.93], [-.97, -1.05]] }, { li: 2, path: [[-.52, -.44], [-.75, -.46], [-.95, -.48], [-1.12, -.5]] }, { li: 3, path: [[-.5, -.26], [-.68, -.2], [-.85, -.13], [-1.0, -.06]] },
+  ...[[4, 2.25, .4], [5, 2.0, .38], [6, 1.75, .3]].map(([li, r, sw]) => ({ li, path: Array.from({ length: 9 }, (_, q) => { const a = Math.PI / 2 + .32 + sw - q / 8 * sw; return [BAG_HOOK[0] + Math.cos(a) * r, BAG_HOOK[1] + Math.sin(a) * r]; }) }))];
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -179,6 +185,15 @@ function shapeOf(name, cx, cy, R) {
     const parts = [[-.26, -.94], [.26, -.94], [-.26, -.6], [.26, -.6], [-.26, -.26], [.26, -.26]].map(([x, y], k) => ring(x, y, k));
     parts.push([[0, .33, .9], [.24, .69, 1], [-.24, .69, 1], [0, .33, .9], [.05, .41, .8]]);
     parts.forEach((q, k) => { if (k) list.push(hc(parts[k - 1][parts[k - 1].length - 1], q[0])); list.push(q); }); strokes(list); st = [0, 1.05]; }
+  else if (name === 'muaythai') { // a Muay Thai bag on its ring, swivel and straps, just kicked from the left so it swings a little to the right
+    const t = .001, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, t]);
+    const lin = (a, b, w = 1) => { const n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / .03)); return Array.from({ length: n + 1 }, (_, q) => [a[0] + (b[0] - a[0]) * q / n, a[1] + (b[1] - a[1]) * q / n, w]); };
+    const ell = (c, rx, ry, a0, a1, n, w) => Array.from({ length: n + 1 }, (_, q) => { const a = a0 + (a1 - a0) * q / n; return [c[0] + Math.cos(a) * rx, c[1] + Math.sin(a) * ry, w]; });
+    const ring = ell([0, -1.27], .07, .07, Math.PI / 2, Math.PI / 2 + TAU, 24, .8), hang = lin([0, -1.2], [0, -.98]), strapL = lin([0, -.98], [-.36, -.7], .85);
+    const bodyPts = [...lin([-.36, -.7], [-.36, .9])]; cat([[-.36, .9], [-.3, 1.0], [0, 1.05], [.3, 1.0], [.36, .9]], 10, (x, y) => bodyPts.push([x, y, 1])); bodyPts.push(...lin([.36, .9], [.36, -.7]));
+    const strapR = lin([.36, -.7], [0, -.98], .85), rim = ell([0, -.7], .36, .085, Math.PI, Math.PI + TAU, 40, .8), band1 = ell([0, -.46], .36, .085, Math.PI, 0, 24, .65), band2 = ell([0, .7], .36, .085, Math.PI, 0, 24, .65);
+    const seq = [[...ring, ...hang, ...strapL, ...bodyPts, ...strapR], rim, band1, band2], list = []; seq.forEach((q, k) => { if (k) list.push(hc(seq[k - 1][seq[k - 1].length - 1], q[0])); list.push(q); });
+    strokes(list.map(q => q.map(BAG_ROT))); st = BAG_ROT(BAG_LINES.find(l => l.li === 3).path.slice(-1)[0]); }
   else if (name === 'triforce') { lineTo([[0, .82], [-1.05, .82], [0, -.98], [1.05, .82], [0, .82], [-.525, -.08], [.525, -.08], [0, .82]]); st = [0, 1.2]; }
   else if (name === 'mountain') { const t = .12, hc = (a, b) => Array.from({ length: 16 }, (_, q) => [a[0] + (b[0] - a[0]) * q / 15, a[1] + (b[1] - a[1]) * q / 15, .001]), chain = seq => { const list = []; seq.forEach((q, k) => { if (k) list.push(hc(seq[k - 1][seq[k - 1].length - 1], q[0])); list.push(q); }); strokes(list); }; const sun = []; for (let q = 0; q <= 60; q++) { const a = -.6 + q / 60 * TAU; sun.push([.98 + Math.cos(a) * .26, -.62 + Math.sin(a) * .26, .8]); } chain([sun, catW([[-1.75, .72], [-1.2, .48], [-.75, .05], [-.42, -.42], [-.22, -.7], [-.08, -.62], [.08, -.72], [.22, -.68], [.45, -.38], [.8, .06], [1.25, .48], [1.75, .72]], 14, 1, 1)]); st = [0, 1.05]; }
   else if (name === 'vinyl') { lineTo([[1.45, -1.15], [1.35, -.35], [.7, -.12]]); circ([0, 0], 1.0, -.17, 1, 160); for (let q = 1; q <= 260; q++) { const u = q / 260, a = -.17 + u * TAU * 2.2, r = 1.0 - .55 * u; push(Math.cos(a) * r, Math.sin(a) * r); } { const a0 = -.17 + TAU * 2.2; circ([0, 0], .3, a0, 1, 60); circ([0, 0], .07, a0, 1, 20); } st = [-.6, 1.3]; }
@@ -328,6 +343,7 @@ function shapeOf(name, cx, cy, R) {
         { li: 5, path: [[-.8, .1], [-.2, .1], [.4, .1], [.68, .1], [.72, .12], [.72, .3], [.72, .54]] }, { li: 4, path: [[.62, .33], [.14, .33], [-.34, .33], [-.8, .33]] },
         { li: 3, path: [[-.84, .76], [-.28, .76], [.28, .76], [.84, .76]] }],
       // samurai: one coloured line comes in to the middle of each of the six circles
+      muaythai: BAG_LINES.map(({ li, path }) => ({ li, path: path.map(p => BAG_ROT(p)) })),
       samurai: [{ li: 1, path: [[-.95, -1.05], [-.7, -.9], [-.45, -.7], [-.26, -.61]] }, { li: 2, path: [[.95, -1.05], [.7, -.9], [.45, -.7], [.26, -.61]] }, { li: 3, path: [[-1.0, -.2], [-.7, -.32], [-.45, -.31], [-.26, -.27]] },
         { li: 4, path: [[.82, -.67], [.64, -.47], [.44, -.32], [.26, -.27]] }, { li: 5, path: [[-.9, .45], [-.66, .3], [-.44, .13], [-.26, .07]] }, { li: 6, path: [[.9, .45], [.66, .3], [.44, .13], [.26, .07]] }]
     }[name];
@@ -354,7 +370,7 @@ function shapeOf(name, cx, cy, R) {
         // labels sit just outside the pages, level with their dots (32 px gap plus half the label's width)
         labelAt: { sound: [cx - 1.17 * R - 69, cy + bookRowY(-1.17, .25) * R], freediving: [cx - 1.16 * R - 88, cy + bookRowY(-1.16, .5) * R], journal: [cx + 1.15 * R + 73, cy + bookRowY(1.15, .5) * R] } } : name === 'triskele' ? { freediving: [cx + .62 * R, cy + 1.12 * R] } : name === 'mountain' ? { freediving: [cx + .02 * R, cy + .86 * R], journal: [cx + .36 * R, cy - .4 * R] } : name === 'spring' ? { sound: [cx + 1.64 * R, cy - .39 * R], journal: [cx - .2 * R, cy - 1.0 * R], freediving: [cx - .4 * R, cy + 1.24 * R] } : name === 'plane' ? (() => { const end = (ex, L) => { const ey = .4 - .3 * (ex < 0 ? (ex + 1.24) / 1.08 : (1.24 - ex) / 1.08) + .07 + L; return [cx + (ex - ey) * Math.SQRT1_2 * R, cy + (ex + ey) * Math.SQRT1_2 * R]; }; const w = planeWind(-1, .6).pop(); return { sound: [cx + w[0] * R, cy + w[1] * R], journal: end(-.86, .9), freediving: end(.86, .9) }; })() : name === 'hangul' ? { sound: [cx - SEAL.x * R, cy - (SEAL.y - .01) * R], journal: [cx + .74 * R, cy - .5 * R], freediving: [cx + .84 * R, cy + .76 * R],
         // labels sit just outside the stamp's right edge, clear of the letters
-        labelAt: { journal: [cx + SEAL.x * R + 58, cy - .5 * R], freediving: [cx + SEAL.x * R + 74, cy + .76 * R] } } : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
+        labelAt: { journal: [cx + SEAL.x * R + 58, cy - .5 * R], freediving: [cx + SEAL.x * R + 74, cy + .76 * R] } } : name === 'muaythai' ? (() => { const end = li => { const e = BAG_ROT(BAG_LINES.find(l => l.li === li).path.slice(-1)[0]); return [cx + e[0] * R, cy + e[1] * R]; }; return { sound: end(1), journal: end(2), freediving: end(3) }; })() : name === 'samurai' ? { sound: [cx - .26 * R, cy - .61 * R], journal: [cx + .26 * R, cy - .61 * R], freediving: [cx - .26 * R, cy - .27 * R], labelAt: { sound: [cx - .26 * R, cy - .99 * R], journal: [cx + .26 * R, cy - .99 * R], freediving: [cx - .68 * R, cy - .1 * R] } } : null;
   return { pts: out, station: [cx + st[0] * R, cy + st[1] * R], dots: extra, blooms, colorPaths, stOv };
 }
 

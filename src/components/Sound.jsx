@@ -547,7 +547,7 @@ function View(v) {
                     {(al?.tracks || []).map((tr, $index) => (
                       <React.Fragment key={$index}>
                         {"\n                  "}
-                        <li style={sty("border-bottom:1px solid color-mix(in srgb, currentColor 18%, transparent)")}>
+                        <li style={sty($index < (al?.tracks || []).length - 1 ? "border-bottom:1px solid color-mix(in srgb, currentColor 18%, transparent)" : "")}>
                           {"\n                    "}
                           <button type="button" onClick={tr?.play} onMouseEnter={tr?.on} onMouseLeave={tr?.off} onFocus={tr?.on} onBlur={tr?.off} aria-label={`${tr?.state ?? ''}: ${tr?.title ?? ''}`} style={sty("width:100%;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:20px;row-gap:4px;padding:clamp(7px, 1.6vh, 14px) 6px;box-sizing:border-box;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit")} style-hover="background:color-mix(in srgb, currentColor 7%, transparent)">
                             {"\n                      "}

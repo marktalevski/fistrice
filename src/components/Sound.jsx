@@ -97,18 +97,15 @@ class Component extends DCLogic {
       if (cc.paused) cc.off = this.jog.pos; else if (now - this.jog.at > 70) { this.jog.at = now; const j = this.jog; this.jog = null; this.play(cc.tr, j.pos); this.jog = j; } };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
-  // track search: the previous / next piece of the album (previous restarts a piece more than 3 s in, as on a CD deck)
-  skip = d => () => { const ai = this.state.album, al = this.albums[ai], c = this.cur, here = c && c.tr.ai === ai; let k = here ? c.tr.ti + d : d > 0 ? 0 : al.tracks.length - 1;
-    if (here && d < 0 && this.posOf() > 3) k = c.tr.ti; this.play(al.tracks[clamp(k, 0, al.tracks.length - 1)]); };
   // six numbered knobs on the left deck, a combination lock: each turns through 0..9 and clicks into place on a number. Click to step it on,
-  // drag up / down or scroll over it to turn it either way. Set to 5 2 3 8 6 9 they open something (still to come: see onCombo)
+  // drag left / right or scroll over it to turn it either way. Set to 5 2 3 8 6 9 they open something (still to come: see onCombo)
   knobV = [0, 0, 0, 0, 0, 0];
   setKnob(i, v) { v = ((v % 10) + 10) % 10; if (this.knobV[i] === v) return; this.knobV[i] = v; this.knobAt = this.knobAt || []; this.knobAt[i] = this.t;
     if (this.knobV.join('') === '523869') this.onCombo(); }
   // the combination is set. What it opens is still to be decided; for now the numbers flash once so you can tell it registered
   onCombo() { this.comboT = this.t; }
-  knobDown = i => e => { if (e.button) return; e.preventDefault(); const y0 = e.clientY, v0 = this.knobV[i]; let moved = false; this.knobHeld = i;
-    const mv = ev => { const dv = Math.round((y0 - ev.clientY) / 14); if (dv) moved = true; if (moved) this.setKnob(i, v0 + dv); };
+  knobDown = i => e => { if (e.button) return; e.preventDefault(); const x0 = e.clientX, v0 = this.knobV[i]; let moved = false; this.knobHeld = i;
+    const mv = ev => { const dv = Math.round((ev.clientX - x0) / 14); if (dv) moved = true; if (moved) this.setKnob(i, v0 + dv); };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); this.knobHeld = null; if (!moved) this.setKnob(i, v0 + 1); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
@@ -151,7 +148,7 @@ class Component extends DCLogic {
   componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
   componentDidUpdate(prev) { if (prev.style !== this.props.style) { this.t = 0; this.disp = null; this.listBottom = 0; } }
   step(d) { this.goAlbum(this.state.album + d)(); }
-  goAlbum = a => () => { a = clamp(a, 0, this.albums.length - 1); if (a === this.state.album) return; if (this.strip && this.cur) this.stop(); this.flipPrev = this.state.album; this.flipT0 = this.t; this.setState({ album: a, hover: null }); };
+  goAlbum = a => () => { a = clamp(a, 0, this.albums.length - 1); if (a === this.state.album) return; this.albDir = a > this.state.album ? 1 : -1; if (this.strip && this.cur) this.stop(); this.flipPrev = this.state.album; this.flipT0 = this.t; this.setState({ album: a, hover: null }); };
   trById(id) { const [a, b] = id.split('-').map(Number); return this.albums[a].tracks[b]; }
   // ---- sound
   ensureAC() { if (!this.ac) { const AC = window.AudioContext || window.webkitAudioContext; this.ac = new AC(); this.an = this.ac.createAnalyser(); this.an.fftSize = 512; this.vol = this.ac.createGain(); this.an.connect(this.vol); this.vol.connect(this.ac.destination); this.anBuf = new Float32Array(512); } if (this.ac.state === 'suspended') this.ac.resume(); }
@@ -202,27 +199,31 @@ class Component extends DCLogic {
     if (this.vol) this.vol.gain.setTargetAtTime(this.volume ?? .85, this.ac.currentTime, .05);
     this.audioTick(); this.draw(dt); this.flipTick(); this.wheelTick(dt);
   };
-  // the album clock beside the screen: the flip counter, with the album names on an unseen drum round it, the neighbours rolled just above and
-  // below; changing album rolls the drum, so the next name turns in behind the counter and the old one turns out the other side
-  wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; this.wh = this.wh == null ? this.state.album : this.wh + (this.state.album - this.wh) * Math.min(1, dt * 5);
-    const G = deckGeo(innerWidth, innerHeight), [cx0, cy0] = G.clock, st = box.style, L2 = cx0 + 'px', T2 = (cy0 + 42 + (this.deckSY || 0)).toFixed(1) + 'px'; if (st.left !== L2) st.left = L2; if (st.top !== T2) st.top = T2;
-    const R2 = 118;
-    box.querySelectorAll('[data-wi]').forEach(el => { const d = +el.getAttribute('data-wi') - this.wh, a = d * .5, y = Math.sin(clamp(a, -1.5, 1.5)) * R2, sc = Math.cos(clamp(a, -1.5, 1.5));
-      const op = smooth(clamp((Math.abs(y) - 40) / 14, 0, 1)) * clamp((1.45 - Math.abs(a)) / .35, 0, 1) * (.35 + .65 * sc);
-      el.style.transform = 'translate(-50%, -50%) translateY(' + y.toFixed(1) + 'px) scaleY(' + sc.toFixed(3) + ')'; el.style.opacity = op.toFixed(3); el.style.pointerEvents = op > .4 ? '' : 'none'; }); }
+  // the album clock beside the screen: the flip counter in its display, and the album names rolling through the display round it. The
+  // current album's name sits just off the counter: below it when it rolled in from below (scrolling on), above it when it came from above
+  // (scrolling back). The others sit further out in order, the album before above and the one after below
+  wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; const G = deckGeo(innerWidth, innerHeight), [bx0, by0, bw0, bh0] = G.clockScr, st = box.style;
+    const v2 = [bx0 + 'px', (by0 + (this.deckSY || 0)).toFixed(1) + 'px', bw0 + 'px', bh0 + 'px']; if (st.left !== v2[0]) st.left = v2[0]; if (st.top !== v2[1]) st.top = v2[1]; if (st.width !== v2[2]) st.width = v2[2]; if (st.height !== v2[3]) st.height = v2[3];
+    const cur = this.state.album, dir = this.albDir || 1, near = 56, step = Math.min(22, (bh0 / 2 - near - 8) / 1.5), half = bh0 / 2; this.wy = this.wy || {};
+    box.querySelectorAll('[data-wi]').forEach(el => { const j = +el.getAttribute('data-wi'), d = j - cur;
+      // slot: the current name on its side; the neighbours stepping outwards (the ones on the current name's side go beyond it)
+      let y; if (d === 0) y = dir * near; else if (Math.sign(d) === dir) y = dir * (near + Math.abs(d) * step); else y = -dir * (near + (Math.abs(d) - 1) * step);
+      const prev2 = this.wy[j] ?? y; this.wy[j] = prev2 + (y - prev2) * Math.min(1, dt * 7); const yy = this.wy[j];
+      const op = d === 0 ? 1 : clamp(1 - (Math.abs(yy) - near) / (step * 2.4), 0, 1) * .5, inside = Math.abs(yy) < half - 6;
+      el.style.top = (half + yy).toFixed(1) + 'px'; el.style.opacity = (inside ? op : 0).toFixed(3); el.style.pointerEvents = inside && op > .2 ? '' : 'none';
+      el.style.color = d === 0 ? '#7fe9f7' : '#5d8a92'; el.style.textShadow = d === 0 ? '0 0 6px rgba(0,229,255,.6)' : 'none'; el.style.fontSize = d === 0 ? '9px' : '8px'; }); }
   // the album counter flips like a clock: the old number's top folds down, then the new number's bottom lands
   flipTick() { const A = this.flapA.current, B = this.flapB.current; if (!A || !B) return; const ft = this.flipT0 == null ? 2 : (this.t - this.flipT0) / .6;
     if (ft >= 1) { if (A.style.visibility !== 'hidden') { A.style.visibility = B.style.visibility = 'hidden'; } if (this.flipPrev != null && this.flipPrev !== this.state.album) { this.flipPrev = this.state.album; this.forceUpdate(); } return; }
     const e = easeIO(clamp(ft, 0, 1)); A.style.visibility = e < .5 ? 'visible' : 'hidden'; A.style.transform = 'rotateX(' + (-180 * e).toFixed(1) + 'deg)'; B.style.visibility = e >= .5 ? 'visible' : 'hidden'; B.style.transform = 'rotateX(' + (180 - 180 * e).toFixed(1) + 'deg)'; }
   // ---- the deck: a DJ controller running off the bottom of the screen (geometry in lib/deck.js). Its hit areas are real elements over the drawing
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
-    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), prev: R.querySelector('[data-deck="prev"]'), knobs: [...R.querySelectorAll('[data-knob]')], next: R.querySelector('[data-deck="next"]'), rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
+    if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], cue: R.querySelector('[data-deck="cue"]'), play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), knobs: [...R.querySelectorAll('[data-knob]')], rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
     const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; if (st.display === 'none') st.display = ''; };
     this.jogCs = {}; const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr * 2); this.jogCs.jog = [jx, jy + SY];
     this.dk.knobs.forEach((el, i) => { const [kx, ky] = G.knobs[i], hs = G.kc / 2; put(el, kx - hs, ky - hs, hs * 2, hs * 2); if (el.getAttribute('aria-valuenow') !== String(this.knobV[i])) el.setAttribute('aria-valuenow', String(this.knobV[i])); });
     [['cue', G.cue], ['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = G.cpads[i]; put(el, p[0], p[1], p[2], p[3]); });
-    [['prev', G.prev], ['next', G.next]].forEach(([k, b]) => put(this.dk[k], b[0], b[1], b[2], b[3]));
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
@@ -299,12 +300,6 @@ class Component extends DCLogic {
         // fine grip lines round the cap's edge
         ctx.strokeStyle = 'rgba(0,0,0,.35)'; for (let q = 0; q < 24; q++) { const a = q / 24 * TAU + this.knobA[i] * Math.PI / 180; ctx.beginPath(); ctx.moveTo(kx + Math.sin(a) * kr * .82, ky - Math.cos(a) * kr * .82); ctx.lineTo(kx + Math.sin(a) * kr * .97, ky - Math.cos(a) * kr * .97); ctx.stroke(); }
         const pa = this.knobA[i] * Math.PI / 180; ctx.strokeStyle = '#f2f2f0'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(kx + Math.sin(pa) * kr * .25, ky - Math.cos(pa) * kr * .25); ctx.lineTo(kx + Math.sin(pa) * kr * .78, ky - Math.cos(pa) * kr * .78); ctx.stroke(); ctx.lineCap = 'butt'; }); }
-    // track search: two raised keys, previous and next piece
-    [['prev', G.prev, '◀◀  TRACK'], ['next', G.next, 'TRACK  ▶▶']].forEach(([k, [bx2, by2, bw2, bh2], lab]) => { const hv = this.btnHov === k; ctx.globalAlpha = 1 - fo;
-      ctx.fillStyle = '#060708'; rr(bx2 - 2, by2 - 1, bw2 + 4, bh2 + 5, 7); ctx.fill();
-      ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, by2, 0, by2 + bh2); kg.addColorStop(0, hv ? '#454b53' : '#3a3f46'); kg.addColorStop(1, hv ? '#2a2e33' : '#23262b');
-      ctx.fillStyle = kg; rr(bx2, by2, bw2, bh2, 6); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(bx2 + 6, by2 + 1.5, bw2 - 12, 1);
-      ctx.font = '500 8px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = hv ? (cy ? NEON_C : '#ffffff') : '#c8cdd1'; ctx.fillText(bw2 < 84 ? (k === 'prev' ? '◀◀' : '▶▶') : lab, bx2 + bw2 / 2, by2 + bh2 / 2 + .5); });
     // the album's photo, cropped square, for the screen
     const thumb = (x, y, sz) => { const P = this.photos && al.img && this.photos[al.img]; ctx.fillStyle = '#1b1e22'; ctx.fillRect(x, y, sz, sz);
       if (P && P.c) { const iw = P.c.width, ih = P.c.height, side = Math.min(iw, ih) * .7; ctx.globalAlpha = (1 - fo) * .95; ctx.drawImage(P.c, (iw - side) * (al.imgX ?? 1) * .9, (ih - side) * .3, side, side, x, y, sz, sz); ctx.globalAlpha = 1 - fo; }
@@ -553,7 +548,7 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
-        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, prev: this.skip(-1), next: this.skip(1), knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; } })),
+        cpOn: i => () => { this.padHov = 4 + i; }, cpOff: i => () => { if (this.padHov === 4 + i) this.padHov = null; }, vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; } })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => { this.padHov = i; }, off: () => { if (this.padHov === i) this.padHov = null; }, go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
@@ -585,19 +580,19 @@ function View(v) {
         </a>
       </div>
       <div aria-label="Deck" style={sty("position:absolute;inset:0;z-index:5;pointer-events:none")}>
-        <div ref={v.wheelRef} style={sty("position:absolute;left:-200px;top:0;width:64px;height:0;pointer-events:auto")}>
+        <div ref={v.wheelRef} style={sty("position:absolute;left:-200px;top:0;width:80px;height:200px;overflow:hidden;border-radius:5px;pointer-events:auto")}>
           {"\n          "}
           {(v.wheelItems || []).map((ab, $index) => (
             <React.Fragment key={$index}>
               {"\n            "}
-              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:3px 6px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:#7fe9f7;text-shadow:0 0 6px rgba(0,229,255,.6);will-change:transform, opacity")}>
+              <button type="button" data-wi={ab?.i} onClick={ab?.go} aria-label={`Album ${ab?.num ?? ''}: ${ab?.title ?? ''}`} style={sty("position:absolute;left:50%;top:0;transform:translate(-50%, -50%);max-width:74px;overflow:hidden;text-overflow:ellipsis;opacity:0;white-space:nowrap;border:0;cursor:pointer;padding:2px 3px;border-radius:3px;font-family:'JetBrains Mono', monospace;font-size:8px;letter-spacing:.06em;text-transform:uppercase;background:none;color:#7fe9f7;text-shadow:0 0 6px rgba(0,229,255,.6);will-change:transform, opacity")}>
                 {ab?.title}
               </button>
               {"\n          "}
             </React.Fragment>
           ))}
           {"\n          "}
-          <div aria-hidden="true" style={sty(`position:absolute;left:0;top:-42px;width:64px;height:84px;perspective:320px;font-family:Michroma, sans-serif;font-size:26px;letter-spacing:-0.02em;line-height:1;color:${v.th?.cardInk ?? ''};text-shadow:${v.th?.cardSh ?? ''};box-shadow:0 2px 6px rgba(0,0,0,.25);border-radius:6px`)}>
+          <div aria-hidden="true" style={sty(`position:absolute;left:50%;top:50%;margin-left:-32px;margin-top:-42px;width:64px;height:84px;perspective:320px;font-family:Michroma, sans-serif;font-size:26px;letter-spacing:-0.02em;line-height:1;color:${v.th?.cardInk ?? ''};text-shadow:${v.th?.cardSh ?? ''};box-shadow:0 2px 6px rgba(0,0,0,.25);border-radius:6px`)}>
             {"\n          "}
             <div style={sty("position:absolute;inset:0 0 50% 0;overflow:hidden;border-radius:6px 6px 0 0;background:#161616")}>
               <div style={sty("position:absolute;left:0;right:0;top:0;height:84px;display:grid;place-items:center")}>
@@ -632,9 +627,7 @@ function View(v) {
         {['Orange', 'Green', 'Purple'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={nm + ' page: coming soon'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="cue" type="button" aria-label="Cue: back to the start" onClick={v.deck?.cue} onMouseEnter={v.deck?.btnOn?.('cue')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        <button data-deck="prev" type="button" aria-label="Previous piece" onClick={v.deck?.prev} onMouseEnter={v.deck?.btnOn?.('prev')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:5px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        <button data-deck="next" type="button" aria-label="Next piece" onClick={v.deck?.next} onMouseEnter={v.deck?.btnOn?.('next')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:5px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
-        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ns-resize;touch-action:none")} />)}
+        {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}
         <div data-deck="vol" role="slider" aria-label="Volume" aria-valuemin={0} aria-valuemax={100} aria-valuenow={85} onPointerDown={v.deck?.vol} style={sty("position:absolute;left:-200px;top:0;pointer-events:auto;cursor:ns-resize;touch-action:none")} />
         {(v.deck?.rows || []).map((rw, k) => <button key={k} data-row={k} type="button" aria-label={'Play piece ' + (k + 1)} onClick={rw.go} onMouseEnter={rw.on} onMouseLeave={rw.off} onFocus={rw.on} onBlur={rw.off} style={sty("position:absolute;left:-200px;top:0;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />)}
       </div>

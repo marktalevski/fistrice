@@ -327,7 +327,7 @@ class Component extends DCLogic {
     if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const S = this.S[i], k = KEYS[i], cap = [X(i) - SX, md === 'fader' && S.cy != null ? S.cy : yb - 14]; let p = cap, a = A ? 1 - smooth(clamp((t - 1.3) / .4, 0, 1)) : 1 - asm;
       // with faders, each dot squashes into its cap's coloured stripe as it lands (and leaving, the stripe rounds back into the dot), so it stays solid throughout
       const fm = md === 'fader' ? (A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm) : 0; if (md === 'fader') a = 1;
-      if (A) { const f = A.nf[k] || (k === 'home' && A.nf.ink); if (f) p = bz(f, cap, [f[0] - 120, f[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
+      if (A) { const f = A.nf[k] || (k === 'home' && A.nf.ink); if (f) p = A.nf.low ? bz(f, cap, [f[0], f[1] + (cap[1] - f[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f, cap, [f[0] - 120, f[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
       if (O && O.k === 'dive') { const D = [W - 316 + OFF[k], 28]; p = bz(cap, D, [cap[0] - 80, cap[1] - 200], [D[0] - 40, D[1] + 160], easeIO(clamp((O.t - .85 - i * .05) / .9, 0, 1))); }
       this.dotPos[k] = p; if (a <= .01) continue;
       const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];

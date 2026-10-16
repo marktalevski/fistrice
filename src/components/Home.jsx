@@ -64,6 +64,8 @@ const BAG_TAPE = (yc, slope, toLeft) => Array.from({ length: 13 }, (_, q) => { c
 const BAG_STREAK = (r, span) => { const a0 = Math.asin(.36 / r) + .065; return Array.from({ length: 9 }, (_, q) => { const a = Math.PI / 2 + a0 + span * (1 - q / 8); return [BAG_HOOK[0] + Math.cos(a) * r, BAG_HOOK[1] + Math.sin(a) * r]; }); };
 const BAG_LINES = [{ li: 1, path: BAG_TAPE(-.2, .22, true) }, { li: 2, path: BAG_TAPE(.02, -.22, false) }, { li: 3, path: BAG_TAPE(.24, .22, true) },
   { li: 6, path: BAG_STREAK(1.72, .2) }, { li: 5, path: BAG_STREAK(1.98, .26) }, { li: 4, path: BAG_STREAK(2.24, .32) }];
+// where a menu dot lands leaving Home for Sound: low on the page, in the column of its fader (Sound's faders sit 22px apart from the right edge)
+const sndDrop = (k, W, H) => { const i = ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].indexOf(k); return [W - 22 - (6 - i) * 22, H - 120]; };
 const LINES = [
   { col: INK, w: 11, d: .35, spd: 1, keep: 1 },
   { col: [232, 34, 44], w: 9, d: .45, spd: 1, page: 'sound' },
@@ -675,7 +677,7 @@ class Component extends DCLogic {
     this.fadeTick(dt); this.dtF = Math.max(0, dt);
     // leaving for Freediving: keep a picture of this last frame, which that page shows while it loads so there's no blank moment in between
     if (this.go != null) { this.go += dt; if (this.go > (this.dest ? 2.05 : 4.05) && !this.left) { this.left = true; if (!this.dest) try { sessionStorage.setItem('dive-cover', this.canvasRef.current.toDataURL('image/jpeg', .92)); } catch (e) {} // Sound picks the menu dots up where they landed and flies them in as its faders
-      if (/\/sound\//.test(this.dest || '')) try { const o = {}; Object.entries({ ink: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }).forEach(([k, v]) => { o[k] = [innerWidth - 316 + v, 28]; }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
+      if (/\/sound\//.test(this.dest || '')) try { const o = { low: 1 }; ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].forEach(k => { o[k] = sndDrop(k, innerWidth, innerHeight); }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
       location.href = this.dest || BASE + 'freediving/?from=home'; } }
     this.draw();
   };
@@ -919,7 +921,9 @@ class Component extends DCLogic {
     if (this.navArrive && G == null && T < 4) LINES.forEach((L, li) => { const key = L.keep ? 'ink' : L.page || 'c' + li, p = this.navArrive[key], h = this.heads && this.heads[key]; if (!p || (h && h.t === T)) return;
       ctx.globalAlpha = 1; ctx.fillStyle = `rgb(${L.col[0]},${L.col[1]},${L.col[2]})`; ctx.beginPath(); ctx.arc(p[0], p[1], /^c\d/.test(key) ? 5.5 : 8, 0, 6.2832); ctx.fill(); });
     if (this.exitHeads) for (const eh of this.exitHeads) { ctx.globalAlpha = 1; ctx.fillStyle = eh.col; ctx.beginPath(); ctx.arc(eh.p[0], eh.p[1], eh.r, 0, 6.2832); ctx.fill(); }
-    if (G != null && this.navFrom) ['sound', 'journal', 'c4', 'c5', 'c6', 'freediving', 'ink'].forEach((k, i) => { const f = this.navFrom[k]; if (!f) return; const P1 = [W - 316 + { sound: 130, journal: 182, c4: 224, c5: 256, c6: 288, freediving: 78, ink: 26 }[k], 28], P0 = f.p, kk = easeIO(clamp((G - .15 - i * .07) / 1.4, 0, 1)), C1 = [P0[0], P0[1] - 90], C2 = [P1[0], P1[1] + 70], bz = u => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * P0[0] + b * C1[0] + c * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c * C2[1] + d * P1[1]]; };
+    if (G != null && this.navFrom) ['sound', 'journal', 'c4', 'c5', 'c6', 'freediving', 'ink'].forEach((k, i) => { const f = this.navFrom[k]; if (!f) return; const toSnd = /\/sound\//.test(this.dest || ''), P0 = f.p, kk = easeIO(clamp((G - .15 - i * .07) / 1.4, 0, 1));
+      // to Sound each dot drops straight down from where it is to just above its own fader; anywhere else it rises to the menu at the top
+      const P1 = toSnd ? sndDrop(k, W, H) : [W - 316 + { sound: 130, journal: 182, c4: 224, c5: 256, c6: 288, freediving: 78, ink: 26 }[k], 28], C1 = toSnd ? [P0[0], P0[1] + (P1[1] - P0[1]) * .45] : [P0[0], P0[1] - 90], C2 = toSnd ? [P1[0], P1[1] - 90] : [P1[0], P1[1] + 70], bz = u => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * P0[0] + b * C1[0] + c * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c * C2[1] + d * P1[1]]; };
       const col = `rgb(${f.col[0]},${f.col[1]},${f.col[2]})`, tail = Math.max(0, kk - .35); ctx.strokeStyle = col; ctx.lineCap = 'round';
       for (let q = 0; q < 24; q++) { const u0 = tail + (kk - tail) * q / 24, u1 = tail + (kk - tail) * (q + 1) / 24, a0 = bz(u0), a1 = bz(u1); ctx.globalAlpha = .85 * (q / 24) * Math.sin(Math.PI * Math.min(1, kk * 1.15)); ctx.lineWidth = 1.5 + 3.5 * q / 24; ctx.beginPath(); ctx.moveTo(a0[0], a0[1]); ctx.lineTo(a1[0], a1[1]); ctx.stroke(); }
       const p = bz(kk); ctx.globalAlpha = 1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], 7 + (/^c\d/.test(k) ? -1.5 : 1) * kk, 0, 6.2832); ctx.fill(); });

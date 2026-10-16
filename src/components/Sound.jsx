@@ -255,17 +255,18 @@ class Component extends DCLogic {
     this.live += (lv - this.live) * .3; }
   // ---- nav (same as the other pages)
   dotOf(k) { const d = document.querySelector('[data-navk="' + k + '"] [data-navdot]'); if (!d) return null; const r = d.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
-  // kind: 'home' (faders turn back into dots and the panel slides away, Home picks the dots up), 'dive' (same, then the dots fly up into Freediving's menu), 'other' (plain fade)
+  // kind: 'home' (faders turn back into dots and the panel slides away, Home picks the dots up), 'dive' (the same, and Freediving picks them up:
+  // they draw its water's surface lines, then go up into its menu), 'other' (plain fade)
   leave(href, kind) { return e => { if (e) e.preventDefault(); if (this.out) return; this.stop(); this.out = { href, t: 0, k: kind }; }; }
   stay = e => { if (e) e.preventDefault(); };
   goHome = this.leave(HOME, 'home');
-  GO = { freediving: this.leave(BASE + 'freediving/', 'dive'), sound: this.stay, journal: this.leave(BASE + 'journal/', 'other') };
+  GO = { freediving: this.leave(BASE + 'freediving/?from=sound', 'dive'), sound: this.stay, journal: this.leave(BASE + 'journal/', 'other') };
   tick = now => {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now; this.t += dt;
     if (this.arr && (this.t > 4.5 || this.out)) this.arr = null;
-    if (this.out) { this.out.t += dt; const lim = this.out.k === 'home' ? 1.25 : this.out.k === 'dive' ? 1.95 : .55;
-      if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} location.href = this.out.href; } }
+    if (this.out) { this.out.t += dt; const lim = this.out.k === 'home' || this.out.k === 'dive' ? 1.25 : .55;
+      if (this.out.t > lim && !this.left) { this.left = true; if (this.out.k === 'home' || this.out.k === 'dive') try { const o = { ...(this.dotPos || {}) }; o.ink = o.home; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (x) {} location.href = this.out.href; } }
     this.mx += ((this.mxT || 0) - this.mx) * Math.min(1, dt * 3);
     // the volume fader sets the master gain; squared, so the fader moves through loudness the way the ear hears it (half way down is half as loud)
     if (this.vol) this.vol.gain.setTargetAtTime(Math.pow(this.volume ?? 1, 2), this.ac.currentTime, .05);
@@ -488,14 +489,13 @@ class Component extends DCLogic {
       ctx.globalAlpha = 1 - fo; });
     ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
     // arriving / leaving, each page is a dot: arriving, the dots fly in from where the last page left them and open out into their beat pads;
-    // leaving, the pads close back into dots (and for Freediving they fly up into that page's menu)
+    // leaving, the pads close back into dots, which the next page picks up
     const OFF = { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 };
     const bz = (P0, P1, C1, C2, u2) => { const a = (1 - u2) ** 3, b = 3 * (1 - u2) ** 2 * u2, c2 = 3 * (1 - u2) * u2 * u2, d = u2 ** 3; return [a * P0[0] + b * C1[0] + c2 * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c2 * C2[1] + d * P1[1]]; };
     this.dotPos = {};
     if (A && t < 2.2 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
       const fm = A ? smooth(clamp((t - 1.2 - i * .06) / .3, 0, 1)) : asm;
       if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) p = A.nf.low ? bz(f2, cap, [f2[0], f2[1] + (cap[1] - f2[1]) * .4], [cap[0], cap[1] - 30], easeIO(clamp((t - .25 - i * .06) / .8, 0, 1))) : bz(f2, cap, [f2[0] - 120, f2[1] + 160], [cap[0] - 60, cap[1] - 220], easeIO(clamp((t - .25 - i * .06) / 1, 0, 1))); else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
-      if (O && O.k === 'dive') { const D = [W - 316 + OFF[k], 28]; p = bz(cap, D, [cap[0] - 80, cap[1] - 200], [D[0] - 40, D[1] + 160], easeIO(clamp((O.t - .85 - i * .05) / .9, 0, 1))); }
       this.dotPos[k] = p; a *= 1 - .9 * fm * fm; if (a <= .01) continue;
       const pp = 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
       const r0 = i < 4 ? 8 : 5.5, dw = 2 * r0 + (pd[2] - 2 * r0) * fm, dh = 2 * r0 + (pd[3] - 2 * r0) * fm, rad = r0 + (6 - r0) * fm;

@@ -31,9 +31,11 @@ class Component extends DCLogic {
     import('../lib/site-data.js').then(m => { this.store = m; return m.load(); }).then(data => this.setState({ data }));
     this.introT = (this.props.intro ?? true) && (this.props.motion ?? true) ? 0 : 99;
     if (this.introT === 0 && /from=home/.test(location.search)) { this.introT = 1; this.fromHome = true; }
+    // from Sound: its menu dots, handed over where its beat pads closed into them
+    if (this.introT === 0 && /from=sound/.test(location.search)) try { const nf = JSON.parse(sessionStorage.getItem('nav-from') || 'null'); sessionStorage.removeItem('nav-from'); if (nf && nf.home && nf.freediving) { this.fromSound = nf; this.skipWaves = true; } } catch (e) {}
     // the page comes in in order: the surface lines draw (already there when arriving from Home), the water rises up to them, then the rope goes
     // down as the entries come in, and the squid arrives last
-    this.tideIntro = true; this.tide0 = this.fromHome ? 2.0 : 2.15; this.tideEnd = this.tide0 + 1.5; this.introEnd = this.tideEnd + 1.15; if (this.fromHome) this.skipWaves = true;
+    this.tideIntro = true; this.tide0 = this.fromHome ? 2.0 : this.fromSound ? 3.25 : 2.15; this.tideEnd = this.tide0 + 1.5; this.introEnd = this.tideEnd + 1.15; if (this.fromHome) this.skipWaves = true;
     this.onStorage = e => { if (this.store && e.key === this.store.KEY) this.store.load().then(data => this.setState({ data })); };
     this.onWheel = e => this.wheel(e);
     this.onKey = e => this.key(e);
@@ -221,7 +223,7 @@ class Component extends DCLogic {
         const k = clamp((this.leaveT - SWIRL_DUR * .85 - i * .1) / .75, 0, 1), e = k * k * (3 - 2 * k); lab.style.transformOrigin = '50% 0'; lab.style.transform = 'translateY(' + (-30 * e).toFixed(1) + 'px) scaleY(' + (1 - .85 * e).toFixed(3) + ') scaleX(' + (1 - .5 * e).toFixed(3) + ')'; lab.style.opacity = (1 - e).toFixed(3); lab.style.filter = e > .02 ? 'blur(' + (2.5 * e).toFixed(2) + 'px)' : '';
         if (dot && k > 0) { const u = clamp((k - .55) / .45, 0, 1); dot.style.transform = 'scale(' + (1 + .18 * Math.sin(Math.PI * u)).toFixed(3) + ')'; } });
       if (this.leaveT > SWIRL_DUR * .85 + 1.25 && !this.left) { this.left = true; location.href = BASE + '?from=dive'; } }
-    if (this.fromHome && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - 1.3) / .9, 0, 1)); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
+    if ((this.fromHome || this.fromSound) && !this.navLabDone) { const k = this.state.introDone ? 1 : smooth(clamp((this.introT - (this.fromSound ? 3 : 1.3)) / .9, 0, 1)); if (this.fromSound && k >= 1) document.querySelectorAll('[data-navdot]').forEach(d => { d.style.opacity = '1'; }); document.querySelectorAll('nav[aria-label="Pages"] > [data-navk] > span:last-child').forEach(el => { el.style.opacity = k.toFixed(3); }); if (k >= 1) this.navLabDone = true; }
     if (!this.state.introDone) { this.introT += dt; if (this.introT >= this.introEnd) this.setState({ introDone: true }); }
     this.p += (this.target - this.p) * (1 - Math.exp(-dt * 5.5));
     if (Math.abs(this.target - this.p) < .0002) this.p = this.target;
@@ -386,6 +388,29 @@ class Component extends DCLogic {
     if (g <= 0) { this.brush(ctx, src, st[0], st[1], k * 200, true, false, css(col)); return; }
     this.absorb(ctx, src, D, g, { w: st[0] * 1.4, a: Math.min(1, st[1] + .35), colA: col, colB: col, lift: 60 + 30 * k, sway: [10, 22, 16][k], ph: k * 1.3, ring: [92, 128, 110][k] });
     this.navPulse(k ? 'freediving' : 'home', g);
+  }
+  // arriving from Sound: the beads' timings. Each line's bead reaches the left edge, sweeps across (its line drawn behind it), then lifts off
+  // the right end and up into its menu dot. k: 0 black (Home's dot), 1 light blue and 2 deep blue (this page's dot, split in two)
+  SND = { down: .75, sweep: 1.5, lag: [0, .1, .2], up: .8 };
+  sndRev(T, k) { const S = this.SND, u = (T - S.down - S.lag[k]) / S.sweep; return u <= 0 ? 0 : smooth(clamp(u, 0, 1)); }
+  sndDots(ctx, T, sy, o, t, W, H) {
+    const S = this.SND, nf = this.fromSound, ease = v => v < .5 ? 4 * v * v * v : 1 - Math.pow(-2 * v + 2, 3) / 2, bz = (P0, C1, C2, P1, u) => { const a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; return [a * P0[0] + b * C1[0] + c * C2[0] + d * P1[0], a * P0[1] + b * C1[1] + c * C2[1] + d * P1[1]]; };
+    if (!this.sndNav) { this.sndNav = {}; document.querySelectorAll('[data-navk]').forEach(el => { const d = el.querySelector('[data-navdot]'); if (!d) return; const r = d.getBoundingClientRect(); this.sndNav[el.getAttribute('data-navk')] = [r.left + r.width / 2, r.top + r.height / 2]; d.style.opacity = '0'; }); }
+    const NV = this.sndNav, land = k => { const d = document.querySelector('[data-navk="' + k + '"] [data-navdot]'); if (d && d.style.opacity !== '1') d.style.opacity = '1'; };
+    const bead = (p, col, r) => { ctx.globalAlpha = 1; ctx.fillStyle = css(col); ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 6.2832); ctx.fill(); };
+    const COL = [[20, 20, 20], [0, 158, 224], [34, 86, 186]], FD = [24, 88, 224];
+    // the three surface beads
+    for (let k = 0; k < 3; k++) { const from = k ? nf.freediving : nf.home, L = [-6, sy + this.waveY(-6 - o.x, k, t)], R = [W - 6, sy + this.waveY(W - 6 - o.x, k, t)], D = NV[k ? 'freediving' : 'home'] || [W - 40, 28];
+      const g0 = (T - S.lag[k] * .5) / S.down, rv = this.sndRev(T, k), gu = (T - S.down - S.lag[k] - S.sweep) / S.up; let p, col = COL[k], r = 4.5 - k * .6;
+      if (g0 < 1) { const u = ease(clamp(g0, 0, 1)); p = bz(from, [from[0], from[1] - 120], [L[0] + 140, L[1] - 60], L, u); if (k) col = mixC(FD, COL[k], u); }
+      else if (gu <= 0) { const x = -20 + (W + 40) * rv, xx = Math.min(x, W - 6); p = [xx, sy + this.waveY(xx - o.x, k, t)]; }
+      else if (gu < 1) { const u = ease(clamp(gu, 0, 1)); p = bz(R, [R[0] + 30, R[1] - 90], [D[0] - 20, D[1] + 120], D, u); if (k) col = mixC(COL[k], FD, u); r = r + (4.5 - r) * u; }
+      else { land(k ? 'freediving' : 'home'); continue; }
+      bead(p, col, r); }
+    // the other dots fly straight up into their places in the menu
+    const RGB = { sound: [232, 34, 44], journal: [255, 196, 0], c4: [255, 118, 18], c5: [22, 168, 82], c6: [138, 64, 214] };
+    Object.keys(RGB).forEach((k, i) => { const from = nf[k], D = NV[k]; if (!from || !D) { land(k); return; } const g = (T - .15 - i * .08) / 1.1; if (g >= 1) { land(k); return; }
+      const u = ease(clamp(g, 0, 1)), p = bz(from, [from[0] - 60, from[1] - 220], [D[0] - 40, D[1] + 160], D, u); bead(p, RGB[k], 4); });
   }
   // a menu dot breathes once as the tail of its line goes in
   navPulse(key, g) { const d = document.querySelector('[data-navk="' + key + '"] [data-navdot]'); if (!d) return; const u = clamp((g - .88) / .3, 0, 1); d.style.transform = 'scale(' + (1 + .22 * Math.sin(Math.PI * u)).toFixed(3) + ')'; d.style.boxShadow = 'none'; }
@@ -587,7 +612,7 @@ class Component extends DCLogic {
     }
     if (sy > -80 && sy < H + 80) {
       [[3.2, .9], [1.8, .55], [1.1, .3]].forEach((st, k) => {
-        const rev = intro && !this.skipWaves ? smooth(clamp((T - k * .25) / 1.6, 0, 1)) : 1; if (rev <= 0) return;
+        const rev = intro && this.fromSound ? this.sndRev(T, k) : intro && !this.skipWaves ? smooth(clamp((T - k * .25) / 1.6, 0, 1)) : 1; if (rev <= 0) return;
         const xe = -20 + (W + 40) * rev; let pts = [];
         if (this.leaveT != null && this.navPos) { this.reelWave(WX, k, st, sy, o, t, W); return; }
         for (let x = -20; x <= xe; x += 10) pts.push([x, sy + this.waveY(x - o.x, k, t)]);
@@ -596,11 +621,12 @@ class Component extends DCLogic {
       });
     }
 
+    if (intro && this.fromSound) this.sndDots(WX, T, sy, o, t, W, H);
     // the line (stays at the surface while the water rises in; sinks with the water on the way out)
     ctx.save(); if (this.tideY && this.leaveT != null) ctx.translate(0, this.tideY);
     const bob = Math.sin(t * 1.3) * 2, BS = clamp(W / 900, .75, 1), BY = sy + this.waveY(0, 0, t) - 2 + bob, LS = BY + 12 * BS;
     if (intro) {
-      const d = smooth(clamp((T - this.tideEnd) / 1.0, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - 1.6) / .4, 0, 1));
+      const d = smooth(clamp((T - this.tideEnd) / 1.0, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - (this.fromSound ? 2.75 : 1.6)) / .4, 0, 1));
       if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W, .9, LS - o.y, false, d < 1, '#141414'); }
       if (drop > 0) { this.buoyPos = [o.x, BY - (1 - drop) * 60, BS * drop]; this.drawBuoy(ctx, o.x, BY - (1 - drop) * 60, BS * drop, t); }
     } else {

@@ -1,7 +1,7 @@
 // The Sound page's DJ deck (after a Pioneer Opus-Quad): a controller running off the bottom of the screen, so only its top shows.
 // Left deck: a small deck display and track-search buttons over a jog wheel, half hidden below the edge, that scrubs. Middle: the album clock
 // (a flip counter in a tall display, album names rolling above and below it), the main screen (now playing over the album's track list), cue and play / pause, and the volume fader. Right deck: the beat pads, square,
-// two rows of four: the four pages, three for the pages still to come (orange, green, purple) and one spare. The menu dots fly into the pads.
+// two wide and four tall: the four pages, three for the pages still to come (orange, green, purple) and one spare. The menu dots fly into the pads.
 // It lives here so Home can drop its dots straight onto the pads when it hands over to Sound.
 export const DECK_KEYS = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -17,10 +17,10 @@ export function deckGeo(W, H) {
   const clock = [mx0 + 16, Math.round(cyM - 42), 64, 84], clockScr = [mx0 + 8, y0 + 16, 80, hV - 32];
   const vol = { x: mx1 - 26, y0: y0 + 34, y1: H - 22 }, bx = mx1 - 70, cue = [bx, Math.round(cyM - 28), 18], play = [bx, Math.round(cyM + 28), 18];
   const scr = [mx0 + 96, y0 + 16, Mw - 96 - 104, hV - 32];
-  // right deck: square beat pads, two rows of four
-  const Rw = x1 - mx1 - 28, gap = 8, s = Math.floor(Math.min((Rw - 3 * gap) / 4, (hV - 40 - gap) / 2)), gx = mx1 + 14 + Math.round((Rw - (4 * s + 3 * gap)) / 2), gy = Math.round(y0 + (hV - (2 * s + gap)) / 2 - 4);
-  const cell = (i, r) => [gx + i * (s + gap), gy + r * (s + gap), s, s];
-  const pads = [0, 1, 2, 3].map(i => cell(i, 0)), cpads = [0, 1, 2].map(i => cell(i, 1)), spare = cell(3, 1);
+  // right deck: square beat pads, two wide and four tall, filled row by row (pages first, then the three to come, then the spare)
+  const Rw = x1 - mx1 - 28, gap = 8, s = Math.floor(Math.min((Rw - gap) / 2, (hV - 28 - 3 * gap) / 4)), gx = mx1 + 14 + Math.round((Rw - (2 * s + gap)) / 2), gy = Math.round(y0 + (hV - (4 * s + 3 * gap)) / 2 - 2);
+  const cell = n => [gx + (n % 2) * (s + gap), gy + Math.floor(n / 2) * (s + gap), s, s];
+  const pads = [0, 1, 2, 3].map(cell), cpads = [4, 5, 6].map(cell), spare = cell(7);
   return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, dscr, prev, next, cue, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8 };
 }
 // where each menu dot lands: the centre of its beat pad

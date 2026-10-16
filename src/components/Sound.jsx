@@ -337,7 +337,11 @@ class Component extends DCLogic {
       ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(px + 6, py + 1.5, pw - 12, 1); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(px + 6, py + ph - 2.5, pw - 12, 1);
       if (lit > .02) { ctx.globalAlpha = (1 - fo) * .18 * lit; ctx.fillStyle = col; rr(px + 2, py + 2, pw - 4, ph - 4, 6); ctx.fill(); }
       ctx.globalAlpha = (1 - fo) * (spare ? .35 : soon ? .55 + .45 * k : .7 + .3 * lit); ctx.strokeStyle = col; ctx.lineWidth = 1.6 + lit * .6; if (lit > .2) glow(col, 14 * lit); rr(px + 1.5, py + 1.5, pw - 3, ph - 3, 6); ctx.stroke(); noGlow();
-      if (!spare) { ctx.globalAlpha = (1 - fo) * (soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = i < 4 ? LAB[i] : col; ctx.fillText(soon ? 'SOON' : names[i].toUpperCase(), px + pw / 2, py + ph / 2 + .5); }
+      if (!spare) { ctx.globalAlpha = (1 - fo) * (soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = i < 4 ? LAB[i] : col;
+        // the label shrinks to fit its pad; Freediving, if it still won't fit, breaks over two lines (FREE / DIVING)
+        const lab = soon ? 'SOON' : names[i].toUpperCase(); let fz = clamp(pw / 9.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; while (ctx.measureText(lab).width > pw - 10 && fz > (lab === 'FREEDIVING' ? 5.6 : 4.8)) { fz -= .25; ctx.font = '400 ' + fz + 'px ' + mich; }
+        if (ctx.measureText(lab).width > pw - 10 && lab === 'FREEDIVING') { const h2 = 4; fz = clamp(pw / 7.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; ctx.fillText(lab.slice(0, h2), px + pw / 2, py + ph / 2 - fz * .7); ctx.fillText(lab.slice(h2), px + pw / 2, py + ph / 2 + fz * .75); }
+        else ctx.fillText(lab, px + pw / 2, py + ph / 2 + .5); }
       ctx.globalAlpha = 1 - fo; });
     ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
     // arriving / leaving, each page is a dot: arriving, the dots fly in from where the last page left them and open out into their beat pads;

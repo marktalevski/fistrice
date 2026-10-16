@@ -2,6 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
+import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS } from '../lib/kirby.js';
 import { deckGeo, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
@@ -72,28 +73,6 @@ const SCALE = [0, 2, 4, 7, 9, 12, 14, 16];
 const VOWELS = [[730, 1090], [270, 2290], [300, 870], [530, 1840], [660, 1720], [440, 1020]];
 // pieces per half-column in the many style
 const FK = 20;
-// pixel faces for the panel screen, on a 12 x 10 grid: lit cells for page k at time t (blinks, bubbles, singing, thinking dots)
-const FACE = (k, t) => { const P = [], put = a => a.forEach(p => P.push(p)), blink = t % 3.6 < .14;
-  const eyes = (dx = 0) => put(blink ? [[3 + dx, 3], [4 + dx, 3], [7 + dx, 3], [8 + dx, 3]] : [[3 + dx, 2], [4 + dx, 2], [7 + dx, 2], [8 + dx, 2], [3 + dx, 3], [4 + dx, 3], [7 + dx, 3], [8 + dx, 3]]);
-  if (k === 0) { eyes(); put([[2, 6], [9, 6], [3, 7], [8, 7], [4, 8], [5, 8], [6, 8], [7, 8]]); }
-  else if (k === 1) { put([[3, 2], [4, 3], [3, 4], [8, 2], [7, 3], [8, 4], [5, 6], [6, 6], [4, 7], [7, 7], [5, 8], [6, 8]]); const b = Math.floor(t * 4) % 7; if (b < 6) P.push([10, 8 - b]); if (b > 2) P.push([11, 10 - b]); }
-  else if (k === 2) { put(blink ? [[3, 3], [4, 3], [5, 3], [7, 3], [8, 3], [9, 3]] : [[4, 2], [3, 3], [5, 3], [8, 2], [7, 3], [9, 3]]);
-    put(Math.floor(t * 5) % 2 ? [[4, 6], [5, 6], [6, 6], [7, 6], [4, 7], [7, 7], [4, 8], [5, 8], [6, 8], [7, 8]] : [[5, 7], [6, 7], [5, 8], [6, 8]]); const ny = Math.floor(t * 3) % 2; put([[11, ny], [11, 1 + ny], [10, 2 + ny]]); }
-  else if (k === 3) { eyes(1); put([[4, 7], [5, 7], [6, 7], [7, 7]]); const d = Math.floor(t * 2.5) % 4; for (let q = 0; q < d; q++) P.push([7 + q * 2, 0]); }
-  // winking (the right eye opens now and then)
-  else if (k === 4) { put([[3, 2], [4, 2], [3, 3], [4, 3]]); put(t % 2.6 < .3 ? [[7, 2], [8, 2], [7, 3], [8, 3]] : [[7, 3], [8, 3], [9, 2]]); put([[3, 7], [4, 8], [5, 8], [6, 8], [7, 8], [8, 7], [9, 6]]); }
-  // surprised: brows up, an O for a mouth
-  else if (k === 5) { const up = Math.floor(t * 2) % 2; put([[3, up], [4, up], [7, up], [8, up]]); put([[3, 2], [4, 2], [3, 3], [4, 3], [7, 2], [8, 2], [7, 3], [8, 3]]); put([[5, 6], [6, 6], [4, 7], [7, 7], [5, 8], [6, 8]]); }
-  // sleepy, with a Z drifting up
-  else if (k === 6) { put([[3, 3], [4, 3], [7, 3], [8, 3], [5, 7], [6, 7]]); const zy = 3 - (Math.floor(t * 1.6) % 4); put([[9, zy], [10, zy], [11, zy], [10, zy + 1], [9, zy + 2], [10, zy + 2], [11, zy + 2]].filter(p => p[1] >= 0)); }
-  // heart eyes (they beat)
-  else if (k === 7) { const big = Math.floor(t * 3) % 2; [[2, 1], [7, 1]].forEach(([x, y]) => { put([[x, y], [x + 2, y], [x, y + 1], [x + 1, y + 1], [x + 2, y + 1], [x + 1, y + 2]]); if (big) put([[x + 1, y]]); }); put([[2, 6], [9, 6], [3, 7], [8, 7], [4, 8], [5, 8], [6, 8], [7, 8]]); }
-  // sunglasses and a smirk
-  else if (k === 8) { put([[1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2], [9, 2], [10, 2], [2, 3], [3, 3], [4, 3], [7, 3], [8, 3], [9, 3]]); if (t % 3 < .25) put([[3, 2]]); put([[4, 7], [5, 7], [6, 7], [7, 7], [8, 6]]); }
-  // tongue out (it wags)
-  else { eyes(); put([[3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6]]); const w = Math.floor(t * 4) % 2; put(w ? [[5, 7], [6, 7], [5, 8], [6, 8]] : [[6, 7], [7, 7], [6, 8], [7, 8]]); }
-  return P; };
-const N_FACES = 10;
 
 class Component extends DCLogic {
   state = { navHov: null, album: 0, hover: null, playing: null, paused: false, W: 1200, H: 800 };
@@ -146,9 +125,10 @@ class Component extends DCLogic {
     const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
     const cur = q == null ? 'ew-resize' : 'pointer'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
-  // a pad under the pointer shows one of the faces, chosen at random each time, in that pad's colour
-  padOn(i) { if (this.padHov !== i) { let f; do f = Math.floor(Math.random() * N_FACES); while (f === this.padFace && N_FACES > 1); this.padFace = f; } this.padHov = i; }
-  padOff(i) { if (this.padHov === i) this.padHov = null; }
+  // Kirby on the screen: resting while nothing plays, dancing while a piece does. A pad under the pointer sets him off on a little turn,
+  // picked at random (never the same twice running); a resting one (sleep, yawn) he keeps to afterwards if nothing is playing
+  padOn(i) { if (this.padHov !== i) { let f; do f = KIRBY_REACTS[Math.floor(Math.random() * KIRBY_REACTS.length)]; while (f === this.kReact || f === this.kIdle); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
+  padOff(i) { if (this.padHov !== i) return; this.padHov = null; if (KIRBY_IDLES.includes(this.kReact) && !(this.cur && !this.cur.paused)) this.kIdle = this.kReact; }
   // play / pause; with nothing chosen yet it starts the album's first piece
   // the lit edge's colour (the playhead takes it too); null when
   // the edge is plain
@@ -386,11 +366,12 @@ class Component extends DCLogic {
         ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 32, ry, tEnd - rx - 32, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 32, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
-      // pointing at a pad: a little pixel face, picked at random, in the pad's colour, on the right of the now-playing strip (over the time,
-      // which steps aside for it); the cover and title stay
-      const hp = this.padHov, hk = hp != null && this.S[hp] ? clamp(this.S[hp].k, 0, 1) : 0;
-      if (hk > .02) { const fp = 3.6, fw = 12 * fp, fx = sx + sw - 14 - fw, fy = sy + 27 - 5 * fp; ctx.globalAlpha = (1 - fo) * hk; ctx.fillStyle = cy ? '#04030a' : '#050607'; ctx.fillRect(sx + sw - 130, sy + 6, 124, 42);
-        const fc = hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#b9c0c6'; ctx.fillStyle = fc; glow(fc, 6); FACE(this.padFace ?? 0, t).forEach(([q, r]) => ctx.fillRect(fx + q * fp, fy + r * fp, fp - .5, fp - .5)); noGlow(); ctx.globalAlpha = 1 - fo; } }
+      // Kirby, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. His notes and
+      // stars take the edge's ink while it is lit
+      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : this.kIdle || 'idle', kp = 2, kw = KIRBY_W * kp, kx = sx + sw - 10 - kw, ky = sy + 50 - KIRBY_H * kp - 2;
+        const ink = this.rimCol() || (hp != null ? (hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#ffd84a') : '#ffd84a');
+        ctx.globalAlpha = 1 - fo; ctx.fillStyle = cy ? '#04030a' : '#050607'; ctx.fillRect(kx - 6, sy + 4, kw + 10, 45);
+        kirby(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink }).forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.fillRect(kx + q * kp, ky + r * kp, kp, kp); }); } }
     // the volume fader, standing beside the screen
     { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
       ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);

@@ -103,12 +103,26 @@ class Component extends DCLogic {
   tuneAt(t) { if (!this.arr) return null; const u = t - 1.6; if (u > 1.9) return null; const drop = [.3, .55, .82].reduce((m, c) => Math.max(m, Math.exp(-(((u - c) / .035) ** 2))), 0); return { u, sig: u <= 0 ? 0 : clamp(smooth(clamp(u / 1.2, 0, 1)) * (1 - .75 * drop), 0, 1) }; }
   // ---- the deck's controls
   // jog wheels (either one): drag round to scrub, a turn is six seconds of the piece (clockwise forward); a playing piece jumps along every few frames, like tape
-  jogDown = e => { const c = this.cur; if (!c || e.button) return; e.preventDefault(); const [jx, jy] = (this.jogCs || {})[e.currentTarget.getAttribute('data-deck')] || [0, 0];
-    let a0 = Math.atan2(e.clientY - jy, e.clientX - jx); this.jog = { pos: this.posOf(), at: 0 };
-    const mv = ev => { const a = Math.atan2(ev.clientY - jy, ev.clientX - jx); let d = a - a0; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; a0 = a; this.jogA = (this.jogA || 0) + d;
+  // the jog's lit rim is a ring you can press: the top is the start of the piece and it runs clockwise to the end, so a click (or a drag along
+  // it) jumps straight there. With nothing loaded it starts the album's first piece at that point
+  onRim(ex, ey) { const G = deckGeo(innerWidth, innerHeight), [jx, jy] = (this.jogCs || {}).jog || [0, 0], d = Math.hypot(ex - jx, ey - jy); return d > G.jog[2] + 1 && d < G.jog[2] + 17; }
+  rimAt(ex, ey) { const [jx, jy] = (this.jogCs || {}).jog || [0, 0]; let a = Math.atan2(ex - jx, -(ey - jy)); if (a < 0) a += TAU; return a / TAU; }
+  rimSeek(u) { const c = this.cur; if (!c) { const tr = this.albums[this.state.album].tracks[0]; this.play(tr, u * tr.dur); return; } this.seek(u); }
+  jogHover = e => { const r = this.onRim(e.clientX, e.clientY); this.rimHov = r; const cur = r ? 'pointer' : 'grab'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
+  // a click on the jog (no turn) plays / pauses, like the play button; a drag round it scrubs
+  jogDown = e => { if (e.button) return; e.preventDefault();
+    // on the rim: jump there. Held and dragged round it, the piece pauses while the pointer travels and plays on from wherever it is let go
+    if (this.onRim(e.clientX, e.clientY)) { this.rimSeek(this.rimAt(e.clientX, e.clientY)); this.rimDrag = true; const resume = this.cur && !this.cur.paused; if (resume) this.toggle();
+      const mv = ev => this.seek(this.rimAt(ev.clientX, ev.clientY)), up = () => { this.rimDrag = false; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); if (resume && this.cur && this.cur.paused) this.toggle(); };
+      addEventListener('pointermove', mv); addEventListener('pointerup', up); return; }
+    const [jx, jy] = (this.jogCs || {})[e.currentTarget.getAttribute('data-deck')] || [0, 0], sx0 = e.clientX, sy0 = e.clientY;
+    let a0 = Math.atan2(e.clientY - jy, e.clientX - jx), moved = false; this.jog = this.cur ? { pos: this.posOf(), at: 0 } : null;
+    const mv = ev => { if (!moved && Math.hypot(ev.clientX - sx0, ev.clientY - sy0) < 5) return; moved = true;
+      const a = Math.atan2(ev.clientY - jy, ev.clientX - jx); let d = a - a0; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; a0 = a; this.jogA = (this.jogA || 0) + d;
       const cc = this.cur; if (!cc || !this.jog) return; this.jog.pos = clamp(this.jog.pos + d / TAU * 6, 0, cc.tr.dur); const now = performance.now();
       if (cc.paused) cc.off = this.jog.pos; else if (now - this.jog.at > 70) { this.jog.at = now; const j = this.jog; this.jog = null; this.play(cc.tr, j.pos); this.jog = j; } };
-    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null; if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const j = this.jog, cc = this.cur; this.jog = null;
+      if (!moved) { this.playBtn(); return; } if (cc && j) { if (cc.paused) { cc.off = j.pos; this.forceUpdate(); } else this.play(cc.tr, j.pos); } };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   // six numbered knobs, a combination lock: each turns through 0..9 and clicks into place on a number. Click a number to turn straight to it,
   // click the knob to step it on,
@@ -246,7 +260,7 @@ class Component extends DCLogic {
   placeDeck(G, SY) { const R = this.rootRef.current; if (!R) return;
     if (!this.dk || !this.dk.jog || !this.dk.jog.isConnected) this.dk = { jog: R.querySelector('[data-deck="jog"]'), cp: [...R.querySelectorAll('[data-cpad]')], play: R.querySelector('[data-deck="play"]'), vol: R.querySelector('[data-deck="vol"]'), knobs: [...R.querySelectorAll('[data-knob]')], rows: [...R.querySelectorAll('[data-row]')], pads: ['home', 'freediving', 'sound', 'journal'].map(k => R.querySelector('[data-navk="' + k + '"]')) };
     const put = (el, x, y, w, h) => { if (!el) return; const st = el.style, v = [x, y + SY, w, h].map(n => Math.round(n) + 'px'); if (st.left !== v[0]) st.left = v[0]; if (st.top !== v[1]) st.top = v[1]; if (st.width !== v[2]) st.width = v[2]; if (st.height !== v[3]) st.height = v[3]; if (st.display === 'none') st.display = ''; };
-    this.jogCs = {}; const [jx, jy, jr] = G.jog; put(this.dk.jog, jx - jr, jy - jr, jr * 2, jr * 2); this.jogCs.jog = [jx, jy + SY];
+    this.jogCs = {}; const [jx, jy, jr] = G.jog, jo = jr + 16; put(this.dk.jog, jx - jo, jy - jo, jo * 2, jo * 2); this.jogCs.jog = [jx, jy + SY];
     this.dk.knobs.forEach((el, i) => { const [kx, ky] = G.knobs[i], hs = G.kc / 2; put(el, kx - hs, ky - hs, hs * 2, hs * 2); if (el.getAttribute('aria-valuenow') !== String(this.knobV[i])) el.setAttribute('aria-valuenow', String(this.knobV[i])); });
     [['play', G.play]].forEach(([k, b]) => put(this.dk[k], b[0] - b[2], b[1] - b[2], b[2] * 2, b[2] * 2));
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = i < 3 ? G.cpads[i] : G.spare; put(el, p[0], p[1], p[2], p[3]); });
@@ -279,7 +293,11 @@ class Component extends DCLogic {
     // the lit ring round it is how far the piece has got
     if (!this.jog) this.jogA = (this.jogA || 0) + (playing ? dt * TAU * .55 : 0);
     { const [jx, jy, jr] = G.jog;
-      ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke();
+      const rh = this.rimHov || this.rimDrag; ctx.strokeStyle = rh ? 'rgba(0,229,255,.35)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = rh ? 5 : 3; if (rh) glow(NEON_C, 8); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, 0, TAU); ctx.stroke(); noGlow();
+      // tick marks just outside the rim, like a dial, so it reads as somewhere to click: faint at rest, lit when pointed at
+      ctx.strokeStyle = rh ? 'rgba(0,229,255,.75)' : 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; if (rh) glow(NEON_C, 4);
+      ctx.beginPath(); for (let q = 0; q < 48; q++) { const a = q / 48 * TAU, l = q % 12 === 0 ? 5 : q % 6 === 0 ? 3.5 : 2, r0 = jr + 13;
+        ctx.moveTo(jx + Math.sin(a) * r0, jy - Math.cos(a) * r0); ctx.lineTo(jx + Math.sin(a) * (r0 + l), jy - Math.cos(a) * (r0 + l)); } ctx.stroke(); noGlow();
       if (c) { ctx.strokeStyle = cy ? NEON_M : 'rgb(255,150,40)'; glow(NEON_M, 10); ctx.beginPath(); ctx.arc(jx, jy, jr + 9, -Math.PI / 2, -Math.PI / 2 + u * TAU); ctx.stroke(); noGlow(); }
       ctx.fillStyle = '#2a2e33'; ctx.beginPath(); ctx.arc(jx, jy, jr, 0, TAU); ctx.fill();
       const rim = ctx.createLinearGradient(jx - jr, jy - jr, jx + jr, jy); rim.addColorStop(0, '#7a828a'); rim.addColorStop(.5, '#2b3036'); rim.addColorStop(1, '#60676e'); ctx.strokeStyle = rim; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(jx, jy, jr - 3, 0, TAU); ctx.stroke();
@@ -315,12 +333,12 @@ class Component extends DCLogic {
       G.knobs.forEach(([kx, ky, kr], i) => { const v = this.knobV[i], tgt = -150 + v * 300 / 9; this.knobA[i] += (tgt - this.knobA[i]) * Math.min(1, dt * 18);
         const hv = this.knobHov === i || this.knobHeld === i, fzk0 = clamp(kr * .48, 5.5, 8), nr = kr + fzk0 * .7 + 1.8, nh = this.knobNum && this.knobNum.i === i ? this.knobNum.q : -1;
         ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; ctx.beginPath(); ctx.arc(kx, ky + 1.5, kr + 3, 0, TAU); ctx.fill();
-        const fzk = fzk0; ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        for (let q = 0; q <= 9; q++) { const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0, nx = kx + Math.sin(a) * nr, ny = ky - Math.cos(a) * nr;
+        const fzk = fzk0; ctx.font = '500 ' + fzk.toFixed(1) + 'px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        for (let q = 0; q <= 9; q++) { const mq = ctx.measureText(String(q)), dx = (mq.actualBoundingBoxLeft - mq.actualBoundingBoxRight) / 2, dy = (mq.actualBoundingBoxAscent - mq.actualBoundingBoxDescent) / 2; const a = (-150 + q * 300 / 9) * Math.PI / 180, on = q === v, lit = on || comboK > 0, nx = kx + Math.sin(a) * nr, ny = ky - Math.cos(a) * nr;
           // the number under the pointer gets a small ring, so it reads as something to press
           if (q === nh) { ctx.globalAlpha = 1 - fo; ctx.fillStyle = 'rgba(0,229,255,.16)'; ctx.strokeStyle = NEON_C; ctx.lineWidth = 1; glow(NEON_C, 6); ctx.beginPath(); ctx.arc(nx, ny, fzk * .62, 0, TAU); ctx.fill(); ctx.stroke(); noGlow(); }
           ctx.globalAlpha = (1 - fo) * (lit || q === nh ? 1 : .55); ctx.fillStyle = lit ? (comboK > 0 && !on ? 'rgba(0,229,255,' + (.4 + .6 * comboK) + ')' : NEON_C) : PM; if (on || comboK > 0) glow(NEON_C, 6 + 6 * comboK);
-          if (q === nh && !on) ctx.fillStyle = '#ffffff'; ctx.fillText(String(q), nx, ny); noGlow(); }
+          if (q === nh && !on) ctx.fillStyle = '#ffffff'; ctx.fillText(String(q), nx + dx, ny + dy); noGlow(); }
         ctx.globalAlpha = 1 - fo; ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2; const kg = ctx.createLinearGradient(0, ky - kr, 0, ky + kr); kg.addColorStop(0, hv ? '#4c535b' : '#40464d'); kg.addColorStop(1, hv ? '#24282d' : '#1d2024');
         ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(kx, ky, kr, 0, TAU); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
         ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(kx, ky, kr - .5, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
@@ -334,11 +352,11 @@ class Component extends DCLogic {
     // the main screen: the piece playing (its title, kind and time, a thin line for how far it has got) over the album's pieces, which you pick from
     { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 5); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 5); ctx.clip();
       thumb(sx + 10, sy + 10, 34); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 170, tw = ctx.measureText(ttl).width;
+      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? NEON_C : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width;
         ctx.save(); ctx.beginPath(); ctx.rect(sx + 54, sy + 10, room, 18); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + 54, sy + 23); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + 54 - o, sy + 23); ctx.fillText(ttl, sx + 54 - o + L, sy + 23); } ctx.restore(); noGlow();
-        ctx.font = '400 8.5px ' + mono; ctx.fillStyle = KINDS[c.tr.kind].cs; ctx.fillText('● ' + KINDS[c.tr.kind].label.toUpperCase() + (c.paused ? '   PAUSED' : ''), sx + 54, sy + 39);
-        ctx.textAlign = 'right'; ctx.font = '400 18px ' + mich; ctx.fillStyle = '#f2f2f0'; ctx.fillText(fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10), sx + sw - 12, sy + 28);
-        ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)), sx + sw - 12, sy + 40);
+        // the time, under the title: where you are, then what is left (and PAUSED when it is)
+        ctx.textAlign = 'left'; ctx.font = '400 11px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, sx + 54, sy + 41); const tnw = ctx.measureText(tnow).width;
+        ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)) + (c.paused ? '   PAUSED' : ''), sx + 54 + tnw + 10, sy + 41);
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(sx + 10, sy + 50, (sw - 20) * u, 1.5); noGlow(); }
       else { ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', sx + 54, sy + 24); ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 54, sy + 39);
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1); }
@@ -348,13 +366,10 @@ class Component extends DCLogic {
         if (on) { ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(rx, ry + rh - 1.5, rw * u, 1); }
         // the rows share the screen's height, and their type grows with them
         const fz2 = clamp(rh * .34, 9, 12.5); ctx.textAlign = 'left'; ctx.font = '400 ' + fz2.toFixed(1) + 'px ' + mono; ctx.fillStyle = on ? (cy ? NEON_C : '#e9edf0') : PM; ctx.fillText(on ? (c.paused ? '❙❙' : '▶') : pad2(k + 1), rx + 8, mid);
-        ctx.fillStyle = KINDS[tr.kind].cs; ctx.beginPath(); ctx.arc(rx + 32, mid, 2.4 + fz2 * .1, 0, TAU); ctx.fill();
-        // columns, measured from the right: length, then (room allowing) date and kind, each a gap apart; the title takes what is left
-        ctx.font = '400 ' + (fz2 - .5).toFixed(1) + 'px ' + mono; const gp = 14, wD = ctx.measureText('00:00').width, wDt = ctx.measureText('00 MMM 0000').width, wK = ctx.measureText('MUSIC').width;
-        const xDur = rx + rw - 8, xDate = xDur - wD - gp, xKind = xDate - wDt - gp, showDate = xDate - wDt - gp - (rx + 42) > 150, showKind = showDate && xKind - wK - gp - (rx + 42) > 170;
-        const tEnd = (showKind ? xKind - wK : showDate ? xDate - wDt : xDur - wD) - gp;
-        ctx.textAlign = 'right'; ctx.fillStyle = PM; if (showKind) ctx.fillText(KINDS[tr.kind].label.toUpperCase(), xKind, mid); if (showDate) ctx.fillText(fmtDate(tr.date).toUpperCase(), xDate, mid); ctx.fillText(fmtDur(tr.dur), xDur, mid);
-        ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 42, ry, tEnd - rx - 42, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 42, mid); ctx.restore(); });
+        // the length on the right; the title takes the rest
+        ctx.font = '400 ' + (fz2 - .5).toFixed(1) + 'px ' + mono; const gp = 14, wD = ctx.measureText('00:00').width, xDur = rx + rw - 8, tEnd = xDur - wD - gp;
+        ctx.textAlign = 'right'; ctx.fillStyle = PM; ctx.fillText(fmtDur(tr.dur), xDur, mid);
+        ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 32, ry, tEnd - rx - 32, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 32, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? 'rgba(0,229,255,.45)' : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // pointing at a pad: a little pixel face, picked at random, in the pad's colour, on the right of the now-playing strip (over the time,
@@ -575,7 +590,7 @@ class Component extends DCLogic {
       navOff: () => this.setState({ navHov: null }),
       rootRef: this.rootRef,
       // the deck's controls
-      deck: { jogDown: this.jogDown, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
+      deck: { jogDown: this.jogDown, jogMove: this.jogHover, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; this.rimHov = false; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; },
         cpOn: i => () => this.padOn(4 + i), cpOff: i => () => this.padOff(4 + i), vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
@@ -652,7 +667,7 @@ function View(v) {
           </div>
           {"\n        "}
         </div>
-        <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
+        <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onPointerMove={v.deck?.jogMove} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
         {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={i < 3 ? nm + ' page: coming soon' : 'Spare pad'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:ew-resize;touch-action:none")} />)}

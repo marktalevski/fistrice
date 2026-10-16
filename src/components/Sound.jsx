@@ -148,6 +148,11 @@ class Component extends DCLogic {
   padOn(i) { if (this.padHov !== i) { let f; do f = Math.floor(Math.random() * N_FACES); while (f === this.padFace && N_FACES > 1); this.padFace = f; } this.padHov = i; }
   padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
+  // the RGB edge's colour where a line at x crosses its top (the playhead takes it, so the two run through the colours together); null when
+  // the edge is plain
+  rimCol(x) { const R = this.rgbP; if (!R || !(this.rgbK > .5)) return null; let best = null, bd = 1e9; const top = R.P.reduce((m, p) => Math.min(m, p[1]), 1e9);
+    for (const p of R.P) { const dd = Math.abs(p[0] - x) + Math.abs(p[1] - top) * 4; if (dd < bd) { bd = dd; best = p; } }
+    return 'hsl(' + ((best[2] / R.len * 720 - this.rgbH + 3600) % 360).toFixed(0) + ',100%,' + (this.rgbLt || 52).toFixed(0) + '%)'; }
   playBtn = () => { if (this.cur) this.toggle(); else this.play(this.albums[this.state.album].tracks[0]); };
   // cue: back to the start of the piece (a paused piece stays paused there)
   cueBtn = () => { const c = this.cur; if (!c) return; if (c.paused) { c.off = 0; this.forceUpdate(); } else this.play(c.tr, 0); };
@@ -298,7 +303,7 @@ class Component extends DCLogic {
           for (let y = H + 2; y > top + r; y -= 5) add(a, y); for (let q = 0; q <= 8; q++) { const t2 = Math.PI + q / 8 * Math.PI / 2; add(a + r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
           for (let x = a + r + 5; x < b - r; x += 5) add(x, top); for (let q = 0; q <= 8; q++) { const t2 = -Math.PI / 2 + q / 8 * Math.PI / 2; add(b - r + Math.cos(t2) * r, top + r + Math.sin(t2) * r); }
           for (let y = top + r + 5; y <= H + 2; y += 5) add(b, y); let d = 0; P.forEach((p, i) => { if (i) d += Math.hypot(p[0] - P[i - 1][0], p[1] - P[i - 1][1]); p[2] = d; }); this.rgbP = { W, H, P, len: d }; }
-        const { P, len } = this.rgbP, lt = 52 + 14 * L, hue = d => (d / len * 720 - this.rgbH + 3600) % 360; ctx.lineCap = 'square';
+        const { P, len } = this.rgbP, lt = 52 + 14 * L; this.rgbLt = lt; const hue = d => (d / len * 720 - this.rgbH + 3600) % 360; ctx.lineCap = 'square';
         [[1.2, K]].forEach(([lw, al]) => { ctx.lineWidth = lw; ctx.globalAlpha = (1 - foFace) * al;
           for (let i = 1; i < P.length; i++) { ctx.strokeStyle = 'hsl(' + hue(P[i][2]).toFixed(0) + ',100%,' + lt.toFixed(0) + '%)'; ctx.beginPath(); ctx.moveTo(P[i - 1][0], P[i - 1][1]); ctx.lineTo(P[i][0], P[i][1]); ctx.stroke(); } });
         ctx.lineCap = 'butt'; ctx.globalAlpha = 1 - foFace; } }
@@ -550,13 +555,13 @@ class Component extends DCLogic {
         let hh = this.disp[i] * amp * (.9 + .1 * Math.sin(t * 1.7 + i * .23)) * ig;
         if (playX != null && live) { const d = (x - playX) / 46; hh *= 1 + .7 * live * Math.exp(-d * d) * (.75 + .25 * Math.sin(t * 23 + i)); }
         hh = Math.max(.6, hh); lx.globalAlpha = this.alp[i]; lx.fillStyle = this.colK[i] ? KINDS[this.colK[i]][look === 'stark' ? 'cs' : 'tint'] : TH.neutral; lx.fillRect(x - .5, yB - hh, 1, hh * 2); }
-      if (playX != null) { lx.globalAlpha = .95; lx.fillStyle = cyber ? NEON_M : look === 'stark' ? TH.ink : '#ffffff'; lx.fillRect(Math.round(playX) - .5, 0, 1, H); }
+      if (playX != null) { lx.globalAlpha = .95; lx.fillStyle = this.rimCol(playX) || (cyber ? NEON_M : look === 'stark' ? TH.ink : '#ffffff'); lx.fillRect(Math.round(playX) - .5, 0, 1, H); }
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = look === 'stark' ? 'multiply' : 'screen';
       if ('filter' in ctx) { ctx.filter = 'blur(' + Math.round((look === 'stark' ? 4 : 7) * dpr) + 'px)'; ctx.globalAlpha = (look === 'stark' ? .3 : .85) * (1 - fo); ctx.drawImage(lc, 0, 0); ctx.filter = 'none'; }
       ctx.globalAlpha = 1 - fo; ctx.drawImage(lc, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     // playhead (many draws it here; haze has it in the glowing layer) and the time beside it
-    if (playX != null) { if (pieces) { ctx.globalAlpha = .9 * (1 - fo); if (cyber) { ctx.fillStyle = NEON_M; ctx.shadowColor = NEON_M; ctx.shadowBlur = 12; ctx.fillRect(Math.round(playX) - .75, 0, 1.5, H); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; } else { ctx.fillStyle = TH.ink; ctx.fillRect(Math.round(playX) - .5, 0, 1, H); } }
+    if (playX != null) { if (pieces) { ctx.globalAlpha = .9 * (1 - fo); const rc = this.rimCol(playX); if (cyber || rc) { ctx.fillStyle = rc || NEON_M; ctx.shadowColor = rc || NEON_M; ctx.shadowBlur = 12; ctx.fillRect(Math.round(playX) - .75, 0, 1.5, H); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; } else { ctx.fillStyle = TH.ink; ctx.fillRect(Math.round(playX) - .5, 0, 1, H); } }
     }
     // scrub marker: a line where the pointer would jump to, with that time under it
     // while a piece plays, everything but its wave fades out

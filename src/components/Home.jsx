@@ -428,8 +428,15 @@ class Component extends DCLogic {
   shapeWanted() { const ok = x => SHAPES.includes(x); if (ok(this.override)) return this.override; const s = this.props.shape; return ok(s) ? s : ok(this.pick) ? this.pick : 'enso'; }
   waveY(x, k, t) { return k * 16 + Math.sin(x * .011 + t * .6 + k * 1.3) * 7 * (1 - k * .25) + Math.sin(x * .029 - t * .9 + k * 2) * 3; }
 
+  // how far a symbol reaches either side of its centre, in units of R (measured once per symbol)
+  extentOf(name) { this.extC = this.extC || {}; if (this.extC[name]) return this.extC[name]; const U = 100, S = shapeOf(name, 0, 0, U); let m = 0;
+    const see = p => { if (p && isFinite(p[0])) m = Math.max(m, Math.abs(p[0])); }; S.pts.forEach(see); Object.values(S.colorPaths || {}).forEach(cp => cp.forEach(see)); see(S.station);
+    if (S.stOv) Object.values(S.stOv).forEach(v => { if (Array.isArray(v)) see(v); });
+    return (this.extC[name] = Math.max(1, m / U)); }
   build(W, H) {
-    const cx = W / 2, R = Math.min(W * (W < 720 ? .19 : .26), H * .27), cy = H / 2 - R * .22;
+    // on a narrow screen each symbol is sized to fit its own width (its widest drawing, coloured lines and dots included), so compact ones
+    // aren't left tiny; wide ones like the wave still fit. Wider screens keep the fixed proportion
+    const R = W < 720 ? Math.min(H * .27, W * .32, (W / 2 - 28) / this.extentOf(this.shapeWanted())) : Math.min(W * .26, H * .27), cx = W / 2, cy = H / 2 - R * .22;
     this.geo = { W, H, cx, cy, R }; this.runA = []; this.shapeName = this.shapeWanted(); this.labelUp = {};
     const SH = shapeOf(this.shapeName, cx, cy, R), SP = SH.pts, NS = SP.length; this.station = SH.station; this.dots = SH.dots; this.blooms = SH.blooms; this.colorPaths = SH.colorPaths || {};
     const nrm = a => a.map((p, i) => { const q = a[Math.min(a.length - 1, i + 1)], r2 = a[Math.max(0, i - 1)], tx = q[0] - r2[0], ty = q[1] - r2[1], l = Math.hypot(tx, ty) || 1; return [-ty / l, tx / l]; });

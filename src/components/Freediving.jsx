@@ -261,13 +261,16 @@ class Component extends DCLogic {
     if (this.vwSeen !== vw || this.vhSeen !== vh) {
       this.vwSeen = vw; this.vhSeen = vh;
       const s = (k, v) => root.style.setProperty(k, v), wr = clamp(vw - LX - 30 - 348 - 60, 260, 640);
-      s('--colw', clamp(vw - LX - 90, 200, 560) + 'px'); s('--colwr', wr + 'px'); s('--colwx', (wr + 348) + 'px');
+      s('--colw', clamp(vw - LX - 90, 200, 560) + 'px'); s('--colwr', (narrow ? vw - LX - 30 - 14 : wr) + 'px'); s('--colwx', (wr + 348) + 'px');
+      // on a narrow screen an entry's card opens under its title, the width of the screen, instead of off to the right (where it wouldn't fit)
+      [['--cardPos', 'relative', 'absolute'], ['--cardL', '0px', '348px'], ['--cardT', '0px', '2px'], ['--cardMT', '14px', '0px'], ['--connD', 'none', 'block']].forEach(([k, n, w]) => s(k, narrow ? n : w));
       s('--cardmaxv', Math.round(vh * .58) + 'px');
     }
     const k2 = 1 - Math.exp(-dt * 9), els = this.els, n = els.length, S = narrow ? 86 : 100;
     const pos = []; let a = narrow ? 64 : 80;
     for (let i = 0; i < n; i++) {
-      const e = els[i], m = 0, prev = this.sizes[e.id] ?? m, sz = prev + (m - prev) * k2;
+      // an open card under its title (narrow screens) pushes the entries below it down by its height
+      const e = els[i], m = narrow && e.root.querySelector('[data-scroll]') && e.block ? Math.max(0, e.block.offsetHeight - 10) : 0, prev = this.sizes[e.id] ?? m, sz = prev + (m - prev) * k2;
       this.sizes[e.id] = sz; pos[i] = a; a += Math.max(S, sz + 30);
     }
     this.pos = pos; this.lineEnd = n ? pos[n - 1] + 160 : vh;
@@ -769,9 +772,9 @@ function View(v) {
                 {item?.isFocus ? (
                   <>
                     {"\n            "}
-                    <div data-conn="1" style={sty("position:absolute;top:14px;left:300px;width:48px;height:1px;background:currentColor;transform-origin:left center;animation:tlFade .4s both")} />
+                    <div data-conn="1" style={sty("position:absolute;top:14px;left:300px;width:48px;height:1px;background:currentColor;transform-origin:left center;animation:tlFade .4s both;display:var(--connD, block)")} />
                     {"\n            "}
-                    <div data-scroll="1" style={sty("position:absolute;left:348px;top:2px;width:var(--colwr, 600px);display:flex;flex-direction:column;gap:18px;max-height:var(--cardmaxv, 62vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 12px 0 28px;border-left:1px solid currentColor;box-sizing:border-box;user-select:text;animation:tlR .5s cubic-bezier(.2,.7,.2,1) both")}>
+                    <div data-scroll="1" style={sty("position:var(--cardPos, absolute);left:var(--cardL, 348px);top:var(--cardT, 2px);margin-top:var(--cardMT, 0px);width:var(--colwr, 600px);display:flex;flex-direction:column;gap:18px;max-height:var(--cardmaxv, 62vh);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:0 12px 0 28px;border-left:1px solid currentColor;box-sizing:border-box;user-select:text;animation:tlR .5s cubic-bezier(.2,.7,.2,1) both")}>
                       {"\n              "}
                       {item?.hasImage ? (
                         <>

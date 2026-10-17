@@ -1,26 +1,30 @@
-// A little pixel Kirby for the Sound deck's screen. He is drawn fresh each frame on a 22 x 20 grid from a few ellipses (feet, body, arms),
-// outlined, shaded, with his face on top, so each animation is only a set of numbers: where the body is and how squashed, where the arms
-// and feet are, which eyes and mouth. kirby(mode, t, o) gives the lit cells as [x, y, colour].
-// Modes: idle, sleep and yawn (resting); dance (a piece is playing: o.move, o.mp and o.dir say which move, how far in, which way); and the little turns a beat pad sets off: wave, jump, inhale, puff,
-// happy, spin. o: { tau: seconds since the mode began, lv: loudness 0..1, ink: the colour for notes and stars }
-export const KIRBY_W = 22, KIRBY_H = 20;
-export const KIRBY_IDLES = ['idle', 'sleep', 'yawn'];
-// the dance's moves, and how many beats each lasts (a trio is a sway with two clones beside him, drawn by the deck)
-export const KIRBY_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2,
+// Reel, a little cassette tape with arms and legs, lives on the Sound deck's screen. It is drawn fresh each frame on a 22 x 20 grid: a rounded
+// cassette shell (squashed and stretched by the pose), a cream label with a stripe in the song's ink, two reels for eyes (they turn while it
+// dances) and the tape window for a mouth, with stubby arms and feet, so each animation is only a set of numbers: where the body is and how
+// squashed, where the arms and feet are, which eyes and mouth. reel(mode, t, o) gives the lit cells as [x, y, colour].
+// Modes: idle, sleep and yawn (resting); dance (a piece is playing: o.move, o.mp and o.dir say which move, how far in, which way); and the little
+// turns a beat pad sets off: wave, jump, rewind, boom, happy, spin, yawn. o: { tau: seconds since the mode began, lv: loudness 0..1, ink: the
+// colour for notes, stars and the label stripe }
+export const REEL_W = 22, REEL_H = 20;
+export const REEL_IDLES = ['idle', 'sleep', 'yawn'];
+// the dance's moves, and how many beats each lasts (a trio is a sway with two copies beside it, drawn by the deck)
+export const REEL_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2,
   squish: 4, clap: 4, robot: 4, twist: 4, armwave: 4, bob: 4, float: 4, backflip: 2, stomp: 4, disco: 4 };
 // which moves suit slow music and which fast (the rest suit any): slow music favours the first, fast the second
-export const KIRBY_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish'];
-export const KIRBY_FAST = ['hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
-export const KIRBY_REACTS = ['wave', 'jump', 'inhale', 'puff', 'happy', 'spin', 'yawn'];
-const C = { o: '#3d1533', b: '#ff9ccd', s: '#e46aa6', h: '#ffd3e8', c: '#ff4f86', f: '#e3204c', fs: '#a3123a', e: '#150f24', eb: '#3158ff', w: '#ffffff', m: '#7d0f31', t: '#ff6f8f', z: '#cfd6ff' };
+export const REEL_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish'];
+export const REEL_FAST = ['hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
+export const REEL_REACTS = ['wave', 'jump', 'rewind', 'boom', 'happy', 'spin', 'yawn'];
+// outline, shell, shell shade, shell highlight, label, reel window, reel hub, mouth, feet, white, the Zs
+const C = { o: '#0e2a30', b: '#3a9aa6', s: '#24707a', h: '#86d6de', l: '#f3ead2', e: '#14161c', hub: '#e9edf0', m: '#14161c', f: '#2a3036', w: '#ffffff', z: '#9fd8ff' };
 const STAR = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]];
 const ZED = [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]];
+const REW = [[1, 0], [0, 1], [1, 2], [3, 0], [2, 1], [3, 2]];
+const ARC_L = [[1, 0], [0, 1], [0, 2], [0, 3], [1, 4]], ARC_R = [[0, 0], [1, 1], [1, 2], [1, 3], [0, 4]];
 const s01 = v => Math.max(0, Math.min(1, v));
 
-export function kirby(mode, t, o = {}) {
+export function reel(mode, t, o = {}) {
   const tau = o.tau ?? t, lv = o.lv ?? 0, ink = o.ink || '#ffd84a';
-  // the pose: body centre and radii, arm angles (0 out to the side, up is positive), feet offsets, face
-  let bx = 11, by = 11, rx = 6.3, ry = 5.9, aL = -.35, aR = -.35, fL = [0, 0], fR = [0, 0], edx = 0, eyes = 'open', mouth = 'none', flip = false, cheeks = true;
+  let spin = mode === 'dance' ? t * 6 : 0, bx = 11, by = 11, rx = 6.3, ry = 5.9, aL = -.35, aR = -.35, fL = [0, 0], fR = [0, 0], edx = 0, eyes = 'open', mouth = 'none', flip = false;
   const fx = [];   // extra cells: notes, stars, Zs, sparkles
   const add = (shape, x, y, col) => shape.forEach(([q, r]) => fx.push([Math.round(x) + q, Math.round(y) + r, col]));
   const blink = (t % 3.7) < .13;
@@ -36,8 +40,8 @@ export function kirby(mode, t, o = {}) {
     const y = (t % 5) / 5, k = y > .55 && y < .85 ? Math.sin((y - .55) / .3 * Math.PI) : 0; ry *= 1 + .12 * k; rx *= 1 - .05 * k; by -= k * .8;
     aL = aR = -.35 + 1.6 * k; eyes = k > .15 ? 'shut' : blink ? 'shut' : 'open'; mouth = k > .2 ? 'big' : 'none';
   } else if (mode === 'dance') {
-    // one move of the dance; mp is how many beats into it he is. The moves (after his victory dances, and the <(^_^<) (>^_^)> one):
-    // sway, slide (a moonwalk: facing one way, gliding the other; the deck moves him), spin, hop, shimmy, jumpspin, breakdance, pose
+    // one move of the dance; mp is how many beats into it it is. The moves:
+    // sway, slide (a moonwalk: facing one way, gliding the other; the deck moves it), spin, hop, shimmy, jumpspin, breakdance, pose
     const mv = o.move === 'trio' ? 'sway' : o.move || 'sway', mp = o.mp || 0, beat = Math.floor(mp), f = mp - beat, up = Math.sin(f * Math.PI), land = f < .15 ? 1 - f / .15 : 0, dir = o.dir || 1;
     eyes = blink ? 'shut' : 'open'; mouth = 'smile';
     if (mv === 'sway') { const sd = beat % 2 ? 1 : -1; bx += sd * 1.3; by -= up * (.6 + .8 * lv); if (sd < 0) { aL = .35; aR = 1.3; } else { aR = .35; aL = 1.3; } edx = sd; eyes = beat % 4 > 1 ? 'happy' : eyes; }
@@ -51,17 +55,17 @@ export function kirby(mode, t, o = {}) {
     else if (mv === 'pose') { const k = Math.min(1, mp * 2); aL = -.4 + 1.75 * k; aR = -.3; eyes = 'happy'; mouth = 'big'; edx = -1; by -= Math.sin(Math.min(1, mp) * Math.PI) * 1.5; if (mp > .5) add(STAR, 2, 2, ink); }
     // squish: squashes and stretches like jelly on each beat
     else if (mv === 'squish') { const k = Math.sin(mp * Math.PI * 2); ry *= 1 + .14 * k; rx *= 1 - .1 * k; by -= k * .7; aL = aR = k > 0 ? .9 : -.5; eyes = k > .3 ? 'happy' : eyes; mouth = k > 0 ? 'big' : 'smile'; }
-    // clap: claps over his head on every beat, a little hop with each
+    // clap: claps overhead on every beat, a little hop with each
     else if (mv === 'clap') { const k = up > .5 ? 1 : 0; aL = aR = k ? 1.4 : .6; by -= up * .8; eyes = 'happy'; mouth = 'big'; if (k && f > .45 && f < .6) add(STAR, 10, 0, ink); }
     // robot: stiff, in steps: arms snap between poses on the half beat, the body ticks side to side, no bounce
     else if (mv === 'robot') { const h = Math.floor(mp * 2) % 4; bx += [-1, 0, 1, 0][h]; aL = [1.3, -.4, .3, 1.3][h]; aR = [-.4, 1.3, .3, -.4][h]; eyes = 'open'; mouth = 'none'; edx = [-1, 0, 1, 0][h]; }
-    // twist: low, feet swapping as he turns this way and that
+    // twist: low, feet swapping as it turns this way and that
     else if (mv === 'twist') { const k = Math.sin(mp * Math.PI * 2); ry *= .92; by += .6; flip = k < 0; fL = [k * 1.4, 0]; fR = [-k * 1.4, 0]; aL = .3 + .4 * k; aR = .3 - .4 * k; eyes = 'happy'; mouth = 'smile'; }
     // armwave: the arms rise one after the other, like a stadium wave, slow and smooth
     else if (mv === 'armwave') { const k = mp * Math.PI; aL = .5 + .9 * Math.sin(k); aR = .5 + .9 * Math.sin(k - 1.3); by -= .4 * Math.sin(k * 2); edx = Math.sin(k) > 0 ? -1 : 1; mouth = 'smile'; }
-    // bob: a head-bob to the beat, eyes shut, in the groove
+    // bob: a bob to the beat, reels shut, in the groove
     else if (mv === 'bob') { const d = f < .25 ? f / .25 : 1 - (f - .25) / .75; by += d * 1.1; ry *= 1 - .06 * d; eyes = 'shut'; mouth = 'smile'; aL = aR = -.3 + .2 * d; }
-    // float: puffs up and drifts in the air, arms paddling slowly
+    // float: swells a little and drifts in the air, arms paddling slowly
     else if (mv === 'float') { rx = 7.1; ry = 6.8; by = 9.6 + .9 * Math.sin(mp * Math.PI); aL = aR = .4 + .5 * Math.sin(mp * Math.PI * 2); fL = fR = [0, -1]; mouth = 'puff'; }
     // backflip: a crouch, a big jump turning over at the top, and a squashed landing
     else if (mv === 'backflip') { const c = mp / 2; let h = 0, sq = 0; if (c < .12) sq = c / .12; else if (c < .82) { const u = (c - .12) / .7; h = Math.sin(u * Math.PI) * 4.8; o.flipY = u > .3 && u < .7; } else sq = 1 - (c - .82) / .18;
@@ -78,54 +82,56 @@ export function kirby(mode, t, o = {}) {
     if (c < .2) sq = c / .2; else if (c < .7) { const u = (c - .2) / .5; h = Math.sin(u * Math.PI) * 4.5; sq = -.6 * Math.sin(u * Math.PI); } else if (c < .85) sq = 1 - (c - .7) / .15;
     by -= h; ry *= 1 - .14 * sq; rx *= 1 + .1 * sq; by += sq * .8; aL = aR = h > .5 ? 1.2 : -.5; eyes = h > .5 ? 'happy' : 'open'; mouth = h > .5 ? 'big' : 'smile';
     if (h > 3) add(STAR, 18, 2, ink);
-  } else if (mode === 'inhale') {
-    // mouth wide, puffing up, sparkles streaming in from the right
-    const k = s01(tau / .5); mouth = 'big'; eyes = 'shut'; rx *= 1 + .06 * k; aL = aR = .1; bx -= .5;
-    for (let n = 0; n < 3; n++) { const u = (tau * 1.6 + n / 3) % 1; fx.push([Math.round(21 - u * 7), Math.round(9 + (n - 1) * (1 - u) * 3), u > .8 ? C.w : ink]); }
-  } else if (mode === 'puff') {
-    // puffed up round, flapping, floating
-    rx = 7.3; ry = 7; by = 10.2 + .8 * Math.sin(tau * 2.6); const fl = Math.sin(tau * 14); aL = aR = .5 + .5 * fl; mouth = 'puff'; eyes = blink ? 'shut' : 'open'; cheeks = true; fL = fR = [0, -1];
+  } else if (mode === 'rewind') {
+    // the reels spin fast backwards and little rewind marks stream off to the left
+    spin = -tau * 18; eyes = 'open'; mouth = 'o'; aL = aR = .2; bx += .3 * Math.sin(tau * 20);
+    for (let n = 0; n < 3; n++) { const u = (tau * 1.8 + n / 3) % 1; add(REW, 1 + (1 - u) * 4, 8 + (n - 1) * 3, u > .7 ? C.w : ink); }
+  } else if (mode === 'boom') {
+    // a bass thump: the body pulses and sound arcs ring out from both sides
+    const k = Math.abs(Math.sin(tau * 6)); rx *= 1 + .08 * k; ry *= 1 + .08 * k; mouth = 'big'; eyes = 'happy'; aL = aR = .9 * k;
+    if (k > .5) { add(ARC_L, 1, 7, ink); add(ARC_R, 19, 7, ink); }
   } else if (mode === 'happy') {
-    // both arms up, ^^ eyes, stars round him
+    // both arms up, ^^ reels, stars round it
     const b = Math.abs(Math.sin(tau * 5)); by -= b * 1.2; aL = aR = 1.35; eyes = 'happy'; mouth = 'big';
     for (let n = 0; n < 3; n++) { const a = tau * 2 + n * 2.1; add(STAR, 10 + Math.cos(a) * 9.5, 8 + Math.sin(a) * 6.5, n === 1 ? C.w : ink); }
   } else if (mode === 'spin') {
-    // a twirl (he turns side to side quickly), then a pose
+    // a twirl (it turns side to side quickly), then a pose
     const c = tau % 1.6; if (c < 1) { flip = Math.floor(c * 8) % 2 === 1; aL = aR = .25; eyes = 'shut'; by -= Math.sin(c * Math.PI) * 1.2; }
     else { aL = 1.3; aR = -.2; eyes = 'open'; mouth = 'smile'; add(STAR, 18, 3, ink); }
   }
-  // feet, then the body over them, then the arms
+  // feet, then the shell over them, then the arms
   const sh = [];
-  sh.push({ k: 'f', cx: bx - 2.9 + fL[0], cy: by + ry - .4 + fL[1], rx: 2.5, ry: 1.5 });
-  sh.push({ k: 'f', cx: bx + 2.9 + fR[0], cy: by + ry - .4 + fR[1], rx: 2.5, ry: 1.5 });
-  sh.push({ k: 'b', cx: bx, cy: by, rx, ry });
-  // an arm sits on the body's edge, at most about 50 degrees up its side, so a raised arm stays a nub at his shoulder, never on his head
-  [[-1, aL], [1, aR]].forEach(([sd, a]) => { const ph = Math.max(-.6, Math.min(1.4, a)) * .62; sh.push({ k: 'a', cx: bx + sd * (rx + .5) * Math.cos(ph), cy: by + 1 - (ry + .3) * Math.sin(ph), rx: 1.8, ry: 1.6 }); });
-  const own = new Int8Array(KIRBY_W * KIRBY_H).fill(-1), at = (x, y) => x < 0 || y < 0 || x >= KIRBY_W || y >= KIRBY_H ? -1 : own[y * KIRBY_W + x];
-  for (let y = 0; y < KIRBY_H; y++) for (let x = 0; x < KIRBY_W; x++) { const px = x + .5, py = y + .5;
-    sh.forEach((s, i) => { if (((px - s.cx) / s.rx) ** 2 + ((py - s.cy) / s.ry) ** 2 <= 1) own[y * KIRBY_W + x] = i; }); }
-  const out = [];
-  for (let y = 0; y < KIRBY_H; y++) for (let x = 0; x < KIRBY_W; x++) { const i = at(x, y), N = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)];
+  sh.push({ k: 'f', cx: bx - 3.1 + fL[0], cy: by + ry * .82 + fL[1], rx: 2.1, ry: 1.3 });
+  sh.push({ k: 'f', cx: bx + 3.1 + fR[0], cy: by + ry * .82 + fR[1], rx: 2.1, ry: 1.3 });
+  const hw = rx * 1.2, hh = ry * .82; sh.push({ k: 'b', cx: bx, cy: by, rx: hw, ry: hh });
+  // an arm sits on the shell's side, at most about 50 degrees up it, so a raised arm stays a stub at its shoulder
+  [[-1, aL], [1, aR]].forEach(([sd, a]) => { const ph = Math.max(-.6, Math.min(1.4, a)) * .62; sh.push({ k: 'a', cx: bx + sd * (hw + .4) * Math.cos(ph), cy: by + .6 - (hh + .2) * Math.sin(ph), rx: 1.5, ry: 1.4 }); });
+  const inside = (s, px, py) => { const u = (px - s.cx) / s.rx, v = (py - s.cy) / s.ry; if (s.k !== 'b') return u * u + v * v <= 1; return Math.abs(u) <= 1 && Math.abs(v) <= 1 && !(Math.abs(u) > .82 && Math.abs(v) > .72); };
+  const own = new Int8Array(REEL_W * REEL_H).fill(-1), at = (x, y) => x < 0 || y < 0 || x >= REEL_W || y >= REEL_H ? -1 : own[y * REEL_W + x];
+  for (let y = 0; y < REEL_H; y++) for (let x = 0; x < REEL_W; x++) sh.forEach((s, i) => { if (inside(s, x + .5, y + .5)) own[y * REEL_W + x] = i; });
+  const out = [], lab0 = Math.round(by - hh * .62), lab1 = Math.round(by + hh * .12);
+  for (let y = 0; y < REEL_H; y++) for (let x = 0; x < REEL_W; x++) { const i = at(x, y), N = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)];
     if (i < 0) { if (N.some(n => n >= 0)) out.push([x, y, C.o]); continue; }
     const s = sh[i], u = (x + .5 - s.cx) / s.rx, v = (y + .5 - s.cy) / s.ry;
-    // the body is outlined where the feet tuck under it, and shaded where an arm lies over it
     if (s.k === 'b' && N.some(n => n >= 0 && sh[n].k === 'f')) { out.push([x, y, C.o]); continue; }
-    if (s.k === 'f') { out.push([x, y, v > .3 ? C.fs : C.f]); continue; }
-    if (s.k === 'a') { out.push([x, y, N.some(n => n >= 0 && sh[n].k === 'b') && v > 0 ? C.s : u * u + v * v < .3 && v < 0 ? C.h : C.b]); continue; }
-    out.push([x, y, v > .6 || (u > .7 && v > .1) ? C.s : u < -.25 && v < -.45 ? C.h : C.b]); }
-  // the face, set on the body
-  const fx0 = Math.round(bx) + edx, ey = Math.round(by - 3.4), L = fx0 - 2, R = fx0 + 1, put = (x, y, col) => out.push([x, y, col]);
-  if (eyes === 'open') [L, R].forEach(x => { put(x, ey, C.w); put(x, ey + 1, C.e); put(x, ey + 2, C.eb); });
-  else if (eyes === 'shut') [L, R].forEach(x => { put(x - (x === L ? 1 : 0), ey + 2, C.e); put(x + (x === R ? 1 : 0), ey + 2, C.e); });
-  else if (eyes === 'happy') [L, R].forEach(x => { put(x - 1, ey + 2, C.e); put(x, ey + 1, C.e); put(x + 1, ey + 2, C.e); });
-  if (cheeks) { put(L - 2, ey + 3, C.c); put(L - 1, ey + 3, C.c); put(R + 1, ey + 3, C.c); put(R + 2, ey + 3, C.c); }
-  const my = ey + 4;
-  if (mouth === 'smile') { put(fx0 - 1, my, C.m); put(fx0, my, C.m); }
+    if (s.k === 'f') { out.push([x, y, C.f]); continue; }
+    if (s.k === 'a') { out.push([x, y, v > .2 ? C.s : C.b]); continue; }
+    // the shell: the label across its upper half (a stripe of the song's ink along its top), shaded below and down the right, lit top left
+    if (Math.abs(u) < .78 && y >= lab0 && y <= lab1) { out.push([x, y, y === lab0 ? ink : C.l]); continue; }
+    out.push([x, y, v > .55 || u > .8 ? C.s : u < -.6 && v < -.5 ? C.h : C.b]); }
+  // the face on the label: two reels for eyes (they turn while it dances), the tape window for a mouth
+  const fx0 = Math.round(bx) + edx, ey = Math.round(by - hh * .2), L = fx0 - 3, R = fx0 + 2, put = (x, y, col) => out.push([x, y, col]);
+  const spokes = [[0, -1], [1, 0], [0, 1], [-1, 0]], turn = ((Math.floor(spin) % 4) + 4) % 4;
+  if (eyes === 'open') [L, R].forEach(x => { put(x - 1, ey, C.e); put(x + 1, ey, C.e); put(x, ey - 1, C.e); put(x, ey + 1, C.e); put(x, ey, C.hub); const [dx, dy] = spokes[turn]; put(x + dx, ey + dy, C.hub); });
+  else if (eyes === 'shut') [L, R].forEach(x => { put(x - 1, ey, C.e); put(x, ey, C.e); put(x + 1, ey, C.e); });
+  else if (eyes === 'happy') [L, R].forEach(x => { put(x - 1, ey + 1, C.e); put(x, ey, C.e); put(x + 1, ey + 1, C.e); });
+  const my = Math.round(by + hh * .48);
+  if (mouth === 'smile') { put(fx0 - 2, my, C.m); put(fx0 - 1, my + 1, C.m); put(fx0, my + 1, C.m); put(fx0 + 1, my, C.m); }
   else if (mouth === 'o') { put(fx0 - 1, my, C.m); put(fx0, my, C.m); put(fx0 - 1, my + 1, C.m); put(fx0, my + 1, C.m); }
-  else if (mouth === 'big') { for (let q = -2; q <= 1; q++) put(fx0 + q, my, C.m); for (let q = -1; q <= 0; q++) { put(fx0 + q, my + 1, C.t); } put(fx0 - 2, my + 1, C.m); put(fx0 + 1, my + 1, C.m); }
-  else if (mouth === 'puff') { put(fx0 - 1, my, C.m); }
+  else if (mouth === 'big') { for (let q = -2; q <= 1; q++) { put(fx0 + q, my, C.m); put(fx0 + q, my + 1, C.m); } }
+  else if (mouth === 'puff') { put(fx0 - 1, my, C.m); put(fx0, my, C.m); }
   let cells = out;
   if (flip) cells = cells.map(([x, y, c]) => [Math.round(2 * bx) - 1 - x, y, c]);
   if (o.flipY) cells = cells.map(([x, y, c]) => [x, Math.round(2 * by) - 1 - y, c]);
-  return cells.concat(fx).filter(([x, y]) => x >= 0 && y >= 0 && x < KIRBY_W && y < KIRBY_H);
+  return cells.concat(fx).filter(([x, y]) => x >= 0 && y >= 0 && x < REEL_W && y < REEL_H);
 }

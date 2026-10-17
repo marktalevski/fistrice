@@ -319,7 +319,7 @@ class Component extends DCLogic {
   // above and below), shaded while it's still turned away, until the controller is whole. The deck is drawn whole to a layer of its own and laid
   // in tile by tile; the dots have a layer over it. Otherwise the deck is simply drawn
   deckOut(ctx, W, H, t, dt, TH, live, fo) {
-    const A = this.arr, T0 = 2.12, STEP = .045, DUR = .24, CS = 40;
+    const A = this.arr, T0 = 2.3, STEP = .045, DUR = .24, CS = 40;
     const dpr = ctx.getTransform().a, G = deckGeo(W, H), y0 = G.y0, hh = H - G.y0;
     const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6;
     // the tiles: a grid over the deck, each with its distance (in tiles) from the pad block, which sets when it folds out
@@ -335,8 +335,11 @@ class Component extends DCLogic {
     this.dotsCtx = od; this.drawDeck(oc, W, H, t, dt, TH, live, fo); this.dotsCtx = null;
     const back = u => { const c1 = 1.4, c3 = c1 + 1; return u <= 0 ? 0 : 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
     ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
-    // the pads, as they landed
-    ctx.drawImage(dk, bx0 * dpr, by0 * dpr, (bx1 - bx0) * dpr, (by1 - by0) * dpr, bx0, by0, bx1 - bx0, by1 - by0);
+    // the pads: each one's face appears under its dot the moment the dot has opened out into it (so the swap doesn't show), the spare just
+    // after the last; then, as the fold-out starts, the plate they sit on locks in with them, wells and all
+    const padAt = (q, a = 1) => { const [x, y, w, h] = P[q]; ctx.save(); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 7); else ctx.rect(x, y, w, h); ctx.clip(); ctx.globalAlpha = a; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, x, y, w, h); ctx.restore(); };
+    if (t >= T0) ctx.drawImage(dk, bx0 * dpr, by0 * dpr, (bx1 - bx0) * dpr, (by1 - by0) * dpr, bx0, by0, bx1 - bx0, by1 - by0);
+    else { for (let q = 0; q < 7; q++) if (t >= 1.8 + q * .06) padAt(q); if (t >= 2.16) padAt(7, smooth(clamp((t - 2.16) / .14, 0, 1))); }
     for (const q of this.tiles.list) { const u = clamp((t - T0 - q.d * STEP) / DUR, 0, 1); if (u <= 0) continue; const k = Math.min(1.06, back(u)), kw = q.side === 'l' || q.side === 'r' ? k : 1, kh = q.side === 't' || q.side === 'b' ? k : 1;
       // folding open on its hinge: the edge facing the pads stays put, the far edge swings out
       const w = q.w * kw, h = q.h * kh, x = q.side === 'r' ? q.x + q.w - w : q.x, y = q.side === 'b' ? q.y + q.h - h : q.y; if (w < .5 || h < .5) continue;

@@ -54,6 +54,8 @@ const ALBUMS = [
 ];
 // cyberpunk accents for the stark style: neon magenta and cyan
 const NEON_M = '#ff2bd6', NEON_C = '#00e5ff';
+// the spare beat pad is a kick drum: labelled KICK, it thumps and flashes this colour on every hit
+const KICK_COL = '#00e5ff';
 const pad2 = n => String(n).padStart(2, '0');
 const fmtDate = iso => { const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 const fmtDur = s => Math.floor(s / 60) + ':' + pad2(Math.floor(s % 60));
@@ -120,6 +122,12 @@ class Component extends DCLogic {
     if (this.knobV.join('') === '523869') this.onCombo(); }
   // the combination is set. What it opens is still to be decided; for now every number stays lit while it is set, so you can tell
   onCombo() { this.comboT = this.t; }
+  // each hit on the spare pad: a kick drum, a sine that drops from a punchy click to a low thump, through the deck's volume
+  spareHit = () => { this.spareAt = this.t; this.spareN = (this.spareN || 0) + 1;
+    try { this.ensureAC(); const ac = this.ac, now = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), c = ac.createOscillator(), cg = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(160, now); o.frequency.exponentialRampToValueAtTime(48, now + .12); o.frequency.exponentialRampToValueAtTime(38, now + .45);
+      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.9, now + .004); g.gain.exponentialRampToValueAtTime(.001, now + .5); o.connect(g); g.connect(this.an); o.start(now); o.stop(now + .52);
+      c.type = 'triangle'; c.frequency.setValueAtTime(1800, now); c.frequency.exponentialRampToValueAtTime(300, now + .02); cg.gain.setValueAtTime(.25, now); cg.gain.exponentialRampToValueAtTime(.001, now + .03); c.connect(cg); cg.connect(this.an); c.start(now); c.stop(now + .04); } catch (e) {} };
   // the detent's click: a short bright tick of noise over a tiny knock, through the volume
   knobClick() { try { this.ensureAC(); const ac = this.ac; if (ac.state === "suspended" && ac.resume) ac.resume(); const now = ac.currentTime, n = Math.floor(ac.sampleRate * .012), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
     for (let q = 0; q < n; q++) d[q] = (Math.random() * 2 - 1) * Math.exp(-q / (n * .16));
@@ -513,19 +521,19 @@ class Component extends DCLogic {
     // stands up out of a dark well with a lit top edge. A pad flashes as its dot lands in it
     const flash = i => A ? Math.sin(Math.PI * clamp((t - 1.4 - i * .06) / .7, 0, 1)) : 0;
     ctx.font = '400 ' + clamp(G.pads[0][2] / 9.5, 6, 8.5).toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    [...G.pads, ...G.cpads, G.spare].forEach(([px, py, pw, ph], i) => { const spare = i === 7, soon = i > 3 && !spare, col = spare ? 'rgb(120,126,132)' : cols[i], k = spare ? 0 : clamp(this.S[i].k, 0, 1);
-      const lit = spare ? 0 : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
+    [...G.pads, ...G.cpads, G.spare].forEach(([px, py, pw, ph], i) => { const spare = i === 7, soon = i > 3 && !spare, col = spare ? KICK_COL : cols[i], k = clamp(this.S[i].k, 0, 1);
+      const lit = spare ? clamp(Math.max(k * .6, this.spareAt != null ? Math.exp(-(this.t - this.spareAt) * 7) : 0), 0, 1) : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; rr(px - 2, py - 1, pw + 4, ph + 5, 8); ctx.fill();
       ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; const pg = ctx.createLinearGradient(0, py, 0, py + ph); pg.addColorStop(0, '#3a3f46'); pg.addColorStop(.55, '#2c3036'); pg.addColorStop(1, '#23262b');
       ctx.fillStyle = pg; rr(px, py, pw, ph, 7); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
       ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(px + 6, py + 1.5, pw - 12, 1); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(px + 6, py + ph - 2.5, pw - 12, 1);
       if (lit > .02) { ctx.globalAlpha = (1 - fo) * .18 * lit; ctx.fillStyle = col; rr(px + 2, py + 2, pw - 4, ph - 4, 6); ctx.fill(); }
-      ctx.globalAlpha = (1 - fo) * (spare ? .35 : soon ? .55 + .45 * k : .7 + .3 * lit); ctx.strokeStyle = col; ctx.lineWidth = 1.6 + lit * .6; if (lit > .2) glow(col, 14 * lit); rr(px + 1.5, py + 1.5, pw - 3, ph - 3, 6); ctx.stroke(); noGlow();
-      if (!spare) { ctx.globalAlpha = (1 - fo) * (soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = i < 4 ? LAB[i] : col;
+      ctx.globalAlpha = (1 - fo) * (spare ? .55 + .45 * lit : soon ? .55 + .45 * k : .7 + .3 * lit); ctx.strokeStyle = col; ctx.lineWidth = 1.6 + lit * .6; if (lit > .2) glow(col, 14 * lit); rr(px + 1.5, py + 1.5, pw - 3, ph - 3, 6); ctx.stroke(); noGlow();
+      { ctx.globalAlpha = (1 - fo) * (spare ? .75 + .25 * lit : soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = spare ? col : i < 4 ? LAB[i] : col; if (spare && lit > .4) glow(col, 10 * lit);
         // the label shrinks to fit its pad; Freediving, if it still won't fit, breaks over two lines (FREE / DIVING)
-        const lab = soon ? 'SOON' : names[i].toUpperCase(); let fz = clamp(pw / 9.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; while (ctx.measureText(lab).width > pw - 10 && fz > (lab === 'FREEDIVING' ? 5.6 : 4.8)) { fz -= .25; ctx.font = '400 ' + fz + 'px ' + mich; }
+        const lab = spare ? 'KICK' : soon ? 'SOON' : names[i].toUpperCase(); let fz = clamp(pw / 9.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; while (ctx.measureText(lab).width > pw - 10 && fz > (lab === 'FREEDIVING' ? 5.6 : 4.8)) { fz -= .25; ctx.font = '400 ' + fz + 'px ' + mich; }
         if (ctx.measureText(lab).width > pw - 10 && lab === 'FREEDIVING') { const h2 = 4; fz = clamp(pw / 7.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; ctx.fillText(lab.slice(0, h2), px + pw / 2, py + ph / 2 - fz * .7); ctx.fillText(lab.slice(h2), px + pw / 2, py + ph / 2 + fz * .75); }
-        else ctx.fillText(lab, px + pw / 2, py + ph / 2 + .5); }
+        else ctx.fillText(lab, px + pw / 2, py + ph / 2 + .5); noGlow(); }
       ctx.globalAlpha = 1 - fo; });
     ctx.restore(); ctx.font = '400 11px Michroma, sans-serif';
     // arriving / leaving, each page is a dot: arriving, the dots fly in from where the last page left them and open out into their beat pads;
@@ -716,7 +724,7 @@ class Component extends DCLogic {
       // the deck's controls
       deck: { jogDown: this.jogDown, jogMove: this.jogHover, jogOn: () => { this.jogHov = 1; }, jogOff: () => { this.jogHov = 0; this.rimHov = false; }, play: this.playBtn, cue: this.cueBtn, playLabel: playing && !paused ? 'Pause' : 'Play',
         btnOn: k => () => { this.btnHov = k; }, btnOff: () => { this.btnHov = null; }, full: this.goFull, leaveFull: this.leaveFull, fullDn: () => { this.fullDown = true; }, fullUp: () => { this.fullDown = false; }, fullOut: () => { this.btnHov = null; this.fullDown = false; },
-        cpOn: i => () => this.padOn(4 + i), cpOff: i => () => this.padOff(4 + i), vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
+        cpOn: i => () => this.padOn(4 + i), cpOff: i => () => this.padOff(4 + i), spare: this.spareHit, vol: this.volDown, knob: [0, 1, 2, 3, 4, 5].map(i => ({ down: this.knobDown(i), wheel: this.knobWheel(i), on: () => { this.knobHov = i; }, off: () => { if (this.knobHov === i) this.knobHov = null; this.knobNum = null; }, move: this.knobMove(i) })),
         rows: [0, 1, 2, 3, 4, 5].map(k => ({ go: () => { const tr = this.albums[this.state.album].tracks[k]; if (tr) this.click(tr); }, on: () => { this.rowHov = k; }, off: () => { if (this.rowHov === k) this.rowHov = null; } })) },
       pad: Object.fromEntries(['home', 'freediving', 'sound', 'journal'].map((k, i) => [k, { on: () => this.padOn(i), off: () => this.padOff(i), go: k === 'home' ? this.goHome : this.GO[k] }]))
     };
@@ -792,7 +800,7 @@ function View(v) {
           {"\n        "}
         </div>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onPointerMove={v.deck?.jogMove} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
-        {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled="true" aria-label={i < 3 ? nm + ' page: coming soon' : 'Spare pad'} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty("position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
+        {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled={i < 3 ? 'true' : undefined} aria-label={i < 3 ? nm + ' page: coming soon' : 'Kick drum'} onClick={i === 3 ? v.deck?.spare : undefined} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty(i === 3 ? "position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer" : "position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
         <button data-deck="full" type="button" aria-label="Full screen: only the wave" title="Full screen (F)" data-noring="1" onClick={v.deck?.full} onPointerDown={v.deck?.fullDn} onPointerUp={v.deck?.fullUp} onMouseEnter={v.deck?.btnOn?.('full')} onMouseLeave={v.deck?.fullOut} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />)}

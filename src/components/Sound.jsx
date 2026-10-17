@@ -2,7 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
-import { reel, REEL_W, REEL_H, REEL_IDLES, REEL_REACTS, REEL_MOVES, REEL_SLOW, REEL_FAST } from '../lib/reel.js';
+import { squid, SQUID_W, SQUID_H, SQUID_IDLES, SQUID_REACTS, SQUID_MOVES, SQUID_SLOW, SQUID_FAST } from '../lib/squid.js';
 import { deckGeo, deckGeoV, deckScale, isPhone, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
@@ -123,7 +123,7 @@ class Component extends DCLogic {
   // the combination is set. What it opens is still to be decided; for now every number stays lit while it is set, so you can tell
   onCombo() { this.comboT = this.t; }
   // each hit on the spare pad: a kick drum, a sine that drops from a punchy click to a low thump, through the deck's volume
-  // (straight into the volume, not the analyser, so it doesn't move the piece's wave or Reel's tempo; timed on its own clock, which the page's
+  // (straight into the volume, not the analyser, so it doesn't move the piece's wave or the squid's tempo; timed on its own clock, which the page's
   // never resets)
   spareHit = () => { this.spareAt = performance.now() / 1000; this.spareN = (this.spareN || 0) + 1;
     try { this.ensureAC(); const ac = this.ac, now = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), c = ac.createOscillator(), cg = ac.createGain();
@@ -152,9 +152,9 @@ class Component extends DCLogic {
     const q = d > kr * 1.15 && ang >= -168 && ang <= 168 ? clamp(Math.round((ang + 150) / (300 / 9)), 0, 9) : null; this.knobNum = q == null ? null : { i, q };
     const cur = this.knobHeld === i ? 'grabbing' : 'grab'; if (e.currentTarget.style.cursor !== cur) e.currentTarget.style.cursor = cur; };
   knobWheel = i => e => { e.stopPropagation(); this.setKnob(i, this.knobV[i] + (e.deltaY < 0 ? 1 : -1)); };
-  // Reel on the screen: asleep while nothing plays, dancing while a piece does. A pad under the pointer sets it off on a little turn,
+  // the squid on the screen: asleep while nothing plays, dancing while a piece does. A pad under the pointer sets it off on a little turn,
   // picked at random (never the same twice running), and then he drops off again
-  padOn(i) { if (this.padHov !== i) { let f; do f = REEL_REACTS[Math.floor(Math.random() * REEL_REACTS.length)]; while (f === this.kReact); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
+  padOn(i) { if (this.padHov !== i) { let f; do f = SQUID_REACTS[Math.floor(Math.random() * SQUID_REACTS.length)]; while (f === this.kReact); this.kReact = f; this.kAt = this.t; } this.padHov = i; }
   padOff(i) { if (this.padHov === i) this.padHov = null; }
   // play / pause; with nothing chosen yet it starts the album's first piece
   // the controller's accent: the song's ink (the lit edge's colour), blended in as the edge lights; cyan with nothing loaded. Strokes and
@@ -170,7 +170,7 @@ class Component extends DCLogic {
   // dragged. Esc, F, or the corner key that shows when the mouse moves bring the controller back
   goFull = () => { try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {} this.focus = true; this.fMove = performance.now(); this.fAt = performance.now(); const d = document.documentElement; try { const p = d.requestFullscreen && d.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
   leaveFull = () => { this.focus = false; try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {} };
-  // the music's tempo, for Reel's dance: listens for beats in the bass (an onset is the low end jumping well above its recent level),
+  // the music's tempo, for the squid's dance: listens for beats in the bass (an onset is the low end jumping well above its recent level),
   // takes the median gap between the last dozen, folds it into 70..150 beats a minute, and eases toward it. Quiet or beatless music
   // (no onsets for a few seconds) settles slowly toward 72, so he sways gently
   kTempo(dt) { const an = this.an, c = this.cur; if (this.kBpm == null) this.kBpm = 100; if (!an || !c || c.paused) return this.kBpm;
@@ -502,27 +502,27 @@ class Component extends DCLogic {
         ctx.textAlign = 'left'; ctx.fillStyle = on || hv ? '#f2f2f0' : '#c3c8cc'; ctx.font = '500 ' + (fz2 + .5).toFixed(1) + 'px ' + mono; ctx.save(); ctx.beginPath(); ctx.rect(rx + 32, ry, tEnd - rx - 32, rh); ctx.clip(); ctx.fillText(tr.title.toUpperCase(), rx + 32, mid); ctx.restore(); });
       if (cy) { ctx.fillStyle = 'rgba(0,0,0,.3)'; for (let q = sy + 1; q < sy + sh; q += 2) ctx.fillRect(sx, q, sw, 1); }
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? AC.a(.45) : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
-      // Reel, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. Its notes and
+      // the squid, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. Its notes and
       // stars take the edge's ink while it is lit
-      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = REEL_W * kp, ky = sy + 50 - REEL_H * kp - 2;
+      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = SQUID_W * kp, ky = sy + 50 - SQUID_H * kp - 2;
         // the free stretch of the strip he dances along: from just past the text to the right edge
         const xMax = sx + sw - 10 - kw, xMin = Math.min((this.kTxtR || sx + 200) + 8, xMax); if (this.kX == null) this.kX = xMax; this.kX = clamp(this.kX, xMin, xMax);
         // the dance: a run of moves picked at random (never one twice running), each a few beats long; a slide glides him somewhere new,
         // and every so often he strikes a pose. The beat only runs while a piece plays
         let dO = {}; if (mode === 'dance') { const bpm = this.kTempo(dt); this.kB = (this.kB || 0) + dt * bpm / 60;
-          if (!this.kMv || this.kB >= REEL_MOVES[this.kMv]) { this.kB = 0; this.kN = (this.kN || 0) + 1; const pool = Object.keys(REEL_MOVES).filter(m => m !== this.kMv && m !== 'pose' && (m !== 'trio' || xMax - xMin > kw * 2.2)); if (this.kMv !== 'slide') pool.push('slide', 'slide');
+          if (!this.kMv || this.kB >= SQUID_MOVES[this.kMv]) { this.kB = 0; this.kN = (this.kN || 0) + 1; const pool = Object.keys(SQUID_MOVES).filter(m => m !== this.kMv && m !== 'pose' && (m !== 'trio' || xMax - xMin > kw * 2.2)); if (this.kMv !== 'slide') pool.push('slide', 'slide');
             // slow music: more of the slow moves (and fewer fast ones); fast music the other way round
             const slow = clamp((105 - bpm) / 30, 0, 1), fast = clamp((bpm - 115) / 25, 0, 1);
-            [...pool].forEach(m => { const w = REEL_SLOW.includes(m) ? 1 + 3 * slow : REEL_FAST.includes(m) ? 1 + 2 * fast - .8 * slow : 1; for (let q = 1; q < Math.round(w); q++) pool.push(m); if (w < .5) pool.splice(pool.indexOf(m), 1); });
+            [...pool].forEach(m => { const w = SQUID_SLOW.includes(m) ? 1 + 3 * slow : SQUID_FAST.includes(m) ? 1 + 2 * fast - .8 * slow : 1; for (let q = 1; q < Math.round(w); q++) pool.push(m); if (w < .5) pool.splice(pool.indexOf(m), 1); });
             this.kMv = this.kN % 7 === 0 ? 'pose' : pool[Math.floor(Math.random() * pool.length)];
             // a slide glides him well across; hops, sways, shimmies and jump-spins carry him a little way; the rest stay put
             this.kX0 = this.kX; let x1 = this.kX; if (this.kMv === 'slide') { let n = 0; while (n++ < 20 && Math.abs(x1 - this.kX) < (xMax - xMin) * .3) x1 = xMin + Math.random() * (xMax - xMin); }
             else if (['hop', 'sway', 'shimmy', 'jumpspin'].includes(this.kMv)) x1 = clamp(this.kX + (Math.random() < .5 ? -1 : 1) * (xMax - xMin) * (.15 + Math.random() * .2), xMin, xMax);
             this.kX1 = x1; this.kDir = x1 >= this.kX ? 1 : -1; }
-          { const u = clamp(this.kB / REEL_MOVES[this.kMv], 0, 1), e2 = u * u * (3 - 2 * u); this.kX = clamp(this.kX0 + ((this.kX1 ?? this.kX0) - this.kX0) * e2, xMin, xMax); }
+          { const u = clamp(this.kB / SQUID_MOVES[this.kMv], 0, 1), e2 = u * u * (3 - 2 * u); this.kX = clamp(this.kX0 + ((this.kX1 ?? this.kX0) - this.kX0) * e2, xMin, xMax); }
           dO = { move: this.kMv, mp: this.kB, dir: this.kDir }; }
         const ink = this.rimCol() || (hp != null ? (hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#ffd84a') : '#ffd84a'), kx = Math.round(this.kX);
-        const cells = reel(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
+        const cells = squid(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
         // in a trio two copies dance beside it, a little fainter
         const at = mode === 'dance' && this.kMv === 'trio' ? [[0, 1]].concat([-1, 1].map(d => [d * kw * .95, .55]).filter(([d]) => kx + d >= xMin - kw * .6 && kx + d <= sx + sw - kw + 4)) : [[0, 1]];
         ctx.save(); ctx.beginPath(); ctx.rect(sx + 2, sy + 2, sw - 4, 48); ctx.clip();

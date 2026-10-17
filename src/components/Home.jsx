@@ -3,6 +3,7 @@
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 import { deckGeo, padOf } from '../lib/deck.js';
+import { ropeX } from '../lib/rope.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = x => x * x * (3 - 2 * x);
@@ -531,7 +532,7 @@ class Component extends DCLogic {
           for (let q = n0; q < arc.length; q++) { z.push(.1); cw.push(1); wl.push(1); } }
       }
       const ang = -Math.PI / 2 + li / LINES.length * Math.PI * 2 + .3, sg = li % 2 ? 1 : -1, ten = [];
-      { const far = Math.hypot(W, H) * .62, LXd = W < 720 ? 26 : 56, wx0 = -20 + li * (W + 40) / 7, NA = this.navArrive && !this.trans ? this.navArrive[L.keep ? 'ink' : L.page || 'c' + li] : null, P0 = this.fromPts ? this.fromPts[li] : NA ? NA.slice() : this.fromDive ? [wx0, Math.max(H * .26, 190) + this.waveY(wx0 - LXd, li % 3, 0) + (li % 3) * 0] : [cx + Math.cos(ang) * far, cy + Math.sin(ang) * far], Mx = [cx + Math.cos(ang + sg * .8) * R * 1.45, cy + Math.sin(ang + sg * .8) * R * 1.45];
+      { const far = Math.hypot(W, H) * .62, LXd = ropeX(W), wx0 = -20 + li * (W + 40) / 7, NA = this.navArrive && !this.trans ? this.navArrive[L.keep ? 'ink' : L.page || 'c' + li] : null, P0 = this.fromPts ? this.fromPts[li] : NA ? NA.slice() : this.fromDive ? [wx0, Math.max(H * .26, 190) + this.waveY(wx0 - LXd, li % 3, 0) + (li % 3) * 0] : [cx + Math.cos(ang) * far, cy + Math.sin(ang) * far], Mx = [cx + Math.cos(ang + sg * .8) * R * 1.45, cy + Math.sin(ang + sg * .8) * R * 1.45];
         const C1 = this.fromPts ? [P0[0] + (P0[0] - cx) * .7 + sg * 60, P0[1] + (P0[1] - cy) * .7 - 40] : NA ? [P0[0] - 160, P0[1] + sg * 50] : this.fromDive ? [P0[0] + 140, P0[1] + 30] : [P0[0] + Math.cos(ang + sg * 1.6) * far * .35, P0[1] + Math.sin(ang + sg * 1.6) * far * .35], C2 = [Mx[0] + Math.cos(ang + sg * .2) * R * .9, Mx[1] + Math.sin(ang + sg * .2) * R * .9];
         ten.push(P0); for (let q = 1; q <= 60; q++) { const u = q / 60, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, d = u ** 3; ten.push([a * P0[0] + b * C1[0] + c * C2[0] + d * Mx[0], a * P0[1] + b * C1[1] + c * C2[1] + d * Mx[1]]); } }
       const TR = this.trans && this.trans[li]; if (TR) { ten.length = 0; TR.pts.forEach(p => ten.push(p)); }
@@ -574,7 +575,7 @@ class Component extends DCLogic {
     if (this.tapReveal('freediving')) return;
     const { W, H, cx, cy, R } = this.geo, SY = Math.max(H * .26, 190);
     // strokes draw the surface, buoy and flag first, then carry on up into their menu dots
-    const LX = W < 720 ? 26 : 56, BS = clamp(W / 900, .75, 1), NX = k => W - 316 + { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }[k], NY = 28;
+    const LX = ropeX(W), BS = clamp(W / 900, .75, 1), NX = k => W - 316 + { home: 26, freediving: 78, sound: 130, journal: 182, c4: 224, c5: 256, c6: 288 }[k], NY = 28;
     const bz = (A, C1, C2, B, n) => { const o = []; for (let i = 1; i <= n; i++) { const u = i / n, a = (1 - u) ** 3, b = 3 * (1 - u) ** 2 * u, c = 3 * (1 - u) * u * u, dd = u ** 3; o.push([a * A[0] + b * C1[0] + c * C2[0] + dd * B[0], a * A[1] + b * C1[1] + c * C2[1] + dd * B[1]]); } return o; };
     // start off-screen like the Freediving page's surface, so the line reaches the left edge
     const surf = k => { const o = []; for (let x = -20; x <= W - 6; x += 9) o.push([x, SY + this.waveY(x - LX, k, 0)]); return o; };
@@ -703,7 +704,7 @@ class Component extends DCLogic {
     if (!this.geo || this.geo.W !== W || this.geo.H !== H || this.shapeName !== this.shapeWanted()) { const changed = this.geo && this.shapeName !== this.shapeWanted(); this.build(W, H); if (changed) this.T = 0; }
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     ctx.fillStyle = '#f5f3ee'; ctx.fillRect(0, 0, W, H);
-    const T = this.T, G = this.go, { cx, cy, R } = this.geo, LX = W < 720 ? 26 : 56, SY = Math.max(H * .26, 190);
+    const T = this.T, G = this.go, { cx, cy, R } = this.geo, LX = ropeX(W), SY = Math.max(H * .26, 190);
     const gone = G == null ? 0 : smooth(clamp(G / .5, 0, 1));
 
     // octopus body: an ink pool the arms grow out of

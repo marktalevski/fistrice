@@ -2,6 +2,7 @@
 // The logic class is the design's own code; View is its template as JSX.
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
+import { ropeX } from '../lib/rope.js';
 
 // the rope down from the buoy, wide enough for its twist to show
 const ROPE_W = 3.6;
@@ -246,7 +247,7 @@ class Component extends DCLogic {
       [['r', .12], ['g', .3], ['b', .5], ['y', .72]].forEach(([k, th]) => {
         if (fNow < th - .04) this.unl[k] = null;
         if (this.unl[k] == null && fNow >= th) { this.unl[k] = this.rt; if ((this.props.gris ?? false) && (k === 'g' || k === 'b')) { const W = innerWidth, H = innerHeight, n = 3;
-          this.gBlooms.push({ k, t0: this.rt, x: (this.off || {}).x || 56, y: this.anchor || H * .3, seed: Math.random() * 6, sc: 1 });
+          this.gBlooms.push({ k, t0: this.rt, x: (this.off || {}).x || ropeX(innerWidth), y: this.anchor || H * .3, seed: Math.random() * 6, sc: 1 });
           for (let q = 0; q < n; q++) this.gBlooms.push({ k, t0: this.rt + .25 + q * .35 + Math.random() * .3, x: W * (.25 + Math.random() * .7), y: H * (.1 + Math.random() * .85), seed: Math.random() * 6, sc: .35 + Math.random() * .4 }); } }
       });
     }
@@ -256,7 +257,7 @@ class Component extends DCLogic {
 
   layout(dt) {
     const root = this.rootRef.current, world = this.worldRef.current; if (!root || !world) return;
-    const vw = innerWidth, vh = innerHeight, narrow = vw < 720, LX = narrow ? 26 : 56;
+    const vw = innerWidth, vh = innerHeight, narrow = vw < 720, LX = ropeX(vw);
     this.LX = LX;
     if (this.vwSeen !== vw || this.vhSeen !== vh) {
       this.vwSeen = vw; this.vhSeen = vh;
@@ -497,7 +498,7 @@ class Component extends DCLogic {
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); this.grainP = null; }
     const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const o = this.off || { x: 56, y: Math.max(H * .26, 190) }, T = this.introT, intro = !this.state.introDone, rt = this.rt || 0;
+    const o = this.off || { x: ropeX(W), y: Math.max(H * .26, 190) }, T = this.introT, intro = !this.state.introDone, rt = this.rt || 0;
     const an = this.anchor ?? Math.max(H * .26, 190), al = this.along ?? 0, SY = (m, pf) => an + (this.mToY(m) - al) * pf;
     const mNow = this.yToM(Math.max(0, al)), sway = (this.props.motion ?? true) ? 1 : 0;
     ctx.fillStyle = this.bg || css(PAPER); ctx.fillRect(0, 0, W, H);
@@ -652,7 +653,7 @@ class Component extends DCLogic {
         { const hy = o.y + Math.max(head, (this.pos && this.pos[0]) || 0), vis = this.state.introDone && hy > LS && hy < H + 30; this.octA = (this.octA || 0) + ((vis ? 1 : 0) - (this.octA || 0)) * (1 - Math.exp(-dtT * 5)); if (this.sqI != null && this.sqI < 9) this.octA = Math.max(this.octA, .03);
           if (this.octA > .02) { const vel = dA / Math.max(dtT, .001); this.octV = (this.octV || 0) + (vel - (this.octV || 0)) * (1 - Math.exp(-dtT * 5));
             this.octPh = (this.octPh || 0) + dA * .05 + dtT * (1.1 + 2.5 * clamp(Math.abs(this.octV) / 400, 0, 1));
-            const sv = clamp(this.octV / 500, -1, 1), dz = 0, ox = Math.max(o.x - 26, 16) + Math.sin(this.rt * .9) * 2, /* (on a phone the rope is near the edge: the squid stays on screen) */ oy = hy - 6 - sv * 10 + Math.sin(this.rt * 1.7) * 3;
+            const sv = clamp(this.octV / 500, -1, 1), dz = 0, ox = o.x - 26 + Math.sin(this.rt * .9) * 2, oy = hy - 6 - sv * 10 + Math.sin(this.rt * 1.7) * 3;
             // on load, the red (Sound) dot pours into the pale squid: red + white paper = pink
             this.sqT = (this.sqT ?? 99) + (this.octA > .5 ? dtT : 0); const sk = this.sqT, hk = smooth(clamp((sk - .2) / 1.0, 0, 1)), u0 = smooth(clamp((sk - .85) / .7, 0, 1)), fillK = smooth(clamp((sk - .95) / .8, 0, 1));
             if (hk > 0 && u0 < 1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }

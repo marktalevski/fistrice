@@ -325,7 +325,10 @@ class Component extends DCLogic {
     // the tiles: a grid over the deck, each with its distance (in tiles) from the pad block, which sets when it folds out
     const key = W + 'x' + H; if (!this.tiles || this.tiles.key !== key) { const list = [], nx = Math.ceil((G.x1 - G.x0) / CS), ny = Math.ceil(hh / CS);
       for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) { const x = G.x0 + c * CS, y = y0 + r * CS, w = Math.min(CS, G.x1 - x), h = Math.min(CS, H - y), cx = x + w / 2, cy = y + h / 2;
-        const dx = cx < bx0 ? (bx0 - cx) / CS : cx > bx1 ? (cx - bx1) / CS : 0, dy = cy < by0 ? (by0 - cy) / CS : cy > by1 ? (cy - by1) / CS : 0; if (!dx && !dy) continue;
+        const dx = cx < bx0 ? (bx0 - cx) / CS : cx > bx1 ? (cx - bx1) / CS : 0, dy = cy < by0 ? (by0 - cy) / CS : cy > by1 ? (cy - by1) / CS : 0;
+        // a tile centred over the pad block still sticks out past its edge: that strip folds out first, from the edge of the block it's nearest
+        if (!dx && !dy) { if (x >= bx0 && y >= by0 && x + w <= bx1 && y + h <= by1) continue; const sd = [[cy - by0, 'b'], [by1 - cy, 't'], [cx - bx0, 'r'], [bx1 - cx, 'l']].sort((a, b) => a[0] - b[0])[0][1], r4 = sd === 'b' ? [x, y, w, by0 - y] : sd === 't' ? [x, by1, w, y + h - by1] : sd === 'r' ? [x, y, bx0 - x, h] : [bx1, y, x + w - bx1, h];
+          if (r4[2] > .5 && r4[3] > .5) list.push({ x: r4[0], y: r4[1], w: r4[2], h: r4[3], d: 0, side: sd }); continue; }
         list.push({ x, y, w, h, d: Math.hypot(dx, dy), side: dx >= dy ? (cx < bx0 ? 'r' : 'l') : (cy < by0 ? 'b' : 't') }); }
       this.tiles = { key, list, end: Math.max(...list.map(q => q.d)) * STEP + DUR }; }
     if (!A || t > T0 + this.tiles.end + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }

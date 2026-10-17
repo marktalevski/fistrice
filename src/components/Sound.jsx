@@ -3,6 +3,7 @@
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 import { squid, SQUID_W, SQUID_H, SQUID_IDLES, SQUID_REACTS, SQUID_MOVES, SQUID_SLOW, SQUID_FAST } from '../lib/squid.js';
+import { drawSquid } from '../lib/squid-draw.js';
 import { deckGeo, deckGeoV, deckScale, isPhone, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
@@ -522,11 +523,18 @@ class Component extends DCLogic {
           { const u = clamp(this.kB / SQUID_MOVES[this.kMv], 0, 1), e2 = u * u * (3 - 2 * u); this.kX = clamp(this.kX0 + ((this.kX1 ?? this.kX0) - this.kX0) * e2, xMin, xMax); }
           dO = { move: this.kMv, mp: this.kB, dir: this.kDir }; }
         const ink = this.rimCol() || (hp != null ? (hp < 4 ? LAB[hp] : hp < 7 ? cols[hp] : '#ffd84a') : '#ffd84a'), kx = Math.round(this.kX);
-        const cells = squid(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
+        const P = squid(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
         // in a trio two copies dance beside it, a little fainter
         const at = mode === 'dance' && this.kMv === 'trio' ? [[0, 1]].concat([-1, 1].map(d => [d * kw * .95, .55]).filter(([d]) => kx + d >= xMin - kw * .6 && kx + d <= sx + sw - kw + 4)) : [[0, 1]];
         ctx.save(); ctx.beginPath(); ctx.rect(sx + 2, sy + 2, sw - 4, 48); ctx.clip();
-        at.forEach(([d, al]) => { ctx.globalAlpha = (1 - fo) * al; cells.forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.fillRect(kx + d + q * kp, ky + r * kp, kp, kp); }); }); ctx.restore(); ctx.globalAlpha = 1 - fo; } }
+        // the squid itself, drawn as on the Freediving page: the pose moves and squashes it, swings its tentacles out, sets its face, and its
+        // arms stream when it leaps; the sparkles round it are soft dots
+        const sv = clamp(Math.abs(P.by - 11) / 4, 0, 1) * .9, lift = a => clamp(a + .35, 0, 1.4) * .7, face = { shut: P.eyes === 'shut', liftL: lift(P.aL), liftR: lift(P.aR) };
+        at.forEach(([d, al]) => { ctx.globalAlpha = (1 - fo) * al;
+          ctx.save(); ctx.translate(kx + d + kw / 2 + (P.bx - 11) * kp, sy + 31 + (P.by - 11) * kp); ctx.scale(P.rx / 6.3 * (P.flip ? -1 : 1), P.ry / 5.9 * (P.flipY ? -1 : 1));
+          drawSquid(ctx, 0, 0, .82, t, sv, 'rgb(244,138,172)', P.edx * .06, P.eyes === 'happy' ? 1 : 0, face); ctx.restore();
+          P.fx.forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(kx + d + (q + .5) * kp, ky + (r + .5) * kp, kp * .62, 0, TAU); ctx.fill(); }); });
+        ctx.restore(); ctx.globalAlpha = 1 - fo; } }
     // the volume fader, standing beside the screen
     { const V = G.vol, lo = G.lo, hi = G.hi; this.volHold = clamp(this.volHold ?? lo, lo, hi); this.volY = this.volY == null ? this.volHold : this.volY + (this.volHold - this.volY) * Math.min(1, dt * (this.volDrag ? 30 : 10));
       ctx.font = '500 7.5px ' + mono; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = PM; ctx.fillText('VOL', V.x, V.y0 - 12);

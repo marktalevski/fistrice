@@ -1,10 +1,9 @@
-// The squid from the Freediving page, in pixels, lives on the Sound deck's screen. It is drawn fresh each frame on a 22 x 20 grid: a pointed
-// mantle with fins at its tip, a white streak down it, big round eyes (^^ with a pink blush when it's happy), six short arms and two long
-// tentacles with club tips, all pink with dark outlines like the Freediving squid. Each animation is only a set of numbers: where the body is and
-// how squashed, where the tentacles are (raised like arms) and how the arms wiggle, which eyes. squid(mode, t, o) gives the lit cells as
-// [x, y, colour]. Modes: idle, sleep and yawn (resting); dance (a piece is playing: o.move, o.mp and o.dir say which move, how far in, which
-// way); and the little turns a beat pad sets off: wave, jump, ink, jet, happy, spin, yawn. o: { tau: seconds since the mode began, lv: loudness
-// 0..1, ink: the colour for notes and stars }
+// The Freediving squid's moves on the Sound deck's screen. squid(mode, t, o) gives its pose for the moment: where its body is on a 22 x 20 grid
+// and how squashed (bx, by, rx, ry), how far each tentacle is swung out (aL, aR, as arms), the arms' shuffle (fL, fR), where it looks (edx),
+// its eyes (open, shut, happy), whether it's turned (flip, flipY), and the sparkles round it (fx: notes, stars, Zs, ink, as [x, y, colour]
+// cells on the same grid). The deck draws the squid itself with drawSquid from squid-draw.js. Modes: idle, sleep and yawn (resting); dance
+// (a piece is playing: o.move, o.mp and o.dir say which move, how far in, which way); and the little turns a beat pad sets off: wave, jump, ink,
+// jet, happy, spin, yawn. o: { tau: seconds since the mode began, lv: loudness 0..1, ink: the colour for notes and stars }
 export const SQUID_W = 22, SQUID_H = 20;
 export const SQUID_IDLES = ['idle', 'sleep', 'yawn'];
 // the dance's moves, and how many beats each lasts (a trio is a sway with two copies beside it, drawn by the deck)
@@ -14,7 +13,7 @@ export const SQUID_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jump
 export const SQUID_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish'];
 export const SQUID_FAST = ['hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
 export const SQUID_REACTS = ['wave', 'jump', 'ink', 'jet', 'happy', 'spin', 'yawn'];
-// the Freediving squid's colours: outline, pink, its shade, the white streak, eyes, pupils, blush; ink cloud; white; the Zs
+// the sparkles' colours: ink cloud, white, the Zs (the squid's own come from squid-draw.js)
 const C = { o: '#141414', b: '#f48aac', s: '#d8698f', h: '#ffffff', e: '#ffffff', p: '#141414', c: '#ec547c', inkD: '#1b1d2a', inkL: '#3a3e55', w: '#ffffff', z: '#9fd8ff' };
 const STAR = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]];
 const ZED = [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]];
@@ -98,33 +97,5 @@ export function squid(mode, t, o = {}) {
     const c = tau % 1.6; if (c < 1) { flip = Math.floor(c * 8) % 2 === 1; aL = aR = .25; eyes = 'shut'; by -= Math.sin(c * Math.PI) * 1.2; }
     else { aL = 1.3; aR = -.2; eyes = 'open'; mouth = 'smile'; add(STAR, 18, 3, ink); }
   }
-  // the mantle: a teardrop pointed at the top, fins either side of its tip; centred a little above the pose's body point so the arms fit below
-  const rm = ry * .78, wm = rx * .62, my = by - 2.2, own = new Uint8Array(SQUID_W * SQUID_H), O = 1, F = 2, A = 3, T = 4;
-  const at = (x, y) => x < 0 || y < 0 || x >= SQUID_W || y >= SQUID_H ? 0 : own[y * SQUID_W + x], set = (x, y, k) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < SQUID_W && y < SQUID_H && !own[y * SQUID_W + x]) own[y * SQUID_W + x] = k; };
-  const halfW = v => v < -.3 ? Math.max(0, (v + 1.45) / 1.15) : 1 - .22 * Math.max(0, v - .35) / .65;
-  for (let y = 0; y < SQUID_H; y++) for (let x = 0; x < SQUID_W; x++) { const u = (x + .5 - bx) / wm, v = (y + .5 - my) / rm; if (v < -1.45 || v > 1) continue;
-    const hw = halfW(v); if (Math.abs(u) <= hw) own[y * SQUID_W + x] = O; else if (v > -1.1 && v < -.25 && Math.abs(u) <= hw + .55 * (1 - Math.abs(v + .67) / .43)) own[y * SQUID_W + x] = F; }
-  // four short arms from the mantle's rim with gaps between them, wiggling (the pose's feet offsets push them about), and two long tentacles
-  // on the outside that hang down and swing out and up like arms, with a club at each tip
-  const rimY = my + rm, wig = (k, q) => Math.sin(t * 3.6 + k * 1.3 + q * .9) * .55 * q / 4;
-  [-2.1, -.7, .7, 2.1].forEach((dx, k) => { const off = k < 2 ? fL : fR; for (let q = 0; q <= 4; q++) set(bx + dx + wig(k, q) + off[0] * q / 4, rimY + q + off[1] * q / 4, A); });
-  [[-1, aL], [1, aR]].forEach(([sd, a]) => { const lift = Math.max(-.6, Math.min(1.4, a)) + .6; let x = bx + sd * 3.2, y = rimY - .4;
-    for (let q = 1; q <= 7; q++) { const u = q / 7, th = lift * 1.25 * u; x += sd * Math.sin(th) * 1.0 + Math.sin(t * 3 + q + sd) * .18 * u; y += Math.cos(th) * 1.0; set(x, y, T); }
-    set(x + sd, y, T); set(x, y + (lift > 1.4 ? -1 : 1), T); });
-  const out = [];
-  for (let y = 0; y < SQUID_H; y++) for (let x = 0; x < SQUID_W; x++) { const k = at(x, y);
-    if (!k) { if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) out.push([x, y, C.o]); continue; }
-    const u = (x + .5 - bx) / wm, v = (y + .5 - my) / rm;
-    if (k === O) { out.push([x, y, Math.abs(u + .35) < .16 && v > -1.05 && v < -.2 ? C.h : u > .45 || v > .7 ? C.s : C.b]); continue; }
-    out.push([x, y, k === F ? C.s : C.b]); }
-  // the face, low on the mantle: big round eyes (or shut, or ^^ with a blush), looking the way the pose says
-  const fx0 = Math.round(bx) + edx, ey = Math.round(my + rm * .35), L = fx0 - 3, R = fx0 + 2, put = (x, y, col) => out.push([x, y, col]);
-  if (eyes === 'open') [L, R].forEach(x => { put(x, ey, C.e); put(x + 1, ey, C.e); put(x, ey + 1, C.e); put(x + 1, ey + 1, C.p); });
-  else if (eyes === 'shut') [L, R].forEach(x => { put(x, ey + 1, C.p); put(x + 1, ey + 1, C.p); });
-  else if (eyes === 'happy') { [L, R].forEach(x => { put(x, ey + 1, C.p); put(x + 1, ey, C.p); put(x + 2, ey + 1, C.p); }); put(L - 1, ey + 2, C.c); put(R + 3, ey + 2, C.c); }
-  if (mouth === 'big' || mouth === 'o') { put(fx0 - 1, ey + 3, C.p); put(fx0, ey + 3, C.p); }
-  let cells = out;
-  if (flip) cells = cells.map(([x, y, c]) => [Math.round(2 * bx) - 1 - x, y, c]);
-  if (o.flipY) cells = cells.map(([x, y, c]) => [x, Math.round(2 * by) - 1 - y, c]);
-  return cells.concat(fx).filter(([x, y]) => x >= 0 && y >= 0 && x < SQUID_W && y < SQUID_H);
+  return { bx, by, rx, ry, aL, aR, fL, fR, edx, eyes, mouth, flip, flipY: !!o.flipY, fx };
 }

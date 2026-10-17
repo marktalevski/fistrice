@@ -484,14 +484,17 @@ class Component extends DCLogic {
       ctx.strokeStyle = 'rgba(255,255,255,.15)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, sz - 1, sz - 1); };
     // the main screen: the piece playing (its title, kind and time, a thin line for how far it has got) over the album's pieces, which you pick from
     { const [sx, sy, sw, sh] = G.scr; ctx.fillStyle = cy ? '#04030a' : '#050607'; rr(sx, sy, sw, sh, 5); ctx.fill(); ctx.save(); rr(sx, sy, sw, sh, 5); ctx.clip();
-      thumb(sx + 10, sy + 10, 34); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-      if (c) { ctx.font = '500 11.5px ' + mono; ctx.fillStyle = cy ? AC.accL : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sw - 54 - 146, tw = ctx.measureText(ttl).width; this.kTxtR = sx + 54 + Math.max(Math.min(tw, room), 135);
-        ctx.save(); ctx.beginPath(); ctx.rect(sx + 54, sy + 10, room, 18); ctx.clip(); if (tw <= room) ctx.fillText(ttl, sx + 54, sy + 23); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, sx + 54 - o, sy + 23); ctx.fillText(ttl, sx + 54 - o + L, sy + 23); } ctx.restore(); noGlow();
+      // the cover and the text beside it sit centred in the strip, sized to its height (it is taller than it used to be)
+      const stH = 50 + this.stripEx(G), tsz = stH - 18, tmid = sy + stH / 2, tx = sx + 10 + tsz + 12, fT = G.phone ? 12.5 : 14, fN = G.phone ? 13 : 16, fR = G.phone ? 8.5 : 9.5,
+        tbT = tmid - (.72 * fT + fN + 5) / 2 + .72 * fT, tbN = tbT + fN + 5;
+      thumb(sx + 10, tmid - tsz / 2, tsz); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      if (c) { ctx.font = '500 ' + fT + 'px ' + mono; ctx.fillStyle = cy ? AC.accL : '#e9edf0'; glow(NEON_C, 6); const ttl = c.tr.title.toUpperCase(), room = sx + sw - tx - (G.phone ? SQUID_W * 2 + 22 : 146), tw = ctx.measureText(ttl).width; this.kTxtR = tx + Math.max(Math.min(tw, room), G.phone ? 0 : 150);
+        ctx.save(); ctx.beginPath(); ctx.rect(tx, tbT - fT, room, fT * 1.5); ctx.clip(); if (tw <= room) ctx.fillText(ttl, tx, tbT); else { const L = tw + 36, o = (t * 28) % L; ctx.fillText(ttl, tx - o, tbT); ctx.fillText(ttl, tx - o + L, tbT); } ctx.restore(); noGlow();
         // the time, under the title: where you are, then what is left (and PAUSED when it is)
-        ctx.textAlign = 'left'; ctx.font = '400 11px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, sx + 54, sy + 41); const tnw = ctx.measureText(tnow).width;
-        ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)) + (c.paused ? '   PAUSED' : ''), sx + 54 + tnw + 10, sy + 41);
+        ctx.textAlign = 'left'; ctx.font = '400 ' + fN + 'px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, tx, tbN); const tnw = ctx.measureText(tnow).width;
+        ctx.font = '400 ' + fR + 'px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)) + (c.paused ? '   PAUSED' : ''), tx + tnw + 10, tbN);
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), sw - 20, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), (sw - 20) * u, 1.5); noGlow(); }
-      else { this.kTxtR = sx + 54 + 165; ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', sx + 54, sy + 24); if (!G.phone) { ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 54, sy + 39); }
+      else { this.kTxtR = tx + 180; ctx.font = '400 ' + fT + 'px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', tx, G.phone ? tmid + fT * .36 : tbT); if (!G.phone) { ctx.font = '400 ' + fR + 'px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', tx, tbN); }
         ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), sw - 20, 1); }
       ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; const tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 12, sy + 59 + this.stripEx(G));
       this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;

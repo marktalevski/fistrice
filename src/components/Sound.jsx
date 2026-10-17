@@ -54,7 +54,7 @@ const ALBUMS = [
 ];
 // cyberpunk accents for the stark style: neon magenta and cyan
 const NEON_M = '#ff2bd6', NEON_C = '#00e5ff';
-// the spare beat pad is a kick drum: labelled KICK, it thumps and flashes this colour on every hit
+// the spare beat pad is a kick drum: unlabelled, it thumps and lights up in this colour on every hit
 const KICK_COL = '#00e5ff';
 const pad2 = n => String(n).padStart(2, '0');
 const fmtDate = iso => { const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
@@ -314,36 +314,49 @@ class Component extends DCLogic {
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = i < 3 ? G.cpads[i] : G.spare; put(el, p[0], p[1], p[2], p[3]); });
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
-  // arriving, the controller unfolds out of the beat pads like a Transformer: once the dots have dropped in and become the pads, the right
-  // deck opens out round them, then the middle panel swings out on its hinge at the right deck's edge, then the left deck on its hinge at
-  // the middle's, each locking in with a clunk (and shaded while it is still turned away). The deck is drawn whole to a layer of its own and
-  // laid in piece by piece; the dots have a layer over it. Otherwise the deck is simply drawn
+  // arriving, the controller powers up like a blueprint: once the dots have dropped in and become the pads, a glowing cyan wireframe of the
+  // rest of it is traced out from them (the decks' outlines, then the knobs, screen, jog wheel and fader); a scan line then sweeps from right
+  // to left, laying the real controller in behind it; and the screen switches on like an old CRT. The deck is drawn whole to a layer of its own
+  // and laid in as the sweep passes; the dots have a layer over it. Otherwise the deck is simply drawn
   deckOut(ctx, W, H, t, dt, TH, live, fo) {
-    const A = this.arr, U = { r0: 2.15, r1: 2.6, m0: 2.5, m1: 3.05, l0: 2.95, l1: 3.5 };
-    if (!A || t > U.l1 + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
+    const A = this.arr, U = { tr0: 2.1, sw0: 2.9, sw1: 3.5, crt0: 3.3, crt1: 3.7 };
+    if (!A || t > U.crt1 + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
     const dpr = ctx.getTransform().a, pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
     const dk = this.unC || (this.unC = mk()), dt2 = this.unD || (this.unD = mk()); [dk, dt2].forEach(c => { if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; } });
     const oc = dk.getContext('2d'), od = dt2.getContext('2d'); [oc, od].forEach(c => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.lineCap = 'round'; c.lineJoin = 'round'; });
     this.dotsCtx = od; this.drawDeck(oc, W, H, t, dt, TH, live, fo); this.dotsCtx = null;
-    const G = deckGeo(W, H), e = (a, b) => clamp((t - a) / (b - a), 0, 1), out3 = u => 1 - Math.pow(1 - u, 3), back = u => { const c1 = 1.9, c3 = c1 + 1; return u <= 0 ? 0 : 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
-    const uR = e(U.r0, U.r1), uM = e(U.m0, U.m1), uL = e(U.l0, U.l1);
-    // a clunk as each panel locks
-    const sh = [U.r1, U.m1, U.l1].reduce((a, k) => a + (t > k && t < k + .2 ? Math.sin((t - k) / .2 * Math.PI * 3) * (1 - (t - k) / .2) * 2.4 : 0), 0);
-    const blit = (x, y, w, h, dx, dy, dw, dh) => { if (w <= .5 || h <= .5 || dw <= .5 || dh <= .5) return; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, dx, dy, dw, dh); };
-    const shade = (x, y, w, h, k) => { if (k <= .01) return; ctx.globalAlpha = k; ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; };
-    const edge = (x, y0, y1, k) => { if (k <= .01) return; ctx.globalAlpha = k; ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1; };
-    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0; ctx.translate(0, sh); const y0 = G.y0, hh = H - G.y0;
-    // the right deck, opening out from round the pads to its full size
-    if (uR > 0) { const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6, k = out3(uR);
-      const x0 = bx0 + (G.mx1 - bx0) * k, x1 = bx1 + (G.x1 - bx1) * k, yy0 = by0 + (y0 - by0) * k, yy1 = by1 + (H - by1) * k; blit(x0, yy0, x1 - x0, yy1 - yy0, x0, yy0, x1 - x0, yy1 - yy0);
-      if (uR < 1) { ctx.globalAlpha = 1 - uR; ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1.5; ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 10; ctx.strokeRect(x0, yy0, x1 - x0, yy1 - yy0); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; ctx.globalAlpha = 1; } }
-    // the middle panel swings out leftward on its hinge at the right deck's edge (turned away, it is darker); then the left deck on its hinge
-    if (uM > 0) { const k = back(uM), w = (G.mx1 - G.mx0) * k; blit(G.mx0, y0, G.mx1 - G.mx0, hh, G.mx1 - w, y0, w, hh); shade(G.mx1 - w, y0, w, hh, .6 * (1 - Math.min(1, k))); edge(G.mx1 - w, y0, H, 1 - uM); }
-    if (uL > 0) { const k = back(uL), w = (G.mx0 - G.x0) * k; blit(G.x0, y0, G.mx0 - G.x0, hh, G.mx0 - w, y0, w, hh); shade(G.mx0 - w, y0, w, hh, .6 * (1 - Math.min(1, k))); edge(G.mx0 - w, y0, H, 1 - uL); }
+    const G = deckGeo(W, H), e = (a, b) => clamp((t - a) / (b - a), 0, 1), y0 = G.y0, hh = H - G.y0, CY = '#00e5ff';
+    const blit = (x, y, w, h) => { if (w <= .5 || h <= .5) return; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, x, y, w, h); };
+    // the wireframe, part by part: [kind, geometry, start, end] (seconds), traced outward from the pads
+    const kn = G.knobs.map((k, q) => ['c', [k[0], k[1], k[2] + 4], 2.42 + q * .04, 2.62 + q * .04]);
+    const parts = [['r', [G.mx1, y0, G.x1 - G.mx1, hh], 2.1, 2.45], ...kn, ['r', [G.mx0, y0, G.mx1 - G.mx0, hh], 2.3, 2.65], ['r', G.scr, 2.48, 2.8], ['r', G.clockScr, 2.52, 2.8],
+      ['r', [G.x0, y0, G.mx0 - G.x0, hh], 2.45, 2.82], ['c', G.jog, 2.58, 2.95], ['c', [G.jog[0], G.jog[1], G.jog[2] * .36], 2.68, 2.95], ['l', [G.vol.x, G.vol.y0, G.vol.x, G.vol.y1], 2.66, 2.92], ['c', G.play, 2.72, 2.95]];
+    const per = ([k, g]) => k === 'r' ? 2 * (g[2] + g[3]) : k === 'c' ? TAU * g[2] : Math.hypot(g[2] - g[0], g[3] - g[1]);
+    const path = (c, [k, g]) => { c.beginPath(); if (k === 'r') { if (c.roundRect) c.roundRect(g[0] + .5, g[1] + .5, g[2] - 1, g[3] - 1, 8); else c.rect(g[0], g[1], g[2], g[3]); } else if (k === 'c') c.arc(g[0], g[1], g[2], -Math.PI / 2, -Math.PI / 2 + TAU); else { c.moveTo(g[0], g[1]); c.lineTo(g[2], g[3]); } };
+    // the sweep: x of the scan line, from the right edge to the left
+    const ks = e(U.sw0, U.sw1), sx = ks <= 0 ? G.x1 + 20 : G.x1 + 20 - (G.x1 - G.x0 + 40) * easeIO(ks);
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+    // the pads stay as they landed while the rest is still a drawing
+    { const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6; blit(bx0, by0, bx1 - bx0, by1 - by0); }
+    // the blueprint, left of the sweep: a faint grid inside the outline, then the traced lines
+    ctx.save(); ctx.beginPath(); ctx.rect(0, y0 - 4, Math.max(0, sx), hh + 8); ctx.clip();
+    { const gk = smooth(e(2.4, 2.9)) * .07; if (gk > .002) { ctx.globalAlpha = gk; ctx.strokeStyle = CY; ctx.lineWidth = 1; ctx.beginPath(); for (let x = G.x0 + 16; x < G.x1; x += 16) { ctx.moveTo(x, y0); ctx.lineTo(x, H); } for (let y = y0 + 16; y < H; y += 16) { ctx.moveTo(G.x0, y); ctx.lineTo(G.x1, y); } ctx.stroke(); } }
+    ctx.strokeStyle = CY; ctx.lineWidth = 1.3; ctx.shadowColor = CY; ctx.shadowBlur = 8;
+    parts.forEach(pt => { const k = e(pt[2], pt[3]); if (k <= 0) return; const L = per(pt); ctx.globalAlpha = .9; ctx.setLineDash(k >= 1 ? [] : [L * easeIO(k), L + 2]); path(ctx, pt); ctx.stroke(); });
+    ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.restore();
+    // the real controller, right of the sweep, with the scan line's light on its leading edge
+    if (ks > 0) { const rx = Math.max(G.x0 - 2, sx); blit(rx, y0 - 2, G.x1 + 2 - rx, hh + 2);
+      if (ks < 1) { const band = ctx.createLinearGradient(sx, 0, sx + 70, 0); band.addColorStop(0, 'rgba(0,229,255,.35)'); band.addColorStop(1, 'rgba(0,229,255,0)'); ctx.globalAlpha = 1; ctx.fillStyle = band; ctx.fillRect(sx, y0, 70, hh);
+        ctx.fillStyle = '#e8feff'; ctx.shadowColor = CY; ctx.shadowBlur = 18; ctx.fillRect(sx - 1, y0 - 3, 2, hh + 3); ctx.shadowBlur = 0; } }
+    // the screen switches on: a bright line opens out top and bottom into the picture, with a little flicker
+    { const kc = e(U.crt0, U.crt1), S2 = G.scr; if (kc < 1 && sx < S2[0] + S2[2]) { const open = smooth(kc), mid = S2[1] + S2[3] / 2, half = S2[3] / 2 * open, lw = Math.max(1.5, half * 2);
+        ctx.globalAlpha = 1; ctx.fillStyle = '#05080a'; ctx.fillRect(S2[0], S2[1], S2[2], mid - half - S2[1]); ctx.fillRect(S2[0], mid + half, S2[2], S2[1] + S2[3] - mid - half);
+        ctx.globalAlpha = (1 - open) * .9; ctx.fillStyle = '#e8feff'; ctx.shadowColor = CY; ctx.shadowBlur = 14; ctx.fillRect(S2[0] + S2[2] * (.5 - .5 * Math.min(1, kc * 4)), mid - Math.min(lw, 3) / 2, S2[2] * Math.min(1, kc * 4), Math.min(lw, 3)); ctx.shadowBlur = 0;
+        ctx.globalAlpha = .12 * (1 - kc) * (Math.random() > .5 ? 1 : .3); ctx.fillStyle = '#fff'; ctx.fillRect(S2[0], mid - half, S2[2], half * 2); } }
     ctx.restore(); ctx.globalAlpha = 1;
     ctx.drawImage(dt2, 0, 0, pw, ph, 0, 0, W, H);
-    // the album clock (on the page, not the canvas) comes in once the middle panel is open
-    if (this.wheelRef.current) { const o = smooth(e(U.m1 - .1, U.m1 + .2)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
+    // the album clock (on the page, not the canvas) comes in as the sweep passes over it
+    if (this.wheelRef.current) { const o = smooth(clamp((G.clock[0] + G.clock[2] - sx) / G.clock[2], 0, 1)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
   }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
     const AC = this.accent(), NEON_C = AC.acc, NEON_M = AC.acc; this.acc = AC;
@@ -522,16 +535,16 @@ class Component extends DCLogic {
     const flash = i => A ? Math.sin(Math.PI * clamp((t - 1.4 - i * .06) / .7, 0, 1)) : 0;
     ctx.font = '400 ' + clamp(G.pads[0][2] / 9.5, 6, 8.5).toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     [...G.pads, ...G.cpads, G.spare].forEach(([px, py, pw, ph], i) => { const spare = i === 7, soon = i > 3 && !spare, col = spare ? KICK_COL : cols[i], k = clamp(this.S[i].k, 0, 1);
-      const lit = spare ? clamp(Math.max(k * .6, this.spareAt != null ? Math.exp(-(this.t - this.spareAt) * 7) : 0), 0, 1) : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
+      const lit = spare ? clamp(Math.max(k * .15, this.spareAt != null ? Math.exp(-(this.t - this.spareAt) * 7) : 0), 0, 1) : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; rr(px - 2, py - 1, pw + 4, ph + 5, 8); ctx.fill();
       ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; const pg = ctx.createLinearGradient(0, py, 0, py + ph); pg.addColorStop(0, '#3a3f46'); pg.addColorStop(.55, '#2c3036'); pg.addColorStop(1, '#23262b');
       ctx.fillStyle = pg; rr(px, py, pw, ph, 7); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
       ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(px + 6, py + 1.5, pw - 12, 1); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(px + 6, py + ph - 2.5, pw - 12, 1);
-      if (lit > .02) { ctx.globalAlpha = (1 - fo) * .18 * lit; ctx.fillStyle = col; rr(px + 2, py + 2, pw - 4, ph - 4, 6); ctx.fill(); }
-      ctx.globalAlpha = (1 - fo) * (spare ? .55 + .45 * lit : soon ? .55 + .45 * k : .7 + .3 * lit); ctx.strokeStyle = col; ctx.lineWidth = 1.6 + lit * .6; if (lit > .2) glow(col, 14 * lit); rr(px + 1.5, py + 1.5, pw - 3, ph - 3, 6); ctx.stroke(); noGlow();
-      { ctx.globalAlpha = (1 - fo) * (spare ? .75 + .25 * lit : soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = spare ? col : i < 4 ? LAB[i] : col; if (spare && lit > .4) glow(col, 10 * lit);
+      if (lit > .02) { ctx.globalAlpha = (1 - fo) * (spare ? .7 : .18) * lit; ctx.fillStyle = col; if (spare) glow(col, 22 * lit); rr(px + 2, py + 2, pw - 4, ph - 4, 6); ctx.fill(); }
+      ctx.globalAlpha = (1 - fo) * (spare ? .3 + .7 * lit : soon ? .55 + .45 * k : .7 + .3 * lit); ctx.strokeStyle = col; ctx.lineWidth = 1.6 + lit * .6; if (lit > .2) glow(col, 14 * lit); rr(px + 1.5, py + 1.5, pw - 3, ph - 3, 6); ctx.stroke(); noGlow();
+      if (!spare) { ctx.globalAlpha = (1 - fo) * (soon ? .75 + .25 * k : .85 + .15 * lit); ctx.fillStyle = i < 4 ? LAB[i] : col;
         // the label shrinks to fit its pad; Freediving, if it still won't fit, breaks over two lines (FREE / DIVING)
-        const lab = spare ? 'KICK' : soon ? 'SOON' : names[i].toUpperCase(); let fz = clamp(pw / 9.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; while (ctx.measureText(lab).width > pw - 10 && fz > (lab === 'FREEDIVING' ? 5.6 : 4.8)) { fz -= .25; ctx.font = '400 ' + fz + 'px ' + mich; }
+        const lab = soon ? 'SOON' : names[i].toUpperCase(); let fz = clamp(pw / 9.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; while (ctx.measureText(lab).width > pw - 10 && fz > (lab === 'FREEDIVING' ? 5.6 : 4.8)) { fz -= .25; ctx.font = '400 ' + fz + 'px ' + mich; }
         if (ctx.measureText(lab).width > pw - 10 && lab === 'FREEDIVING') { const h2 = 4; fz = clamp(pw / 7.5, 6, 9); ctx.font = '400 ' + fz + 'px ' + mich; ctx.fillText(lab.slice(0, h2), px + pw / 2, py + ph / 2 - fz * .7); ctx.fillText(lab.slice(h2), px + pw / 2, py + ph / 2 + fz * .75); }
         else ctx.fillText(lab, px + pw / 2, py + ph / 2 + .5); noGlow(); }
       ctx.globalAlpha = 1 - fo; });

@@ -3,7 +3,7 @@
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 import { reel, REEL_W, REEL_H, REEL_IDLES, REEL_REACTS, REEL_MOVES, REEL_SLOW, REEL_FAST } from '../lib/reel.js';
-import { deckGeo, deckGeoV, deckScale, DECK_KEYS, padOf } from '../lib/deck.js';
+import { deckGeo, deckGeoV, deckScale, isPhone, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
 const COL = [232, 34, 44];
@@ -221,17 +221,22 @@ class Component extends DCLogic {
         if (c && !c.paused && now - (this.scrub.at || 0) > 70) { this.scrub.at = now; const sc = this.scrub; this.scrub = null; this.seek(sc.x / this.wvOf()); this.scrub = sc; } };
       const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); const u = this.scrub.x / this.wvOf(); this.scrub = null; this.scrubAt = performance.now(); this.seek(u); };
       addEventListener('pointermove', mv); addEventListener('pointerup', up); };
+    // on a phone (which has no play button) a tap on the wave area plays and pauses, or starts the album's first piece; taps on controls, links,
+    // the album's text, the deck, the playhead or just after scrubbing are left alone
+    this.onWClick = e => { if (this.focus || !isPhone(innerWidth, innerHeight) || performance.now() - (this.scrubAt || 0) < 350 || this.nearHead(e.clientX)) return;
+      const tg = e.target; if (tg && tg.closest && tg.closest('button,a,input,[role],[data-row],[data-navk],[data-deck],[data-knob],[data-cpad],[data-full-exit],h2,p,ol,li')) return;
+      if (e.clientY >= deckGeo(innerWidth, innerHeight).y0 + (this.deckSY || 0)) return; this.playBtn(); };
     this.onFClick = e => { if (!this.focus || performance.now() - (this.fAt || 0) < 400 || onExit(e) || performance.now() - (this.scrubAt || 0) < 350 || this.nearHead(e.clientX)) return; if (this.cur) this.toggle(); };
     this.onTS = e => { this.ty = e.touches[0].clientY; }; this.onTE = e => { if (this.ty == null) return; const dy = this.ty - e.changedTouches[0].clientY; this.ty = null; if (Math.abs(dy) > 50) this.step(dy > 0 ? 1 : -1); };
     this.onPM = e => { this.mxT = e.clientX / innerWidth * 2 - 1; };
-    addEventListener('resize', this.onResize); addEventListener('wheel', this.onWheel, { passive: true }); addEventListener('keydown', this.onKey); document.addEventListener('fullscreenchange', this.onFsc); addEventListener('pointermove', this.onFMove); addEventListener('click', this.onFClick); addEventListener('pointerdown', this.onFDown); addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchend', this.onTE); addEventListener('pointermove', this.onPM);
+    addEventListener('resize', this.onResize); addEventListener('wheel', this.onWheel, { passive: true }); addEventListener('keydown', this.onKey); document.addEventListener('fullscreenchange', this.onFsc); addEventListener('pointermove', this.onFMove); addEventListener('click', this.onFClick); addEventListener('click', this.onWClick); addEventListener('pointerdown', this.onFDown); addEventListener('touchstart', this.onTS, { passive: true }); addEventListener('touchend', this.onTE); addEventListener('pointermove', this.onPM);
     // pieces with a file: decode it for its real waveform and length
     this.albums.forEach(a => a.tracks.forEach(tr => { if (!tr.src) return; const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
       fetch(tr.src).then(res => res.arrayBuffer()).then(b => new OAC(1, 1, 44100).decodeAudioData(b)).then(buf => { tr.buf = buf; tr.dur = buf.duration; tr.env = envFromBuf(buf); a.mix = mixOf(a.tracks); this.forceUpdate(); }).catch(() => {}); }));
     if (import.meta.env.DEV) window.__sound = this; // a handle for checking the page in development; not in the built site
     this.raf = requestAnimationFrame(this.tick);
   }
-  componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); document.removeEventListener('fullscreenchange', this.onFsc); removeEventListener('pointermove', this.onFMove); removeEventListener('click', this.onFClick); removeEventListener('pointerdown', this.onFDown); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('wheel', this.onWheel); removeEventListener('keydown', this.onKey); document.removeEventListener('fullscreenchange', this.onFsc); removeEventListener('pointermove', this.onFMove); removeEventListener('click', this.onFClick); removeEventListener('click', this.onWClick); removeEventListener('pointerdown', this.onFDown); removeEventListener('touchstart', this.onTS); removeEventListener('touchend', this.onTE); removeEventListener('pointermove', this.onPM); this.stopNodes(); try { this.ac && this.ac.close(); } catch (e) {} }
   componentDidUpdate(prev) { if (prev.style !== this.props.style) { this.t = 0; this.disp = null; this.listBottom = 0; } }
   step(d) { this.goAlbum(this.state.album + d)(); }
   goAlbum = a => () => { a = clamp(a, 0, this.albums.length - 1); if (a === this.state.album) return; this.albDir = a > this.state.album ? 1 : -1; if (this.strip && this.cur) this.stop(); this.flipPrev = this.state.album; this.flipT0 = this.t; this.setState({ album: a, hover: null }); };

@@ -37,7 +37,8 @@ export function deckGeoV(W, H) {
   const gx = mx1 + 14 + Math.round((Rw - (4 * s + 3 * gap)) / 2), gy = y0 + 14 + Math.round((hV - 26 - kc - 8 - (2 * s + gap)) / 2);
   const cell = n => [gx + (n % 4) * (s + gap), gy + Math.floor(n / 4) * (s + gap), s, s];
   const pads = [0, 1, 2, 3].map(cell), cpads = [4, 5, 6].map(cell), spare = cell(7);
-  const pr = Math.round(kc * .28), play = [x0 + L - 34, H - 18 - pr, pr], vol = { x: x0 + L - 34, y0: y0 + 34, y1: play[1] - pr - 24 };
+  // play / pause at the top of the left deck's right-hand column, the volume fader under it
+  const pr = Math.round(kc * .28), play = [x0 + L - 34, y0 + 18 + pr, pr], vol = { x: x0 + L - 34, y0: play[1] + pr + 30, y1: H - 22 };
   // the knob row sits low, near the bottom edge
   const kgx = mx1 + 14 + (Rw - 6 * kc) / 2, ky = Math.round(H - 12 - kc / 2), knobs = [0, 1, 2, 3, 4, 5].map(i => [kgx + (i + .5) * kc, ky, kc * (kc < 44 ? .23 : .28)]);
   return { x0, y0, x1, y1: H, w, h: hV, mx0, mx1, jog, knobs, kc, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8 };
@@ -45,17 +46,16 @@ export function deckGeoV(W, H) {
 // where each menu dot lands: the centre of its beat pad
 export const padOf = (G, k) => { const i = DECK_KEYS.indexOf(k === 'ink' ? 'home' : k), p = i < 4 ? G.pads[i] : G.cpads[i - 4]; return [p[0] + p[2] / 2, p[1] + p[3] / 2]; };
 
-// the phone deck: a phone held upright has height to spare but no width, so the controller stacks instead of spreading out. Top: a column of a
-// big play / pause over a short album clock, beside the screen (now playing over the track list, rows tall enough to tap). Below: the beat pads,
-// four wide and two tall, as large as the width allows. The jog wheel, volume fader (the phone has its own) and the combination knobs are left off; their
+// the phone deck: a phone held upright has height to spare but no width, so the controller stacks instead of spreading out. Top: the album clock
+// beside the screen (now playing over the track list, rows tall enough to tap; a tap on a song, or on the wave above, plays and pauses, so there
+// is no play button). Below: the beat pads, four wide and two tall, as large as the width allows. The jog wheel, volume fader (the phone has its own), play button and the combination knobs are left off; their
 // positions sit off the edge of the screen so the drawing and the hit areas skip them
 function deckPhone(W, H) {
   const hV = Math.round(clamp(H * .52, 360, 490)), x0 = 8, x1 = W - 8, w = x1 - x0, y0 = H - hV, pad = 12, gap = 8, off = -4000;
   const s = Math.floor(Math.min((w - 2 * pad - 3 * gap) / 4, 96)), gy = H - 12 - (2 * s + gap), gx = x0 + Math.round((w - (4 * s + 3 * gap)) / 2);
   const cell = n => [gx + (n % 4) * (s + gap), gy + Math.floor(n / 4) * (s + gap), s, s];
   const pads = [0, 1, 2, 3].map(cell), cpads = [4, 5, 6].map(cell), spare = cell(7);
-  // the left column: play / pause on top, the album clock under it (shorter than the screen beside them)
-  const top = y0 + 14, sh = gy - 14 - top, playR = 24, cTop = top + 2 * playR + 16, clockScr = [x0 + pad, cTop, 80, top + sh - cTop], clock = [x0 + pad + 8, Math.round(cTop + (top + sh - cTop) / 2 - 42), 64, 84], scr = [x0 + pad + 88, top, w - 2 * pad - 88, sh];
-  const play = [x0 + pad + 40, top + playR + 4, playR], kc = 44, knobs = [0, 1, 2, 3, 4, 5].map(i => [off - i * 60, y0 + 40, 10]), vol = { x: off, y0: y0 + 34, y1: y0 + 140 };
+  const top = y0 + 14, sh = gy - 14 - top, clockScr = [x0 + pad, top, 80, sh], clock = [x0 + pad + 8, Math.round(top + sh / 2 - 42), 64, 84], scr = [x0 + pad + 88, top, w - 2 * pad - 88, sh];
+  const play = [off, y0 + 40, 24], kc = 44, knobs = [0, 1, 2, 3, 4, 5].map(i => [off - i * 60, y0 + 40, 10]), vol = { x: off, y0: y0 + 34, y1: y0 + 140 };
   return { x0, y0, x1, y1: H, w, h: hV, mx0: x0, mx1: x1, jog: [off, y0 + hV / 2, 56], knobs, kc, play, clock, clockScr, scr, vol, pads, cpads, spare, lo: vol.y0 + 8, hi: vol.y1 - 8, phone: true };
 }

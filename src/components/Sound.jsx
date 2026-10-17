@@ -54,8 +54,9 @@ const ALBUMS = [
 ];
 // cyberpunk accents for the stark style: neon magenta and cyan
 const NEON_M = '#ff2bd6', NEON_C = '#00e5ff';
-// the spare beat pad is a kick drum: unlabelled, it thumps and lights up in this colour on every hit
-const KICK_COL = '#00e5ff';
+// arriving, each menu dot opens out into its beat pad over DOT_OPEN.dur seconds, starting at t0 + i * step (i in DECK_KEYS order); padReady(i) is
+// when pad i is fully formed. The controller's fold-out is timed from these too
+const DOT_OPEN = { t0: 1.45, step: .06, dur: .35 }, padReady = i => DOT_OPEN.t0 + i * DOT_OPEN.step + DOT_OPEN.dur;
 const pad2 = n => String(n).padStart(2, '0');
 const fmtDate = iso => { const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
 const fmtDur = s => Math.floor(s / 60) + ':' + pad2(Math.floor(s % 60));
@@ -123,11 +124,13 @@ class Component extends DCLogic {
   // the combination is set. What it opens is still to be decided; for now every number stays lit while it is set, so you can tell
   onCombo() { this.comboT = this.t; }
   // each hit on the spare pad: a kick drum, a sine that drops from a punchy click to a low thump, through the deck's volume
-  spareHit = () => { this.spareAt = this.t; this.spareN = (this.spareN || 0) + 1;
+  // (straight into the volume, not the analyser, so it doesn't move the piece's wave or Kirby's tempo; timed on its own clock, which the page's
+  // never resets)
+  spareHit = () => { this.spareAt = performance.now() / 1000; this.spareN = (this.spareN || 0) + 1;
     try { this.ensureAC(); const ac = this.ac, now = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), c = ac.createOscillator(), cg = ac.createGain();
       o.type = 'sine'; o.frequency.setValueAtTime(160, now); o.frequency.exponentialRampToValueAtTime(48, now + .12); o.frequency.exponentialRampToValueAtTime(38, now + .45);
-      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.9, now + .004); g.gain.exponentialRampToValueAtTime(.001, now + .5); o.connect(g); g.connect(this.an); o.start(now); o.stop(now + .52);
-      c.type = 'triangle'; c.frequency.setValueAtTime(1800, now); c.frequency.exponentialRampToValueAtTime(300, now + .02); cg.gain.setValueAtTime(.25, now); cg.gain.exponentialRampToValueAtTime(.001, now + .03); c.connect(cg); cg.connect(this.an); c.start(now); c.stop(now + .04); } catch (e) {} };
+      g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(.9, now + .004); g.gain.exponentialRampToValueAtTime(.001, now + .5); o.connect(g); g.connect(this.vol); o.start(now); o.stop(now + .52);
+      c.type = 'triangle'; c.frequency.setValueAtTime(1800, now); c.frequency.exponentialRampToValueAtTime(300, now + .02); cg.gain.setValueAtTime(.25, now); cg.gain.exponentialRampToValueAtTime(.001, now + .03); c.connect(cg); cg.connect(this.vol); c.start(now); c.stop(now + .04); } catch (e) {} };
   // the detent's click: a short bright tick of noise over a tiny knock, through the volume
   knobClick() { try { this.ensureAC(); const ac = this.ac; if (ac.state === "suspended" && ac.resume) ac.resume(); const now = ac.currentTime, n = Math.floor(ac.sampleRate * .012), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
     for (let q = 0; q < n; q++) d[q] = (Math.random() * 2 - 1) * Math.exp(-q / (n * .16));
@@ -319,32 +322,33 @@ class Component extends DCLogic {
   // above and below), shaded while it's still turned away, until the controller is whole. The deck is drawn whole to a layer of its own and laid
   // in tile by tile; the dots have a layer over it. Otherwise the deck is simply drawn
   deckOut(ctx, W, H, t, dt, TH, live, fo) {
-    const A = this.arr, T0 = 2.3, STEP = .045, DUR = .24, CS = 40;
+    const A = this.arr; if (!A) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
+    // the fold-out starts once the last pad (and the spare after it) has formed
+    const T0 = padReady(6) + .14, STEP = .045, DUR = .24, CS = 40;
     const dpr = ctx.getTransform().a, G = deckGeo(W, H), y0 = G.y0, hh = H - G.y0;
     const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6;
-    // the tiles: a grid over the deck, each with its distance (in tiles) from the pad block, which sets when it folds out
+    // the tiles: a grid over the deck, each with its distance (in tiles) from the pad block, which sets when it folds out, and the side facing
+    // the block, which it hinges on. A tile that overlaps the block keeps only the strips of it outside the block, each hinged on the block
     const key = W + 'x' + H; if (!this.tiles || this.tiles.key !== key) { const list = [], nx = Math.ceil((G.x1 - G.x0) / CS), ny = Math.ceil(hh / CS);
-      for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) { const x = G.x0 + c * CS, y = y0 + r * CS, w = Math.min(CS, G.x1 - x), h = Math.min(CS, H - y), cx = x + w / 2, cy = y + h / 2;
-        const dx = cx < bx0 ? (bx0 - cx) / CS : cx > bx1 ? (cx - bx1) / CS : 0, dy = cy < by0 ? (by0 - cy) / CS : cy > by1 ? (cy - by1) / CS : 0;
-        // a tile centred over the pad block still sticks out past its edge: that strip folds out first, from the edge of the block it's nearest
-        if (!dx && !dy) { if (x >= bx0 && y >= by0 && x + w <= bx1 && y + h <= by1) continue; const sd = [[cy - by0, 'b'], [by1 - cy, 't'], [cx - bx0, 'r'], [bx1 - cx, 'l']].sort((a, b) => a[0] - b[0])[0][1], r4 = sd === 'b' ? [x, y, w, by0 - y] : sd === 't' ? [x, by1, w, y + h - by1] : sd === 'r' ? [x, y, bx0 - x, h] : [bx1, y, x + w - bx1, h];
-          if (r4[2] > .5 && r4[3] > .5) list.push({ x: r4[0], y: r4[1], w: r4[2], h: r4[3], d: 0, side: sd }); continue; }
-        list.push({ x, y, w, h, d: Math.hypot(dx, dy), side: dx >= dy ? (cx < bx0 ? 'r' : 'l') : (cy < by0 ? 'b' : 't') }); }
-      this.tiles = { key, list, end: Math.max(...list.map(q => q.d)) * STEP + DUR }; }
-    if (!A || t > T0 + this.tiles.end + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
+      const add = (x, y, w, h) => { if (w <= .5 || h <= .5) return; const cx = x + w / 2, cy = y + h / 2, dx = cx < bx0 ? (bx0 - cx) / CS : cx > bx1 ? (cx - bx1) / CS : 0, dy = cy < by0 ? (by0 - cy) / CS : cy > by1 ? (cy - by1) / CS : 0;
+        list.push({ x, y, w, h, d: Math.max(0, Math.hypot(dx, dy) - .5), side: dx >= dy ? (cx < bx0 ? 'r' : 'l') : (cy < by0 ? 'b' : 't') }); };
+      for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) { const x = G.x0 + c * CS, y = y0 + r * CS, w = Math.min(CS, G.x1 - x), h = Math.min(CS, H - y);
+        if (x + w <= bx0 || x >= bx1 || y + h <= by0 || y >= by1) { add(x, y, w, h); continue; }
+        const iy0 = Math.max(y, by0), iy1 = Math.min(y + h, by1); add(x, y, w, by0 - y); add(x, by1, w, y + h - by1); add(x, iy0, bx0 - x, iy1 - iy0); add(bx1, iy0, x + w - bx1, iy1 - iy0); }
+      this.tiles = { key, list, end: list.length ? Math.max(...list.map(q => q.d)) * STEP + DUR : 0 }; }
+    if (t > T0 + this.tiles.end + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
     const pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
     const dk = this.unC || (this.unC = mk()), dt2 = this.unD || (this.unD = mk()); [dk, dt2].forEach(c => { if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; } });
     const oc = dk.getContext('2d'), od = dt2.getContext('2d'); [oc, od].forEach(c => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.lineCap = 'round'; c.lineJoin = 'round'; });
     this.dotsCtx = od; this.drawDeck(oc, W, H, t, dt, TH, live, fo); this.dotsCtx = null;
-    const back = u => { const c1 = 1.4, c3 = c1 + 1; return u <= 0 ? 0 : 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
     ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
     // the pads: each one's face appears under its dot the moment the dot has opened out into it (so the swap doesn't show), the spare just
     // after the last; then, as the fold-out starts, the plate they sit on locks in with them, wells and all
     const padAt = (q, a = 1) => { const [x, y, w, h] = P[q]; ctx.save(); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 7); else ctx.rect(x, y, w, h); ctx.clip(); ctx.globalAlpha = a; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, x, y, w, h); ctx.restore(); };
     if (t >= T0) ctx.drawImage(dk, bx0 * dpr, by0 * dpr, (bx1 - bx0) * dpr, (by1 - by0) * dpr, bx0, by0, bx1 - bx0, by1 - by0);
-    else { for (let q = 0; q < 7; q++) if (t >= 1.8 + q * .06) padAt(q); if (t >= 2.16) padAt(7, smooth(clamp((t - 2.16) / .14, 0, 1))); }
-    for (const q of this.tiles.list) { const u = clamp((t - T0 - q.d * STEP) / DUR, 0, 1); if (u <= 0) continue; const k = Math.min(1.06, back(u)), kw = q.side === 'l' || q.side === 'r' ? k : 1, kh = q.side === 't' || q.side === 'b' ? k : 1;
-      // folding open on its hinge: the edge facing the pads stays put, the far edge swings out
+    else { for (let q = 0; q < 7; q++) if (t >= padReady(q)) padAt(q); if (t >= padReady(6)) padAt(7, smooth(clamp((t - padReady(6)) / (T0 - padReady(6)), 0, 1))); }
+    for (const q of this.tiles.list) { const u = clamp((t - T0 - q.d * STEP) / DUR, 0, 1); if (u <= 0) continue; const k = 1 - Math.pow(1 - u, 3), kw = q.side === 'l' || q.side === 'r' ? k : 1, kh = q.side === 't' || q.side === 'b' ? k : 1;
+      // folding open on its hinge: the edge facing the pads stays put, the far edge swings out (never past its own cell)
       const w = q.w * kw, h = q.h * kh, x = q.side === 'r' ? q.x + q.w - w : q.x, y = q.side === 'b' ? q.y + q.h - h : q.y; if (w < .5 || h < .5) continue;
       ctx.globalAlpha = 1; ctx.drawImage(dk, q.x * dpr, q.y * dpr, q.w * dpr, q.h * dpr, x, y, w, h);
       if (u < 1) { ctx.globalAlpha = .55 * (1 - u); ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, h); ctx.globalAlpha = .35 * (1 - u); ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1); } }
@@ -529,8 +533,8 @@ class Component extends DCLogic {
     // stands up out of a dark well with a lit top edge. A pad flashes as its dot lands in it
     const flash = i => A ? Math.sin(Math.PI * clamp((t - 1.4 - i * .06) / .7, 0, 1)) : 0;
     ctx.font = '400 ' + clamp(G.pads[0][2] / 9.5, 6, 8.5).toFixed(1) + 'px ' + mich; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    [...G.pads, ...G.cpads, G.spare].forEach(([px, py, pw, ph], i) => { const spare = i === 7, soon = i > 3 && !spare, col = spare ? KICK_COL : cols[i], k = clamp(this.S[i].k, 0, 1);
-      const lit = spare ? clamp(Math.max(k * .15, this.spareAt != null ? Math.exp(-(this.t - this.spareAt) * 7) : 0), 0, 1) : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
+    [...G.pads, ...G.cpads, G.spare].forEach(([px, py, pw, ph], i) => { const spare = i === 7, soon = i > 3 && !spare, col = spare ? AC.acc : cols[i], k = clamp(this.S[i].k, 0, 1);
+      const lit = spare ? clamp(Math.max(k * .15, this.spareAt != null ? Math.exp(-Math.max(0, performance.now() / 1000 - this.spareAt) * 7) : 0), 0, 1) : clamp(Math.max(i === 2 ? 1 : 0, k, flash(i)), 0, 1);
       ctx.globalAlpha = 1 - fo; ctx.fillStyle = '#060708'; rr(px - 2, py - 1, pw + 4, ph + 5, 8); ctx.fill();
       ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 3; const pg = ctx.createLinearGradient(0, py, 0, py + ph); pg.addColorStop(0, '#3a3f46'); pg.addColorStop(.55, '#2c3036'); pg.addColorStop(1, '#23262b');
       ctx.fillStyle = pg; rr(px, py, pw, ph, 7); ctx.fill(); noGlow(); ctx.shadowOffsetY = 0;
@@ -551,7 +555,7 @@ class Component extends DCLogic {
     this.dotPos = {};
     const dc = this.dotsCtx || ctx;
     if (A && t < 2.85 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
-      const fm = A ? smooth(clamp((t - 1.45 - i * .06) / .35, 0, 1)) : asm;
+      const fm = A ? smooth(clamp((t - DOT_OPEN.t0 - i * DOT_OPEN.step) / DOT_OPEN.dur, 0, 1)) : asm;
       if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) { const u = clamp((t - .2 - i * .07) / .9, 0, 1), ub = t - (1.1 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
       this.dotPos[k] = p; a *= A ? 1 - smooth(clamp((t - 2.45) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
       const pp = A ? fm : 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
@@ -808,7 +812,7 @@ function View(v) {
           {"\n        "}
         </div>
         <div data-deck="jog" role="slider" aria-label="Jog wheel: drag round to scrub" aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} onPointerDown={v.deck?.jogDown} onPointerMove={v.deck?.jogMove} onMouseEnter={v.deck?.jogOn} onMouseLeave={v.deck?.jogOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />
-        {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled={i < 3 ? 'true' : undefined} aria-label={i < 3 ? nm + ' page: coming soon' : 'Kick drum'} onClick={i === 3 ? v.deck?.spare : undefined} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty(i === 3 ? "position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer" : "position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:default")} />)}
+        {['Orange', 'Green', 'Purple', 'Spare'].map((nm, i) => <button key={nm} data-cpad={i} type="button" aria-disabled={i < 3 ? 'true' : undefined} aria-label={i < 3 ? nm + ' page: coming soon' : 'Kick drum'} onClick={i === 3 ? v.deck?.spare : undefined} onMouseEnter={v.deck?.cpOn?.(i)} onMouseLeave={v.deck?.cpOff?.(i)} onFocus={v.deck?.cpOn?.(i)} onBlur={v.deck?.cpOff?.(i)} style={sty(`position:absolute;left:-200px;top:0;border-radius:4px;border:0;padding:0;background:none;pointer-events:auto;cursor:${i === 3 ? 'pointer' : 'default'}`)} />)}
         <button data-deck="full" type="button" aria-label="Full screen: only the wave" title="Full screen (F)" data-noring="1" onClick={v.deck?.full} onPointerDown={v.deck?.fullDn} onPointerUp={v.deck?.fullUp} onMouseEnter={v.deck?.btnOn?.('full')} onMouseLeave={v.deck?.fullOut} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         <button data-deck="play" type="button" aria-label={v.deck?.playLabel} onClick={v.deck?.play} onMouseEnter={v.deck?.btnOn?.('play')} onMouseLeave={v.deck?.btnOff} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;border:0;padding:0;background:none;pointer-events:auto;cursor:pointer")} />
         {(v.deck?.knob || []).map((kb, i) => <div key={i} data-knob={i} role="slider" aria-label={'Knob ' + (i + 1)} aria-valuemin={0} aria-valuemax={9} onPointerDown={kb.down} onPointerMove={kb.move} onWheel={kb.wheel} onMouseEnter={kb.on} onMouseLeave={kb.off} style={sty("position:absolute;left:-200px;top:0;border-radius:50%;pointer-events:auto;cursor:grab;touch-action:none")} />)}

@@ -7,6 +7,8 @@ import { drawSquid } from '../lib/squid-draw.js';
 
 // the rope down from the buoy, wide enough for its twist to show
 const ROPE_W = 3.6;
+// the rope is one warm sand colour all the way down, with a thin dark edge so it reads on the pale surface water and the deep blue alike
+const ROPE_SAND = '#e9dcbc', ROPE_EDGE = '#141414';
 // leaving for Home: how long each colour takes to gather at the centre, circle there with the others and go up into its dot (s)
 const SWIRL_DUR = 3.6;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -118,7 +120,7 @@ class Component extends DCLogic {
     ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
   }
 
-  // the rope's lay: thin slanted gaps between its strands, where the water shows through, so it reads as twisted rope rather than a line.
+  // the rope's lay: thin slanted darker-sand lines between its strands, so it reads as twisted rope rather than a line.
   // They sit inside the rope's own width (which swells and thins like the brush), and after the drop-in they spread down from the buoy
   ropeTwist(ctx, o, a0, a1, LS) {
     if (this.twistT0 == null) this.twistT0 = this.rt || 0;
@@ -127,7 +129,7 @@ class Component extends DCLogic {
     for (let y = a0 + ((P - ((a0 - o.y) % P)) % P); y < a1; y += P) {
       const k = smooth(clamp((reach - (y - LS)) / 90, 0, 1)); if (k <= 0) break;
       const wy = y - o.y, hw = ROPE_W * (.84 + .16 * Math.sin(wy * .045) + .1 * Math.sin(wy * .011 + 2)) / 2 - .45, x = o.x + Math.sin(wy * .02) * .7;
-      ctx.globalAlpha = .6 * k; ctx.strokeStyle = css(this.waterAt(this.yToM(wy)));
+      ctx.globalAlpha = .7 * k; ctx.strokeStyle = 'rgb(150,124,84)';
       ctx.beginPath(); ctx.moveTo(x - hw, y + hw * SL); ctx.lineTo(x + hw, y - hw * SL); ctx.stroke();
     }
     ctx.globalAlpha = 1; ctx.lineCap = 'butt';
@@ -146,14 +148,6 @@ class Component extends DCLogic {
   fillCol(m) {
     const end = Math.max(1, this.yToM(this.lineEnd || 1)), f = clamp(m / end, 0, 1), A = [232, 121, 43], B = [212, 69, 42], C = [242, 128, 96];
     return f < .45 ? mixC(A, B, f / .45) : mixC(B, C, (f - .45) / .55);
-  }
-  ropeInk(wy) {
-    const pos = this.pos, n = pos.length, mpe = this.props.metersPerEntry ?? 3, C = h => h === '#141414' ? [20, 20, 20] : PAPER;
-    if (!n) return '#141414';
-    let i = 0; while (i < n - 1 && wy >= pos[i + 1]) i++;
-    if (wy <= pos[0] || i >= n - 1) return this.inkFor((Math.min(i, n - 1) + 1) * mpe);
-    const a = C(this.inkFor((i + 1) * mpe)), b = C(this.inkFor((i + 2) * mpe)), f = smooth(clamp((wy - pos[i]) / (pos[i + 1] - pos[i]), 0, 1));
-    return css(mixC(a, b, f));
   }
   inkAtDepth(m) {
     if (this.flipM == null) this.inkBlend(0);
@@ -612,14 +606,13 @@ class Component extends DCLogic {
     const bob = Math.sin(t * 1.3) * 2, BS = clamp(W / 900, .75, 1), BY = sy + this.waveY(0, 0, t) - 2 + bob, LS = BY + 12 * BS;
     if (intro) {
       const d = smooth(clamp((T - this.tideEnd) / 1.0, 0, 1)), drop = this.fromHome ? 1 : smooth(clamp((T - (this.fromSound ? 2.75 : 1.6)) / .4, 0, 1));
-      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W, .9, LS - o.y, false, d < 1, '#141414'); }
+      if (d > 0) { const end = LS + (H + 20 - LS) * d, pts = []; for (let y = LS; y <= end; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((end - o.y) * .02) * .7, end]); this.brush(ctx, pts, ROPE_W + 1.8, .85, LS - o.y, false, d < 1, ROPE_EDGE); this.brush(ctx, pts, ROPE_W - .2, 1, LS - o.y, false, d < 1, ROPE_SAND); }
       if (drop > 0) { this.buoyPos = [o.x, BY - (1 - drop) * 60, BS * drop]; this.drawBuoy(ctx, o.x, BY - (1 - drop) * 60, BS * drop, t); }
     } else {
       const a0 = Math.max(LS, -20), a1 = Math.min(o.y + this.lineEnd, H + 20);
-      // one stroke, its ink changing with depth through a gradient (drawn in pieces, every join showed as a dark band across the rope)
-      if (a1 > a0) { const pts = [], gr = ctx.createLinearGradient(0, a0, 0, a1); for (let y = a0; y < a1; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((a1 - o.y) * .02) * .7, a1]);
-        for (let y = a0; y < a1 + 18; y += 18) { const yy = Math.min(y, a1); gr.addColorStop((yy - a0) / (a1 - a0), this.ropeInk(yy - o.y)); }
-        this.brush(ctx, pts, ROPE_W, .9, a0 - o.y, false, false, gr); }
+      // one stroke all the way down (drawn in pieces, every join showed as a band across the rope): its dark edge, then the sand over it
+      if (a1 > a0) { const pts = []; for (let y = a0; y < a1; y += 15) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((a1 - o.y) * .02) * .7, a1]);
+        this.brush(ctx, pts, ROPE_W + 1.8, .85, a0 - o.y, false, false, ROPE_EDGE); this.brush(ctx, pts, ROPE_W - .2, 1, a0 - o.y, false, false, ROPE_SAND); }
       if (a1 > a0) this.ropeTwist(ctx, o, a0, a1, LS);
       { const pz = this.pos, nowT = performance.now(), dtT = Math.min(.05, (nowT - (this.tailT || nowT)) / 1000); this.tailT = nowT;
         const head = Math.max(0, al), dA = head - (this.prevAl ?? head); this.prevAl = head; const kk = 1 - Math.exp(-dtT * 3.5);

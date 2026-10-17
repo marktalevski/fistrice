@@ -314,49 +314,38 @@ class Component extends DCLogic {
     this.dk.pads.forEach((el, i) => { const p = G.pads[i]; put(el, p[0], p[1], p[2], p[3]); }); this.dk.cp.forEach((el, i) => { const p = i < 3 ? G.cpads[i] : G.spare; put(el, p[0], p[1], p[2], p[3]); });
     put(this.dk.vol, G.vol.x - 14, G.vol.y0 - 6, 28, G.vol.y1 - G.vol.y0 + 12);
     const rows = this.rowsOf(G); this.dk.rows.forEach((el, k) => { const r = rows[k]; if (r) put(el, r[0], r[1], r[2], r[3]); else if (el.style.display !== 'none') el.style.display = 'none'; }); }
-  // arriving, the controller powers up like a blueprint: once the dots have dropped in and become the pads, a glowing cyan wireframe of the
-  // rest of it is traced out from them (the decks' outlines, then the knobs, screen, jog wheel and fader); a scan line then sweeps from right
-  // to left, laying the real controller in behind it; and the screen switches on like an old CRT. The deck is drawn whole to a layer of its own
-  // and laid in as the sweep passes; the dots have a layer over it. Otherwise the deck is simply drawn
+  // arriving, the controller folds out of the beat pads: once the dots have dropped in and become the pads, the rest of it is cut into small
+  // tiles that fold out from the pads in a wave, each flipping open on the edge that faces the pads (sideways to the left and right, up or down
+  // above and below), shaded while it's still turned away, until the controller is whole. The deck is drawn whole to a layer of its own and laid
+  // in tile by tile; the dots have a layer over it. Otherwise the deck is simply drawn
   deckOut(ctx, W, H, t, dt, TH, live, fo) {
-    const A = this.arr, U = { tr0: 2.1, sw0: 2.9, sw1: 3.5, crt0: 3.3, crt1: 3.7 };
-    if (!A || t > U.crt1 + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
-    const dpr = ctx.getTransform().a, pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
+    const A = this.arr, T0 = 2.12, STEP = .045, DUR = .24, CS = 40;
+    const dpr = ctx.getTransform().a, G = deckGeo(W, H), y0 = G.y0, hh = H - G.y0;
+    const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6;
+    // the tiles: a grid over the deck, each with its distance (in tiles) from the pad block, which sets when it folds out
+    const key = W + 'x' + H; if (!this.tiles || this.tiles.key !== key) { const list = [], nx = Math.ceil((G.x1 - G.x0) / CS), ny = Math.ceil(hh / CS);
+      for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) { const x = G.x0 + c * CS, y = y0 + r * CS, w = Math.min(CS, G.x1 - x), h = Math.min(CS, H - y), cx = x + w / 2, cy = y + h / 2;
+        const dx = cx < bx0 ? (bx0 - cx) / CS : cx > bx1 ? (cx - bx1) / CS : 0, dy = cy < by0 ? (by0 - cy) / CS : cy > by1 ? (cy - by1) / CS : 0; if (!dx && !dy) continue;
+        list.push({ x, y, w, h, d: Math.hypot(dx, dy), side: dx >= dy ? (cx < bx0 ? 'r' : 'l') : (cy < by0 ? 'b' : 't') }); }
+      this.tiles = { key, list, end: Math.max(...list.map(q => q.d)) * STEP + DUR }; }
+    if (!A || t > T0 + this.tiles.end + .05) { this.dotsCtx = null; this.drawDeck(ctx, W, H, t, dt, TH, live, fo); return; }
+    const pw = Math.round(W * dpr), ph = Math.round(H * dpr), mk = () => document.createElement('canvas');
     const dk = this.unC || (this.unC = mk()), dt2 = this.unD || (this.unD = mk()); [dk, dt2].forEach(c => { if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; } });
     const oc = dk.getContext('2d'), od = dt2.getContext('2d'); [oc, od].forEach(c => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.lineCap = 'round'; c.lineJoin = 'round'; });
     this.dotsCtx = od; this.drawDeck(oc, W, H, t, dt, TH, live, fo); this.dotsCtx = null;
-    const G = deckGeo(W, H), e = (a, b) => clamp((t - a) / (b - a), 0, 1), y0 = G.y0, hh = H - G.y0, CY = '#00e5ff';
-    const blit = (x, y, w, h) => { if (w <= .5 || h <= .5) return; ctx.drawImage(dk, x * dpr, y * dpr, w * dpr, h * dpr, x, y, w, h); };
-    // the wireframe, part by part: [kind, geometry, start, end] (seconds), traced outward from the pads
-    const kn = G.knobs.map((k, q) => ['c', [k[0], k[1], k[2] + 4], 2.42 + q * .04, 2.62 + q * .04]);
-    const parts = [['r', [G.mx1, y0, G.x1 - G.mx1, hh], 2.1, 2.45], ...kn, ['r', [G.mx0, y0, G.mx1 - G.mx0, hh], 2.3, 2.65], ['r', G.scr, 2.48, 2.8], ['r', G.clockScr, 2.52, 2.8],
-      ['r', [G.x0, y0, G.mx0 - G.x0, hh], 2.45, 2.82], ['c', G.jog, 2.58, 2.95], ['c', [G.jog[0], G.jog[1], G.jog[2] * .36], 2.68, 2.95], ['l', [G.vol.x, G.vol.y0, G.vol.x, G.vol.y1], 2.66, 2.92], ['c', G.play, 2.72, 2.95]];
-    const per = ([k, g]) => k === 'r' ? 2 * (g[2] + g[3]) : k === 'c' ? TAU * g[2] : Math.hypot(g[2] - g[0], g[3] - g[1]);
-    const path = (c, [k, g]) => { c.beginPath(); if (k === 'r') { if (c.roundRect) c.roundRect(g[0] + .5, g[1] + .5, g[2] - 1, g[3] - 1, 8); else c.rect(g[0], g[1], g[2], g[3]); } else if (k === 'c') c.arc(g[0], g[1], g[2], -Math.PI / 2, -Math.PI / 2 + TAU); else { c.moveTo(g[0], g[1]); c.lineTo(g[2], g[3]); } };
-    // the sweep: x of the scan line, from the right edge to the left
-    const ks = e(U.sw0, U.sw1), sx = ks <= 0 ? G.x1 + 20 : G.x1 + 20 - (G.x1 - G.x0 + 40) * easeIO(ks);
+    const back = u => { const c1 = 1.4, c3 = c1 + 1; return u <= 0 ? 0 : 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
     ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
-    // the pads stay as they landed while the rest is still a drawing
-    { const P = G.pads.concat(G.cpads, [G.spare]), bx0 = Math.min(...P.map(p => p[0])) - 6, by0 = Math.min(...P.map(p => p[1])) - 6, bx1 = Math.max(...P.map(p => p[0] + p[2])) + 6, by1 = Math.max(...P.map(p => p[1] + p[3])) + 6; blit(bx0, by0, bx1 - bx0, by1 - by0); }
-    // the blueprint, left of the sweep: a faint grid inside the outline, then the traced lines
-    ctx.save(); ctx.beginPath(); ctx.rect(0, y0 - 4, Math.max(0, sx), hh + 8); ctx.clip();
-    { const gk = smooth(e(2.4, 2.9)) * .07; if (gk > .002) { ctx.globalAlpha = gk; ctx.strokeStyle = CY; ctx.lineWidth = 1; ctx.beginPath(); for (let x = G.x0 + 16; x < G.x1; x += 16) { ctx.moveTo(x, y0); ctx.lineTo(x, H); } for (let y = y0 + 16; y < H; y += 16) { ctx.moveTo(G.x0, y); ctx.lineTo(G.x1, y); } ctx.stroke(); } }
-    ctx.strokeStyle = CY; ctx.lineWidth = 1.3; ctx.shadowColor = CY; ctx.shadowBlur = 8;
-    parts.forEach(pt => { const k = e(pt[2], pt[3]); if (k <= 0) return; const L = per(pt); ctx.globalAlpha = .9; ctx.setLineDash(k >= 1 ? [] : [L * easeIO(k), L + 2]); path(ctx, pt); ctx.stroke(); });
-    ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.restore();
-    // the real controller, right of the sweep, with the scan line's light on its leading edge
-    if (ks > 0) { const rx = Math.max(G.x0 - 2, sx); blit(rx, y0 - 2, G.x1 + 2 - rx, hh + 2);
-      if (ks < 1) { const band = ctx.createLinearGradient(sx, 0, sx + 70, 0); band.addColorStop(0, 'rgba(0,229,255,.35)'); band.addColorStop(1, 'rgba(0,229,255,0)'); ctx.globalAlpha = 1; ctx.fillStyle = band; ctx.fillRect(sx, y0, 70, hh);
-        ctx.fillStyle = '#e8feff'; ctx.shadowColor = CY; ctx.shadowBlur = 18; ctx.fillRect(sx - 1, y0 - 3, 2, hh + 3); ctx.shadowBlur = 0; } }
-    // the screen switches on: a bright line opens out top and bottom into the picture, with a little flicker
-    { const kc = e(U.crt0, U.crt1), S2 = G.scr; if (kc < 1 && sx < S2[0] + S2[2]) { const open = smooth(kc), mid = S2[1] + S2[3] / 2, half = S2[3] / 2 * open, lw = Math.max(1.5, half * 2);
-        ctx.globalAlpha = 1; ctx.fillStyle = '#05080a'; ctx.fillRect(S2[0], S2[1], S2[2], mid - half - S2[1]); ctx.fillRect(S2[0], mid + half, S2[2], S2[1] + S2[3] - mid - half);
-        ctx.globalAlpha = (1 - open) * .9; ctx.fillStyle = '#e8feff'; ctx.shadowColor = CY; ctx.shadowBlur = 14; ctx.fillRect(S2[0] + S2[2] * (.5 - .5 * Math.min(1, kc * 4)), mid - Math.min(lw, 3) / 2, S2[2] * Math.min(1, kc * 4), Math.min(lw, 3)); ctx.shadowBlur = 0;
-        ctx.globalAlpha = .12 * (1 - kc) * (Math.random() > .5 ? 1 : .3); ctx.fillStyle = '#fff'; ctx.fillRect(S2[0], mid - half, S2[2], half * 2); } }
+    // the pads, as they landed
+    ctx.drawImage(dk, bx0 * dpr, by0 * dpr, (bx1 - bx0) * dpr, (by1 - by0) * dpr, bx0, by0, bx1 - bx0, by1 - by0);
+    for (const q of this.tiles.list) { const u = clamp((t - T0 - q.d * STEP) / DUR, 0, 1); if (u <= 0) continue; const k = Math.min(1.06, back(u)), kw = q.side === 'l' || q.side === 'r' ? k : 1, kh = q.side === 't' || q.side === 'b' ? k : 1;
+      // folding open on its hinge: the edge facing the pads stays put, the far edge swings out
+      const w = q.w * kw, h = q.h * kh, x = q.side === 'r' ? q.x + q.w - w : q.x, y = q.side === 'b' ? q.y + q.h - h : q.y; if (w < .5 || h < .5) continue;
+      ctx.globalAlpha = 1; ctx.drawImage(dk, q.x * dpr, q.y * dpr, q.w * dpr, q.h * dpr, x, y, w, h);
+      if (u < 1) { ctx.globalAlpha = .55 * (1 - u); ctx.fillStyle = '#000'; ctx.fillRect(x, y, w, h); ctx.globalAlpha = .35 * (1 - u); ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1); } }
     ctx.restore(); ctx.globalAlpha = 1;
     ctx.drawImage(dt2, 0, 0, pw, ph, 0, 0, W, H);
-    // the album clock (on the page, not the canvas) comes in as the sweep passes over it
-    if (this.wheelRef.current) { const o = smooth(clamp((G.clock[0] + G.clock[2] - sx) / G.clock[2], 0, 1)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
+    // the album clock (on the page, not the canvas) comes in as the tiles round it fold out
+    if (this.wheelRef.current) { const dC = Math.max(0, (bx0 - (G.clock[0] + G.clock[2] / 2)) / CS), o = smooth(clamp((t - T0 - dC * STEP - DUR * .5) / .25, 0, 1)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
   }
   drawDeck(ctx, W, H, t, dt, TH, live, fo) {
     const AC = this.accent(), NEON_C = AC.acc, NEON_M = AC.acc; this.acc = AC;

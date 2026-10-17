@@ -652,7 +652,7 @@ class Component extends DCLogic {
         { const hy = o.y + Math.max(head, (this.pos && this.pos[0]) || 0), vis = this.state.introDone && hy > LS && hy < H + 30; this.octA = (this.octA || 0) + ((vis ? 1 : 0) - (this.octA || 0)) * (1 - Math.exp(-dtT * 5)); if (this.sqI != null && this.sqI < 9) this.octA = Math.max(this.octA, .03);
           if (this.octA > .02) { const vel = dA / Math.max(dtT, .001); this.octV = (this.octV || 0) + (vel - (this.octV || 0)) * (1 - Math.exp(-dtT * 5));
             this.octPh = (this.octPh || 0) + dA * .05 + dtT * (1.1 + 2.5 * clamp(Math.abs(this.octV) / 400, 0, 1));
-            const sv = clamp(this.octV / 500, -1, 1), dz = 0, ox = o.x - 26 + Math.sin(this.rt * .9) * 2, oy = hy - 6 - sv * 10 + Math.sin(this.rt * 1.7) * 3;
+            const sv = clamp(this.octV / 500, -1, 1), dz = 0, ox = Math.max(o.x - 26, 16) + Math.sin(this.rt * .9) * 2, /* (on a phone the rope is near the edge: the squid stays on screen) */ oy = hy - 6 - sv * 10 + Math.sin(this.rt * 1.7) * 3;
             // on load, the red (Sound) dot pours into the pale squid: red + white paper = pink
             this.sqT = (this.sqT ?? 99) + (this.octA > .5 ? dtT : 0); const sk = this.sqT, hk = smooth(clamp((sk - .2) / 1.0, 0, 1)), u0 = smooth(clamp((sk - .85) / .7, 0, 1)), fillK = smooth(clamp((sk - .95) / .8, 0, 1));
             if (hk > 0 && u0 < 1) { if (!this.sqSrc) { const d = document.querySelector('[data-navk="sound"] [data-navdot]'), rt0 = this.rootRef.current; if (d && rt0) { const r = d.getBoundingClientRect(), r0 = rt0.getBoundingClientRect(); this.sqSrc = [r.left + r.width / 2 - r0.left, r.top + r.height / 2 - r0.top]; } }

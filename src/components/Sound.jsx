@@ -192,7 +192,9 @@ class Component extends DCLogic {
     set(e.clientY); this.volDrag = 1; const mv = ev => set(ev.clientY), up = () => { this.volDrag = 0; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); };
   // the track list on the centre screen: where each row sits (shared by the drawing and the row buttons over it)
-  rowsOf(G) { const [sx, sy, sw, sh] = G.scr, n = this.albums[this.state.album].tracks.length, top = sy + 66, rh = clamp((sh - 70) / Math.max(1, n), 15, 44); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
+  // the screen's top bar (now playing, and the squid's stage) is this much taller than its text needs, so the squid has room to swim about
+  stripEx(G) { return G.phone ? 16 : 30; }
+  rowsOf(G) { const [sx, sy, sw, sh] = G.scr, ex = this.stripEx(G), n = this.albums[this.state.album].tracks.length, top = sy + 66 + ex, rh = clamp((sh - 70 - ex) / Math.max(1, n), 15, 44); return Array.from({ length: n }, (_, k) => [sx + 4, top + k * rh, sw - 8, rh]); }
   t = 0; live = 0; mx = 0; pf = 0; labs = {}; S = [0, 1, 2, 3, 4, 5, 6, 7].map(() => ({ on: 0, k: 0, yp: 300, y0: 300, tp: -9 }));
   albums = ALBUMS.map((a, ai) => { const tracks = a.tracks.map((tr, ti) => ({ ...tr, id: ai + '-' + ti, ai, ti, env: envOf(tr) })); return { ...a, tracks, mix: mixOf(tracks) }; });
   strip = false;
@@ -488,10 +490,10 @@ class Component extends DCLogic {
         // the time, under the title: where you are, then what is left (and PAUSED when it is)
         ctx.textAlign = 'left'; ctx.font = '400 11px ' + mich; ctx.fillStyle = '#f2f2f0'; const tnow = fmtDur(pos) + '.' + (Math.floor(pos * 10) % 10); ctx.fillText(tnow, sx + 54, sy + 41); const tnw = ctx.measureText(tnow).width;
         ctx.font = '400 8px ' + mono; ctx.fillStyle = cy ? NEON_M : PM; ctx.fillText('-' + fmtDur(Math.max(0, c.tr.dur - pos)) + (c.paused ? '   PAUSED' : ''), sx + 54 + tnw + 10, sy + 41);
-        ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(sx + 10, sy + 50, (sw - 20) * u, 1.5); noGlow(); }
+        ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), sw - 20, 1.5); ctx.fillStyle = cy ? NEON_M : kc; glow(NEON_M, 6); ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), (sw - 20) * u, 1.5); noGlow(); }
       else { this.kTxtR = sx + 54 + 165; ctx.font = '400 10px ' + mich; ctx.fillStyle = '#e9edf0'; ctx.fillText('STANDBY', sx + 54, sy + 24); if (!G.phone) { ctx.font = '400 8.5px ' + mono; ctx.fillStyle = PM; ctx.fillText('PRESS ▶ OR PICK A PIECE BELOW', sx + 54, sy + 39); }
-        ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50, sw - 20, 1); }
-      ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; const tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 12, sy + 59);
+        ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(sx + 10, sy + 50 + this.stripEx(G), sw - 20, 1); }
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '400 7.5px ' + mono; ctx.fillStyle = PM; const tot = al.tracks.reduce((a2, q) => a2 + q.dur, 0); ctx.fillText(al.tracks.length + ' PIECES · ' + fmtDur(tot), sx + sw - 12, sy + 59 + this.stripEx(G));
       this.rowsOf(G).forEach(([rx, ry, rw, rh], k) => { const tr = al.tracks[k], on = c && c.tr.id === tr.id, hv = this.rowHov === k, mid = ry + rh / 2;
         if (on || hv) { ctx.fillStyle = on ? (cy ? AC.a(.13) : 'rgba(255,255,255,.09)') : 'rgba(255,255,255,.05)'; ctx.fillRect(rx, ry + .5, rw, rh - 1); }
         if (on) { ctx.fillStyle = cy ? NEON_M : kc; ctx.fillRect(rx, ry + rh - 1.5, rw * u, 1); }
@@ -505,7 +507,7 @@ class Component extends DCLogic {
       ctx.restore(); ctx.globalAlpha = 1 - fo; ctx.strokeStyle = cy ? AC.a(.45) : 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; rr(sx + .5, sy + .5, sw - 1, sh - 1, 4.5); ctx.stroke();
       // the squid, on the right of the now-playing strip: resting, dancing while a piece plays, or off on a pad's little turn. Its notes and
       // stars take the edge's ink while it is lit
-      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = SQUID_W * kp, ky = sy + 50 - SQUID_H * kp - 2;
+      { const hp = this.padHov, mode = hp != null ? this.kReact : playing ? 'dance' : 'sleep', kp = 2, kw = SQUID_W * kp, sEx = this.stripEx(G), ky = sy + 50 + sEx - SQUID_H * kp - 2;
         // the free stretch of the strip he dances along: from just past the text to the right edge
         const xMax = sx + sw - 10 - kw, xMin = Math.min((this.kTxtR || sx + 200) + 8, xMax); if (this.kX == null) this.kX = xMax; this.kX = clamp(this.kX, xMin, xMax);
         // the dance: a run of moves picked at random (never one twice running), each a few beats long; a slide glides him somewhere new,
@@ -526,13 +528,13 @@ class Component extends DCLogic {
         const P = squid(mode, t, { tau: t - (this.kAt ?? t), lv: clamp(this.live || 0, 0, 1), ink, ...dO });
         // in a trio two copies dance beside it, a little fainter
         const at = mode === 'dance' && this.kMv === 'trio' ? [[0, 1]].concat([-1, 1].map(d => [d * kw * .95, .55]).filter(([d]) => kx + d >= xMin - kw * .6 && kx + d <= sx + sw - kw + 4)) : [[0, 1]];
-        ctx.save(); ctx.beginPath(); ctx.rect(sx + 2, sy + 2, sw - 4, 48); ctx.clip();
-        // the squid itself, drawn as on the Freediving page: the pose moves and squashes it, swings its tentacles out, sets its face, and its
-        // arms stream when it leaps; the sparkles round it are soft dots
+        ctx.save(); ctx.beginPath(); ctx.rect(sx + 2, sy + 2, sw - 4, 48 + sEx); ctx.clip();
+        // the squid itself, drawn as on the Freediving page: the pose moves and squashes it, turns it (to face where it swims, upside down, in
+        // spins), swings its tentacles out, sets its face, and its arms stream as it swims or leaps; the sparkles round it are soft dots
         const sv = clamp(Math.abs(P.by - 11) / 4, 0, 1) * .9, lift = a => clamp(a + .35, 0, 1.4) * .7, face = { shut: P.eyes === 'shut', liftL: lift(P.aL), liftR: lift(P.aR) };
         at.forEach(([d, al]) => { ctx.globalAlpha = (1 - fo) * al;
-          ctx.save(); ctx.translate(kx + d + kw / 2 + (P.bx - 11) * kp, sy + 31 + (P.by - 11) * kp); ctx.scale(P.rx / 6.3 * (P.flip ? -1 : 1), P.ry / 5.9 * (P.flipY ? -1 : 1));
-          drawSquid(ctx, 0, 0, .82, t, sv, 'rgb(244,138,172)', P.edx * .06, P.eyes === 'happy' ? 1 : 0, face); ctx.restore();
+          ctx.save(); ctx.translate(kx + d + kw / 2 + (P.bx - 11 + P.px) * kp, sy + 31 + sEx / 2 + (P.by - 11 + P.py) * kp); ctx.scale(P.rx / 6.3 * (P.flip ? -1 : 1), P.ry / 5.9 * (P.flipY ? -1 : 1));
+          drawSquid(ctx, 0, 0, .82, t, P.v ?? sv, 'rgb(244,138,172)', P.rot + P.edx * .06, P.eyes === 'happy' ? 1 : 0, face); ctx.restore();
           P.fx.forEach(([q, r, col]) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(kx + d + (q + .5) * kp, ky + (r + .5) * kp, kp * .62, 0, TAU); ctx.fill(); }); });
         ctx.restore(); ctx.globalAlpha = 1 - fo; } }
     // the volume fader, standing beside the screen

@@ -7,22 +7,23 @@
 export const SQUID_W = 22, SQUID_H = 20;
 export const SQUID_IDLES = ['idle', 'sleep', 'yawn'];
 // the dance's moves, and how many beats each lasts (a trio is a sway with two copies beside it, drawn by the deck)
-export const SQUID_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2,
+export const SQUID_MOVES = { sway: 4, slide: 4, spin: 2, hop: 4, shimmy: 4, jumpspin: 2, breakdance: 4, trio: 4, pose: 2, cruise: 4, backstroke: 4, spiral: 4, figure8: 4, upside: 4, spin360: 2,
   squish: 4, clap: 4, robot: 4, twist: 4, armwave: 4, bob: 4, float: 4, backflip: 2, stomp: 4, disco: 4 };
 // which moves suit slow music and which fast (the rest suit any): slow music favours the first, fast the second
-export const SQUID_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish'];
-export const SQUID_FAST = ['hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
+export const SQUID_SLOW = ['sway', 'slide', 'bob', 'float', 'armwave', 'squish', 'cruise', 'spiral', 'figure8'];
+export const SQUID_FAST = ['spin360', 'hop', 'spin', 'jumpspin', 'breakdance', 'backflip', 'stomp', 'robot', 'clap', 'twist', 'shimmy'];
 export const SQUID_REACTS = ['wave', 'jump', 'ink', 'jet', 'happy', 'spin', 'yawn'];
 // the sparkles' colours: ink cloud, white, the Zs (the squid's own come from squid-draw.js)
 const C = { o: '#141414', b: '#f48aac', s: '#d8698f', h: '#ffffff', e: '#ffffff', p: '#141414', c: '#ec547c', inkD: '#1b1d2a', inkL: '#3a3e55', w: '#ffffff', z: '#9fd8ff' };
 const STAR = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]];
 const ZED = [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]];
 const INK = [[0, 0], [1, 0], [0, 1], [1, 1]], BUB = [[0, 0]];
-const s01 = v => Math.max(0, Math.min(1, v));
+const s01 = v => Math.max(0, Math.min(1, v)), sm = v => v * v * (3 - 2 * v);
 
 export function squid(mode, t, o = {}) {
   const tau = o.tau ?? t, lv = o.lv ?? 0, ink = o.ink || '#ffd84a';
-  let spin = mode === 'dance' ? t * 6 : 0, bx = 11, by = 11, rx = 6.3, ry = 5.9, aL = -.35, aR = -.35, fL = [0, 0], fR = [0, 0], edx = 0, eyes = 'open', mouth = 'none', flip = false;
+  // rot: its heading (0 upright, mantle up); px, py: how far it has swum from its spot (grid units); vv: how fast its arms stream (null: from its bounce)
+  let rot = 0, px = 0, py = 0, vv = null, spin = mode === 'dance' ? t * 6 : 0, bx = 11, by = 11, rx = 6.3, ry = 5.9, aL = -.35, aR = -.35, fL = [0, 0], fR = [0, 0], edx = 0, eyes = 'open', mouth = 'none', flip = false;
   const fx = [];   // extra cells: notes, stars, Zs, sparkles
   const add = (shape, x, y, col) => shape.forEach(([q, r]) => fx.push([Math.round(x) + q, Math.round(y) + r, col]));
   const blink = (t % 3.7) < .13;
@@ -72,6 +73,18 @@ export function squid(mode, t, o = {}) {
     else if (mv === 'stomp') { const sd = beat % 2 ? 1 : -1, lift = up * 2; if (sd < 0) fL = [0, -lift]; else fR = [0, -lift]; bx += land * (Math.random() - .5) * .9; ry *= 1 - .08 * land; aL = aR = .1; eyes = 'open'; mouth = land > .3 ? 'big' : 'smile'; }
     // disco: one arm pointing up across, the other down, swapping every two beats, hips bouncing
     else if (mv === 'disco') { const sd = Math.floor(mp / 2) % 2 ? 1 : -1; if (sd > 0) { aR = 1.45; aL = -.6; } else { aL = 1.45; aR = -.6; } bx += sd * .7; by -= up * .5; edx = sd; eyes = 'open'; mouth = 'smile'; }
+    // swimming: it travels round its stage on a path, turned to face where it's heading (mantle first, like a real squid) with its arms
+    // streaming behind; backstroke swims the same path arms first. cruise: side to side; spiral: round and round, widening and narrowing;
+    // figure8: a figure of eight
+    else if (['cruise', 'backstroke', 'spiral', 'figure8'].includes(mv)) { const n = SQUID_MOVES[mv], at = m => { const a = m / n * Math.PI * 2;
+        if (mv === 'cruise' || mv === 'backstroke') return [Math.sin(a) * 5.5, Math.sin(a * 2) * .6];
+        if (mv === 'spiral') { const r = 1.6 + 2.2 * (.5 - .5 * Math.cos(a)); return [Math.cos(a * 2) * r * 1.5, Math.sin(a * 2) * r * .8]; }
+        return [Math.sin(a) * 5.5, Math.sin(a * 2) * 2.6]; };
+      const p = at(mp), q = at(mp + .02); px = p[0]; py = p[1]; rot = Math.atan2(q[0] - p[0], -(q[1] - p[1])) + (mv === 'backstroke' ? Math.PI : 0); vv = .9; aL = aR = -.5; eyes = blink ? 'shut' : 'open'; }
+    // upside: turns over, dances a while upside down, tentacles up, and turns back
+    else if (mv === 'upside') { const n = SQUID_MOVES.upside, k = sm(s01(mp / .6)) * sm(s01((n - mp) / .6)); rot = Math.PI * k; by -= up * .8; aL = aR = .6; eyes = 'happy'; }
+    // spin360: two whole turns on the spot, lifting a little
+    else if (mv === 'spin360') { const n = SQUID_MOVES.spin360; rot = sm(s01(mp / n)) * Math.PI * 4; by -= Math.sin(mp / n * Math.PI) * 2; vv = .5; eyes = 'happy'; }
   } else if (mode === 'wave') {
     const w = Math.sin(tau * 9); aR = 1.15 + .35 * w; aL = -.4; eyes = blink ? 'shut' : 'open'; mouth = 'smile'; edx = 1; by += .2 * Math.sin(tau * 3);
   } else if (mode === 'jump') {
@@ -97,5 +110,5 @@ export function squid(mode, t, o = {}) {
     const c = tau % 1.6; if (c < 1) { flip = Math.floor(c * 8) % 2 === 1; aL = aR = .25; eyes = 'shut'; by -= Math.sin(c * Math.PI) * 1.2; }
     else { aL = 1.3; aR = -.2; eyes = 'open'; mouth = 'smile'; add(STAR, 18, 3, ink); }
   }
-  return { bx, by, rx, ry, aL, aR, fL, fR, edx, eyes, mouth, flip, flipY: !!o.flipY, fx };
+  return { bx, by, rx, ry, aL, aR, fL, fR, edx, eyes, mouth, flip, flipY: !!o.flipY, fx, rot, px, py, v: vv };
 }

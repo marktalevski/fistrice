@@ -7,7 +7,18 @@
 export const DECK_KEYS = ['home', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+// the deck needs about this much width; on a narrower screen (a phone) it is laid out at this width and the whole thing scaled down to fit,
+// rather than squeezing its three panels into each other. deckScale is that factor (1 on wider screens)
+export const DECK_MIN_W = 820;
+export const deckScale = W => Math.min(1, W / DECK_MIN_W);
+// the deck where it is on screen (what pointer handling, hit areas and the other pages use)
 export function deckGeo(W, H) {
+  const s = deckScale(W); if (s >= 1) return deckGeoV(W, H);
+  const sc = v => typeof v === 'number' ? v * s : Array.isArray(v) ? v.map(sc) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sc(x)])) : v;
+  return sc(deckGeoV(W / s, H / s));
+}
+// the deck at its own size (what the drawing uses, under a scale of deckScale(W)): W and H are the screen's, divided by deckScale
+export function deckGeoV(W, H) {
   const hV = Math.round(clamp(H * .4, 220, 330)), x0 = 12, x1 = W - 12, w = x1 - x0, y0 = H - hV, cyM = y0 + hV / 2;
   // the mixer in the middle, a deck either side of it; the right deck is the wider, so its row of six knobs has room
   const L = Math.round(clamp(w * .27, 230, 360)), Rr = Math.round(clamp(w * .32, 260, 420)), Mw = w - L - Rr, mx0 = x0 + L, mx1 = mx0 + Mw;

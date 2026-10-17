@@ -392,7 +392,7 @@ class Component extends DCLogic {
     this.fromDive = /from=dive/.test(location.search);
     { let nt = 'navigate'; try { nt = performance.getEntriesByType('navigation')[0].type; } catch (e) {} if (nt === 'reload' || !this.fromDive) try { sessionStorage.removeItem('shape-seen'); } catch (e) {} }
     let last = null; try { last = sessionStorage.getItem('home-shape'); } catch (e) {}
-    this.pick = pickShape(last); window.__home = this;
+    this.pick = pickShape(last); if (import.meta.env.DEV) window.__home = this; // (for the local symbol picker only)
     try { if (this.fromDive) { const nf = JSON.parse(sessionStorage.getItem('nav-from') || 'null'); if (nf) this.navArrive = nf; } } catch (e) {}
     setTimeout(() => { try { sessionStorage.removeItem('nav-from'); } catch (e) {} }, 4000);
     this.raf = requestAnimationFrame(this.tick);
@@ -680,6 +680,12 @@ class Component extends DCLogic {
     if (this.go != null) { this.go += dt; if (this.go > (this.dest ? (/\/sound\//.test(this.dest) ? 1.3 : 2.05) : 4.05) && !this.left) { this.left = true; // Sound picks the menu dots up where they are and drops them onto its beat pads
       if (/\/sound\//.test(this.dest || '')) try { const o = {}; ['ink', 'freediving', 'sound', 'journal', 'c4', 'c5', 'c6'].forEach(k => { const f = this.navFrom && this.navFrom[k]; o[k] = f ? f.p : sndDrop(k, innerWidth, innerHeight); }); o.home = o.ink; sessionStorage.setItem('nav-from', JSON.stringify(o)); } catch (e) {}
       (window.__leave || (h => { location.href = h; }))(this.dest || BASE + 'freediving/?from=home'); } }
+    // once the symbol has settled (drawn, its transition over, nothing hovered, fading or with labels moving) the picture doesn't change, so it
+    // isn't redrawn every frame; any hover, shuffle or resize wakes it
+    { const L = this.labs || {}, near = (a, b) => Math.abs((a || 0) - (b || 0)) < .002, still = this.go == null && !this.morph && !this.trans && !this.oldPaths && this.T > (this.readyT ?? 99) + 3
+        && near(this.hovT, this.hov) && near(this.hovIT, this.hovI) && ['sound', 'journal'].every(k => near(this.hovPgT[k], this.hovPg[k])) && (this.fadeC || []).every(c => c === 0 || c === FADE.sweep) && Object.values(L).every(x => x.rest && x.pk == null),
+        sig = innerWidth + 'x' + innerHeight + ':' + this.shapeName + ':' + (this.fadeC || []).join() + ':' + this.hov + this.hovI + (this.hovPg.sound || 0) + (this.hovPg.journal || 0);
+      if (still && this.stillSig === sig) return; this.stillSig = still ? sig : null; }
     this.draw();
   };
 

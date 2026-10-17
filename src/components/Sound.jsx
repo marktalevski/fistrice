@@ -3,7 +3,7 @@
 import React from 'react';
 import { DCLogic, page, sty, BASE } from '../lib/dc.js';
 import { kirby, KIRBY_W, KIRBY_H, KIRBY_IDLES, KIRBY_REACTS, KIRBY_MOVES, KIRBY_SLOW, KIRBY_FAST } from '../lib/kirby.js';
-import { deckGeo, DECK_KEYS, padOf } from '../lib/deck.js';
+import { deckGeo, deckGeoV, deckScale, DECK_KEYS, padOf } from '../lib/deck.js';
 
 const PAGE = 'sound';
 const COL = [232, 34, 44];
@@ -37,7 +37,6 @@ const INKS = [[232, 34, 44], [255, 118, 18], [255, 196, 0], [22, 168, 82], [110,
 // without one it plays a synthesised stand-in of its kind. dur is in seconds (taken from the file when there is one)
 const ALBUMS = [
   // img: the album's photo (black & white, white ground) laid into the page in the stark style; imgX: 0 puts it flush left, 1 flush against the panel; imgY: shift up (negative) as a fraction of the page height; imgFlip: upside down; imgMirror: left to right.
-  // other photos ready to swap in: images/stair-ramp.jpg, images/great-buddha.jpg, images/wave-figure.jpg
   { title: 'Water', img: BASE + 'images/lone-tree.jpg', imgX: 1, imgY: -.2, tracks: [
     { title: 'Low tide, Panglao', kind: 'field', date: '2026-11-06', dur: 134 },
     { title: 'Breathe-up before a dive', kind: 'voice', date: '2026-11-12', dur: 65 },
@@ -291,8 +290,10 @@ class Component extends DCLogic {
   // the album clock beside the screen: the flip counter in its display, and the album names rolling through the display round it. The
   // current album's name sits just off the counter: below it when it rolled in from below (scrolling on), above it when it came from above
   // (scrolling back). The others sit further out in order, the album before above and the one after below
-  wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; const G = deckGeo(innerWidth, innerHeight), [bx0, by0, bw0, bh0] = G.clockScr, st = box.style;
+  wheelTick(dt) { const box = this.wheelRef.current; if (!box) return; const G = deckGeo(innerWidth, innerHeight), ds = deckScale(innerWidth), [bx0, by0, bwS, bhS] = G.clockScr, bw0 = bwS / ds, bh0 = bhS / ds, st = box.style;
+    // (laid out at the deck's own size and scaled down with it on a narrow screen)
     const v2 = [bx0 + 'px', (by0 + (this.deckSY || 0)).toFixed(1) + 'px', bw0 + 'px', bh0 + 'px']; if (st.left !== v2[0]) st.left = v2[0]; if (st.top !== v2[1]) st.top = v2[1]; if (st.width !== v2[2]) st.width = v2[2]; if (st.height !== v2[3]) st.height = v2[3];
+    { const tf = ds < 1 ? 'scale(' + ds.toFixed(4) + ')' : ''; if (st.transform !== tf) { st.transform = tf; st.transformOrigin = '0 0'; } }
     { const A = this.acc; if (A) { const v1 = A.accL, v2 = A.a(.6), v3 = A.acc, v4 = A.a(.75); if (box.style.getPropertyValue('--accL') !== v1) { box.style.setProperty('--accL', v1); box.style.setProperty('--accG', v2); box.style.setProperty('--acc', v3); box.style.setProperty('--accG2', v4); } } }
     const cur = this.state.album, dir = this.albDir || 1, near = 56, step = Math.min(22, (bh0 / 2 - near - 8) / 1.5), half = bh0 / 2; this.wy = this.wy || {};
     box.querySelectorAll('[data-wi]').forEach(el => { const j = +el.getAttribute('data-wi'), d = j - cur;
@@ -357,9 +358,11 @@ class Component extends DCLogic {
     // the album clock (on the page, not the canvas) comes in as the tiles round it fold out
     if (this.wheelRef.current) { const dC = Math.max(0, (bx0 - (G.clock[0] + G.clock[2] / 2)) / CS), o = smooth(clamp((t - T0 - dC * STEP - DUR * .5) / .25, 0, 1)).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
   }
-  drawDeck(ctx, W, H, t, dt, TH, live, fo) {
+  drawDeck(ctx, Ws, Hs, t, dt, TH, live, fo) {
+    // on a narrow screen the deck is drawn at its own size and scaled down to fit (see deckScale); W, H and G here are in its own units
+    const ds = deckScale(Ws), W = Ws / ds, H = Hs / ds, dcs = this.dotsCtx; if (ds < 1) { ctx.save(); ctx.scale(ds, ds); if (dcs) { dcs.save(); dcs.scale(ds, ds); } }
     const AC = this.accent(), NEON_C = AC.acc, NEON_M = AC.acc; this.acc = AC;
-    const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeo(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
+    const look = this.look, cy = look === 'stark' && (this.props.cyber ?? true), G = deckGeoV(W, H), PM = '#8a8f94', mono = "'JetBrains Mono', monospace", mich = 'Michroma, sans-serif',
       cols = ['#f2f2f0', 'rgb(24,88,224)', 'rgb(232,34,44)', 'rgb(255,196,0)', 'rgb(255,118,18)', 'rgb(22,168,82)', 'rgb(138,64,214)'], names = ['Home', 'Freediving', 'Sound', 'Journal'],
       LAB = ['#f2f2f0', 'rgb(120,166,255)', 'rgb(255,112,108)', 'rgb(255,206,60)'];
     // asm: how built the deck is (its controls); slide: how far it has dropped away below the screen
@@ -372,7 +375,7 @@ class Component extends DCLogic {
       if (ex && this.acc) { const A = this.acc; if (ex.style.color !== A.accL) { ex.style.color = A.accL; ex.style.borderColor = A.a(.75); ex.style.boxShadow = '0 0 10px ' + A.a(.35); } }
       if (ex) { const o = (!this.focus ? 0 : awake ? 1 : .18).toString(); if (ex.style.opacity !== o) ex.style.opacity = o; const pe = this.focus ? 'auto' : 'none'; if (ex.style.pointerEvents !== pe) ex.style.pointerEvents = pe; }
       if (R) { const c = this.cur, cu = !this.focus || this.fK < .5 ? '' : this.scrub ? CUR_SCRUB : !awake ? 'none' : !c ? '' : this.nearHead(this.fmx) ? CUR_SCRUB : c.paused ? CUR_PLAY : CUR_PAUSE; if (R.style.cursor !== cu) R.style.cursor = cu; } }
-    const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY; this.placeDeck(G, SY);
+    const SY = Math.max(slide, fz) * (H - G.y0 + 24), foFace = fo; fo = 1 - (1 - fo) * asm; this.deckSY = SY * ds; this.placeDeck(ds < 1 ? deckGeo(Ws, Hs) : G, SY * ds);
     if (this.wheelRef.current) { const o = (1 - fo).toFixed(3); if (this.wheelRef.current.style.opacity !== o) this.wheelRef.current.style.opacity = o; }
     const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     const glow = (c, b) => { if (cy) { ctx.shadowColor = c; ctx.shadowBlur = b; } }, noGlow = () => { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; };
@@ -556,13 +559,14 @@ class Component extends DCLogic {
     const dc = this.dotsCtx || ctx;
     if (A && t < 2.85 || O) for (let i = 0; i < 7; i++) { const k = DECK_KEYS[i], cap = padOf(G, k), pd = i < 4 ? G.pads[i] : G.cpads[i - 4]; let p = cap, a = 1;
       const fm = A ? smooth(clamp((t - DOT_OPEN.t0 - i * DOT_OPEN.step) / DOT_OPEN.dur, 0, 1)) : asm;
-      if (A) { const f2 = A.nf[k] || (k === 'home' && A.nf.ink); if (f2) { const u = clamp((t - .2 - i * .07) / .9, 0, 1), ub = t - (1.1 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
-      this.dotPos[k] = p; a *= A ? 1 - smooth(clamp((t - 2.45) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
+      if (A) { const f0 = A.nf[k] || (k === 'home' && A.nf.ink), f2 = f0 && [f0[0] / ds, f0[1] / ds]; if (f2) { const u = clamp((t - .2 - i * .07) / .9, 0, 1), ub = t - (1.1 + i * .07); p = [f2[0] + (cap[0] - f2[0]) * easeIO(u), f2[1] + (cap[1] - f2[1]) * u * u - (ub > 0 && ub < .3 ? Math.sin(ub / .3 * Math.PI) * 7 : 0)]; } else a *= smooth(clamp((t - .6) / .5, 0, 1)); }
+      this.dotPos[k] = [p[0] * ds, p[1] * ds]; a *= A ? 1 - smooth(clamp((t - 2.45) / .35, 0, 1)) : 1 - .9 * fm * fm; if (a <= .01) continue;
       const pp = A ? fm : 1 - slide, c0 = i === 0 ? 'rgb(' + [20, 20, 20].map((v, q) => Math.round(v + ([242, 242, 240][q] - v) * pp)).join(',') + ')' : cols[i];
       const r0 = i < 4 ? 8 : 5.5, dw = 2 * r0 + (pd[2] - 2 * r0) * fm, dh = 2 * r0 + (pd[3] - 2 * r0) * fm, rad = r0 + (6 - r0) * fm;
       dc.globalAlpha = a; dc.fillStyle = c0; if (fm > 0 && cy) { dc.shadowColor = c0; dc.shadowBlur = 10 * fm; }
       dc.beginPath(); if (fm <= 0) dc.arc(p[0], p[1], r0, 0, TAU); else if (dc.roundRect) dc.roundRect(p[0] - dw / 2, p[1] - dh / 2, dw, dh, rad); else dc.rect(p[0] - dw / 2, p[1] - dh / 2, dw, dh); dc.fill(); dc.shadowBlur = 0; dc.shadowColor = 'transparent'; }
-    dc.globalAlpha = 1; ctx.globalAlpha = 1; ctx.lineJoin = 'round'; }
+    dc.globalAlpha = 1; ctx.globalAlpha = 1; ctx.lineJoin = 'round';
+    if (ds < 1) { ctx.restore(); if (dcs) dcs.restore(); } }
   // ---- layout
   // the wave lies flat across the middle of the page and opens up and down while a piece plays
   geom(W, H) { const t0 = deckGeo(W, H).y0 - 8, fz = easeIO(clamp(this.fK || 0, 0, 1)), top = t0 + (H - t0) * fz, m = clamp(W * .05, 26, 56), amp = Math.min(top * .32, 260); return { m, amp, yB: Math.round(top / 2) }; }

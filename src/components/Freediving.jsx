@@ -72,7 +72,7 @@ class Component extends DCLogic {
     this.fgItems = Array.from({ length: 4 }, (_, i) => ({ m: 4 + i * 12 + r() * 4, x: .9 + r() * .09, kind: 0, s: .8 + r() * .6, ph: r() * 6.28, seed: r() * 1000 }));
     this.fgBubbles = Array.from({ length: 4 }, () => ({ x: .86 + r() * .12, y: r(), r: 5 + r() * 9, v: .03 + r() * .03, ph: r() * 6.28 }));
     this.blooms = Array.from({ length: 24 }, (_, i) => ({ u: i < 8 ? r() * .08 : r() * 1.05, x: r(), r: 50 + r() * 170, s: r() * 6, light: r() < .3 }));
-    this.cacheEls(); window.__dive = this;
+    this.cacheEls(); if (import.meta.env.DEV) window.__dive = this;
     this.raf = requestAnimationFrame(this.tick);
   }
   componentDidUpdate() { this.cacheEls(); }
@@ -252,7 +252,6 @@ class Component extends DCLogic {
     }
     if (this.props.motion ?? true) this.t += dt;
     this.draw(this.t);
-    if (!this.coverOff) { this.coverOff = true; const c = document.getElementById('arrive-cover'); if (c) c.remove(); }
   };
 
   layout(dt) {
@@ -718,7 +717,7 @@ class Component extends DCLogic {
         const isExp = ex === i;
         return {
           id: e.id, i, title: e.title || 'Untitled', meta: `${(i + 1) * mpe} m  ·  ${fmt(e.date)}`,
-          short: e.short || '', hasShort: !!e.short, imageBg: e.image ? `url("${e.image}")` : 'none', hasImage: !!e.image,
+          short: e.short || '', hasShort: !!e.short, imageBg: e.image ? `url("${String(e.image).replace(/["\\\n\r]/g, c => encodeURIComponent(c))}")` : 'none', hasImage: !!e.image,
           paras, tags, hasTags: tags.length > 0, link: e.link || '', hasLink: !!e.link, linkLabel,
           isExp, notExp: !isExp, isFocus: !isExp && f === i, go: () => this.go(i)
         };
@@ -776,7 +775,7 @@ function View(v) {
                       {"\n              "}
                       {item?.hasImage ? (
                         <>
-                          <div role="img" style={sty(`width:100%;aspect-ratio:3 / 2;max-height:440px;background-image:${item?.imageBg ?? ''};background-size:cover;background-position:center;filter:grayscale(1)`)} />
+                          <div role="img" aria-label={item?.title} style={sty(`width:100%;aspect-ratio:3 / 2;max-height:440px;background-image:${item?.imageBg ?? ''};background-size:cover;background-position:center;filter:grayscale(1)`)} />
                         </>
                       ) : null}
                       {"\n              "}

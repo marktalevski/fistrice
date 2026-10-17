@@ -35,6 +35,8 @@ class Component extends DCLogic {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(.05, (now - (this.last || now)) / 1000); this.last = now; this.t += dt;
     if (this.out) { this.out.t += dt; if (this.out.t > .55 && !this.left) { this.left = true; (window.__leave || (h => { location.href = h; }))(this.out.href); } }
+    // a few seconds in, the page has drawn itself and stays still until it is left (or resized), so it isn't redrawn every frame
+    { const sig = innerWidth + 'x' + innerHeight; if (!this.out && this.t > 3 && this.stillSig === sig) return; this.stillSig = !this.out && this.t > 3 ? sig : null; }
     this.draw();
   };
   // a brush stroke pours out of this page's nav dot and settles as the title's underline

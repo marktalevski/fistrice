@@ -623,16 +623,18 @@ class Component extends DCLogic {
       if (a1 > a0) this.ropeTwist(ctx, o, a0, a1, LS);
       { const pz = this.pos, nowT = performance.now(), dtT = Math.min(.05, (nowT - (this.tailT || nowT)) / 1000); this.tailT = nowT;
         const head = Math.max(0, al), dA = head - (this.prevAl ?? head); this.prevAl = head; const kk = 1 - Math.exp(-dtT * 3.5);
-        if (Math.abs(dA) > .3) { const nd = dA > 0 ? 1 : -1; if (nd !== this.ropeDir) { this.ropeDir = nd; this.tailW = head; } }
-        const dir = this.ropeDir || 1; let top, bot, dotI;
-        if (dir > 0) { let li = -1; while (li < pz.length - 1 && pz[li + 1] <= head + 4) li++; const tg = li >= 0 ? pz[li] : 0; if (this.tailW == null) this.tailW = tg; if (tg > this.tailW) this.tailW += (tg - this.tailW) * kk; this.tailW = Math.min(this.tailW, head); top = this.tailW; bot = head; dotI = li; }
-        else { let lj = pz.findIndex(p => p >= head - 4); const tg = lj >= 0 ? pz[lj] : (this.lineEnd || head); if (this.tailW == null) this.tailW = tg; if (tg < this.tailW) this.tailW += (tg - this.tailW) * kk; this.tailW = Math.max(this.tailW, head); top = head; bot = this.tailW; dotI = lj; }
-        this.ropeDot = dotI;
+        // the orange line runs down the rope from the surface into the nearest post's dot, so it's clear which entry is selected; when the nearest
+        // post changes it glides on to the new one (it never stops between posts)
+        const fN = this.p > -.5 && pz.length ? clamp(Math.round(this.p), 0, pz.length - 1) : -1, tgt = fN >= 0 ? pz[fN] : 0;
+        this.fillY = this.fillY == null ? tgt : this.fillY + (tgt - this.fillY) * (1 - Math.exp(-dtT * 7)); if (Math.abs(tgt - this.fillY) < .3) this.fillY = tgt;
+        const top = 0, bot = this.fillY; this.ropeDot = fN;
         const fy = o.y + bot, f0 = Math.max(o.y + top, LS, -20), f1 = Math.min(fy, H + 20);
         if (f1 > f0) {
           for (let ya = f0; ya < f1; ya += 18) { const yb = Math.min(f1, ya + 19), pts = []; for (let y = ya; y <= yb; y += 6) pts.push([o.x + Math.sin((y - o.y) * .02) * .7, y]); pts.push([o.x + Math.sin((yb - o.y) * .02) * .7, yb]); this.brush(ctx, pts, 3.6, 1, ya - o.y, ya === LS, false, css(this.fillCol(this.yToM((ya + yb) / 2 - o.y)))); }
         }
-        { const hy = o.y + Math.max(head, (this.pos && this.pos[0]) || 0), vis = this.state.introDone && hy > LS && hy < H + 30; this.octA = (this.octA || 0) + ((vis ? 1 : 0) - (this.octA || 0)) * (1 - Math.exp(-dtT * 5)); if (this.sqI != null && this.sqI < 9) this.octA = Math.max(this.octA, .03);
+        // the squid keeps beside the nearest post, gliding over when it changes (on the rope, so it moves with it as the page scrolls)
+        { const sqT = fN >= 0 ? pz[fN] : (pz[0] || 0); this.sqHY = this.sqHY == null ? sqT : this.sqHY + (sqT - this.sqHY) * (1 - Math.exp(-dtT * 5));
+          const hy = o.y + this.sqHY, vis = this.state.introDone && hy > LS && hy < H + 30; this.octA = (this.octA || 0) + ((vis ? 1 : 0) - (this.octA || 0)) * (1 - Math.exp(-dtT * 5)); if (this.sqI != null && this.sqI < 9) this.octA = Math.max(this.octA, .03);
           if (this.octA > .02) { const vel = dA / Math.max(dtT, .001); this.octV = (this.octV || 0) + (vel - (this.octV || 0)) * (1 - Math.exp(-dtT * 5));
             this.octPh = (this.octPh || 0) + dA * .05 + dtT * (1.1 + 2.5 * clamp(Math.abs(this.octV) / 400, 0, 1));
             const sv = clamp(this.octV / 500, -1, 1), dz = 0, ox = o.x - 26 + Math.sin(this.rt * .9) * 2, oy = hy - 6 - sv * 10 + Math.sin(this.rt * 1.7) * 3;
